@@ -3,4 +3,4 @@
 	url = git@github.com:microsoft/vcpkg.git
 [submodule "AudioLib/tinywav"]
 	path = AudioLib/tinywav
-	url = git@github.com:mhroth/tinywav.git
+	url = git@github.com:Kharzette/tinywav.git

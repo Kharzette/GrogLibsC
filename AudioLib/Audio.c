@@ -7,6 +7,7 @@
 #include	<FAudio.h>
 #include	<F3DAudio.h>
 #include	"tinywav/tinywav.h"
+#include	"SoundEffect.h"
 
 
 //track the vitals of each audio device
@@ -111,35 +112,6 @@ void	PrintSpeakerStuff(uint32_t channelMask)
 		printf(" SPEAKER_TOP_BACK_RIGHT ");
 	}
 	printf("\n");
-}
-
-
-static void FAUDIOCALL OnBufferEnd(FAudioVoiceCallback *pCB, void *pContext)
-{
-}
-
-static void FAUDIOCALL OnBufferStart(FAudioVoiceCallback *This, void *pContext)
-{
-}
-
-static void FAUDIOCALL OnLoopEnd(FAudioVoiceCallback *This, void *pContext)
-{
-}
-
-static void FAUDIOCALL OnStreamEnd(FAudioVoiceCallback *pCB)
-{
-}
-
-static void FAUDIOCALL OnVoiceError(FAudioVoiceCallback *pCB, void *pContext, uint32_t Error)
-{
-}
-
-static void FAUDIOCALL OnVoiceProcessingPassStart(FAudioVoiceCallback *pCB, uint32_t BytesRequired)
-{
-}
-
-static void FAUDIOCALL OnVoiceProcessingPassEnd(FAudioVoiceCallback *pCB)
-{
 }
 
 
@@ -256,71 +228,28 @@ int	main(void)
 
 //	closedir(pDir);
 
-
-	TinyWav	tw;
-
-	tinywav_open_read(&tw, "AudioLib/LevelX.wav", TW_SPLIT);
-
-	FAudioSourceVoice	*pFASV;
-
-	FAudioWaveFormatEx	wfx;
-	wfx.cbSize			=0;
-	wfx.nBlockAlign		=tw.numChannels * (tw.h.BitsPerSample / 8);
-	wfx.nChannels		=tw.numChannels;
-	wfx.nSamplesPerSec	=tw.h.SampleRate;
-	wfx.wFormatTag		=tw.h.AudioFormat;
-	wfx.wBitsPerSample	=tw.sampFmt * 8;	//the enum is also the size in bytes
-	wfx.nAvgBytesPerSec	=tw.h.SampleRate * wfx.nBlockAlign;
-
-	FAudioVoiceCallback	favc	=
+	if(!SoundEffectCreate("LevelX", "AudioLib/LevelX.wav", pFA))
 	{
-		OnBufferEnd,
-		OnBufferStart,
-		OnLoopEnd,
-		OnStreamEnd,
-		OnVoiceError,
-		OnVoiceProcessingPassEnd,
-		OnVoiceProcessingPassStart
-	};
-
-	res	=FAudio_CreateSourceVoice(pFA, &pFASV, &wfx, 0, 1.0f, &favc, NULL, NULL);
-	assert(!res);
-
-	FAudioBuffer	audBuf;
-	memset(&audBuf, 0, sizeof(audBuf));
-
-	if(tw.sampFmt == TW_INT16)
-	{
-		audBuf.AudioBytes	=tw.h.Subchunk2Size;
-		audBuf.pAudioData	=malloc(audBuf.AudioBytes);
-		tinywav_read_16(&tw, (void *)audBuf.pAudioData, tw.numFramesInHeader);
+		printf("Failed to create sound effect.\n");
+		return	0;
 	}
-	else
-	{
-		audBuf.AudioBytes	=tw.h.Subchunk2Size;
-		audBuf.pAudioData	=malloc(tw.h.Subchunk2Size);
-		tinywav_read_f(&tw, (void *)audBuf.pAudioData, tw.numFramesInHeader);
-	}
-
-
-	tinywav_close_read(&tw);
-
-	res	=FAudioSourceVoice_SubmitSourceBuffer(pFASV, &audBuf, NULL);
-	assert(!res);
-
-	res	=FAudioSourceVoice_Start(pFASV, 0, FAUDIO_COMMIT_NOW);
-	assert(!res);
 
 	res	=FAudio_StartEngine(pFA);
 	assert(!res);
 
-	//lazy wait for sound effect to finish
-	sleep(10);
+	if(!SoundEffectPlay("LevelX"))
+	{
+		printf("Error playing sound!.\n");
+	}
 
-	FAudioVoice_DestroyVoice(pFASV);
+	//lazy wait for sound effect to finish
+	sleep(7);
+
+	SoundEffectDestroyAll();
+
 	FAudioVoice_DestroyVoice(pFAMV);
 
-	free((void *)audBuf.pAudioData);
-
 	FAudio_Release(pFA);
+
+	return	1;
 }

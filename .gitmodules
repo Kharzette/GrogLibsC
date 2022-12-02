@@ -1,0 +1,6 @@
+[submodule "vcpkg"]
+	path = vcpkg
+	url = git@github.com:microsoft/vcpkg.git
+[submodule "AudioLib/tinywav"]
+	path = AudioLib/tinywav
+	url = git@github.com:mhroth/tinywav.git

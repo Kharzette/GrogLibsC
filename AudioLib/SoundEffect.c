@@ -2,6 +2,9 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<unistd.h>
+#include	<dirent.h>
+#include	<errno.h>
+#include	<sys/stat.h>
 #include	<assert.h>
 #include	<string.h>
 #include	<FAudio.h>
@@ -143,10 +146,13 @@ bool    SoundEffectCreate(const char *szName, const char *szPath, FAudio *pFA)
 	wfx.wFormatTag		=tw.h.AudioFormat;
 	wfx.wBitsPerSample	=tw.sampFmt * 8;	//the enum is also the size in bytes
 	wfx.nAvgBytesPerSec	=tw.h.SampleRate * wfx.nBlockAlign;
+
+	//grab pointer to current voice data chunk off static array
+	SoundEffect	*pCur	=&sSoundFX[sNumSFX];
 	
 	//structs passed to create voice, aim at the current static array spot
-	FAudioBuffer		*pAB	=&sSoundFX[sNumSFX].mBuffer;
-	FAudioVoiceCallback	*pCB	=&sSoundFX[sNumSFX].mCB;
+	FAudioBuffer		*pAB	=&pCur->mBuffer;
+	FAudioVoiceCallback	*pCB	=&pCur->mCB;
 
 	//callbacks!
 	pCB->OnBufferEnd				=OnBufferEnd;
@@ -198,8 +204,8 @@ bool    SoundEffectCreate(const char *szName, const char *szPath, FAudio *pFA)
 	}
 
 	//copy to static array
-	sSoundFX[sNumSFX].mpSrcVoice	=pFASV;
-	strncpy(sSoundFX[sNumSFX].mszName, szName, SFX_NAME_LEN);
+	pCur->mpSrcVoice	=pFASV;
+	strncpy(pCur->mszName, szName, SFX_NAME_LEN);
 
 	sNumSFX++;
 
@@ -207,6 +213,101 @@ bool    SoundEffectCreate(const char *szName, const char *szPath, FAudio *pFA)
 }
 
 
+void	StripExtension(const char *szFileName, char *extLess, size_t retBufSize)
+{
+	//copy stream
+	strncpy(extLess, szFileName, retBufSize);
+
+	//find last . I guess assumes only one .
+	char	*pExt	=strrchr(extLess, '.');
+
+	if(pExt == NULL)
+	{
+		return;	//no extension
+	}
+
+	//lazy null at the .
+	*pExt	=0;
+}
+
+
+//return how many sounds loaded
+int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA)
+{
+	DIR	*pDir	=opendir(szDir);
+	if(pDir == NULL)
+	{
+		return	0;
+	}
+
+	//lazy
+	char	nameBuf[256], pathBuf[256];
+	int		count	=0;
+	for(;;)
+	{
+		struct dirent	*pEnt	=readdir(pDir);
+
+		if(pEnt == NULL)
+		{
+			break;
+		}
+
+		struct stat	fileStuff;
+
+		strncpy(pathBuf, szDir, 255);
+		strncat(pathBuf, "/", 255);
+		strncat(pathBuf, pEnt->d_name, 255);
+
+		int	res	=stat(pathBuf, &fileStuff);
+		if(res)
+		{
+			if(res == EACCES)
+			{
+				printf("EACCESS\n");
+			}
+			else if(res == EIO)
+			{
+				printf("EIO\n");
+			}
+			if(res == ELOOP)
+			{
+				printf("ELOOP\n");
+			}
+			if(res == ENAMETOOLONG)
+			{
+				printf("ENAMETOOLONG\n");
+			}
+			if(res == ENOENT)
+			{
+				printf("ENOENT\n");
+			}
+			if(res == ENOTDIR)
+			{
+				printf("ENOTDIR\n");
+			}
+			if(res == EOVERFLOW)
+			{
+				printf("EOVERFLOW\n");
+			}
+			continue;
+		}
+
+		//regular file?
+		if(S_ISREG(fileStuff.st_mode))
+		{
+			StripExtension(pEnt->d_name, nameBuf, 256);		
+
+			if(SoundEffectCreate(nameBuf, pathBuf, pFA))
+			{
+				count++;
+			}
+		}
+	}
+	return	count;
+}
+
+
+//think about returning indexes to save on string compares?
 bool	SoundEffectPlay(const char *szName)
 {
 	int	idx	=GetIndex(szName);

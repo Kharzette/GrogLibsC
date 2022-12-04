@@ -218,26 +218,24 @@ int	main(void)
 
 	list.Velocity	=list.Position;
 
-//	DIR	*pDir	=opendir(".");
-
 	char	pathBuf[256];
 
 	getcwd(pathBuf, 255);
 
 	printf("Current Dir: %s\n", pathBuf);
 
-//	closedir(pDir);
+	int	numLoaded	=SoundEffectLoadAllInPath("Audio", pFA);
 
-	if(!SoundEffectCreate("LevelX", "AudioLib/LevelX.wav", pFA))
+	if(numLoaded <= 0)
 	{
-		printf("Failed to create sound effect.\n");
+		printf("Failed to load sounds...\n");
 		return	0;
 	}
 
 	res	=FAudio_StartEngine(pFA);
 	assert(!res);
 
-	if(!SoundEffectPlay("LevelX"))
+	if(!SoundEffectPlay("JumpIdle"))
 	{
 		printf("Error playing sound!.\n");
 	}

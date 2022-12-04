@@ -17,6 +17,7 @@ typedef struct
 {
 	FAudioSourceVoice	*mpSrcVoice;
 	FAudioBuffer		mBuffer;
+	FAudioVoiceCallback	mCB;
 	char				mszName[SFX_NAME_LEN];
 }	SoundEffect;
 
@@ -40,11 +41,11 @@ static void FAUDIOCALL OnBufferEnd(FAudioVoiceCallback *pCB, void *pContext)
 {
 }
 
-static void FAUDIOCALL OnBufferStart(FAudioVoiceCallback *This, void *pContext)
+static void FAUDIOCALL OnBufferStart(FAudioVoiceCallback *pCB, void *pContext)
 {
 }
 
-static void FAUDIOCALL OnLoopEnd(FAudioVoiceCallback *This, void *pContext)
+static void FAUDIOCALL OnLoopEnd(FAudioVoiceCallback *pCB, void *pContext)
 {
 }
 
@@ -143,26 +144,27 @@ bool    SoundEffectCreate(const char *szName, const char *szPath, FAudio *pFA)
 	wfx.wBitsPerSample	=tw.sampFmt * 8;	//the enum is also the size in bytes
 	wfx.nAvgBytesPerSec	=tw.h.SampleRate * wfx.nBlockAlign;
 	
-	FAudioVoiceCallback	favc	=
-	{
-		OnBufferEnd,
-		OnBufferStart,
-		OnLoopEnd,
-		OnStreamEnd,
-		OnVoiceError,
-		OnVoiceProcessingPassEnd,
-		OnVoiceProcessingPassStart
-	};
+	//structs passed to create voice, aim at the current static array spot
+	FAudioBuffer		*pAB	=&sSoundFX[sNumSFX].mBuffer;
+	FAudioVoiceCallback	*pCB	=&sSoundFX[sNumSFX].mCB;
+
+	//callbacks!
+	pCB->OnBufferEnd				=OnBufferEnd;
+	pCB->OnBufferStart				=OnBufferStart;
+	pCB->OnLoopEnd					=OnLoopEnd;
+	pCB->OnStreamEnd				=OnStreamEnd;
+	pCB->OnVoiceError				=OnVoiceError;
+	pCB->OnVoiceProcessingPassEnd	=OnVoiceProcessingPassEnd;
+	pCB->OnVoiceProcessingPassStart	=OnVoiceProcessingPassStart;
 	
 	uint32_t	res	=FAudio_CreateSourceVoice(
-		pFA, &pFASV, &wfx, 0, 1.0f, &favc, NULL, NULL);
+		pFA, &pFASV, &wfx, 0, 1.0f, pCB, NULL, NULL);
 	if(res)
 	{
 		printf("Error creating source voice for %s\n", szPath);
 		return	false;
 	}
 	
-	FAudioBuffer	*pAB	=&sSoundFX[sNumSFX].mBuffer;
 
 	//for the callbacks
 	pAB->pContext	=&sSoundFX[sNumSFX];

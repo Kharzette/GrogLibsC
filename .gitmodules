@@ -4,3 +4,9 @@
 [submodule "AudioLib/tinywav"]
 	path = AudioLib/tinywav
 	url = git@github.com:Kharzette/tinywav.git
+[submodule "AudioLib/FAudio"]
+	path = AudioLib/FAudio
+	url = git@github.com:Kharzette/FAudio.git
+[submodule "SDL"]
+	path = SDL
+	url = git@github.com:libsdl-org/SDL.git

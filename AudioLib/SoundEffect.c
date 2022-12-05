@@ -69,6 +69,42 @@ static void FAUDIOCALL OnVoiceProcessingPassEnd(FAudioVoiceCallback *pCB)
 }
 
 
+static void	PrintErr(int err)
+{
+	if(err == 0)
+	{
+		return;	//success!
+	}
+
+	switch(err)
+	{
+		case	EACCES:
+			printf("EACCESS\n");
+			break;
+		case	EIO:
+			printf("EI EI O (EIO)\n");
+			break;
+		case	ELOOP:
+			printf("ELOOP\n");
+			break;
+		case	ENAMETOOLONG:
+			printf("ENAMETOOLONG\n");
+			break;
+		case	ENOENT:
+			printf("ENOENT\n");
+			break;
+		case	ENOTDIR:
+			printf("ENOTDIR\n");
+			break;
+		case	EOVERFLOW:
+			printf("EOVERFLOW\n");
+			break;
+		default:
+			printf("This: %d happened ¯\\_(ツ)_/¯\n", err);
+	}
+}
+
+
 static int	GetIndex(const char *szName)
 {
 	assert(szName != NULL);
@@ -261,41 +297,14 @@ int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA)
 		int	res	=stat(pathBuf, &fileStuff);
 		if(res)
 		{
-			if(res == EACCES)
-			{
-				printf("EACCESS\n");
-			}
-			else if(res == EIO)
-			{
-				printf("EIO\n");
-			}
-			if(res == ELOOP)
-			{
-				printf("ELOOP\n");
-			}
-			if(res == ENAMETOOLONG)
-			{
-				printf("ENAMETOOLONG\n");
-			}
-			if(res == ENOENT)
-			{
-				printf("ENOENT\n");
-			}
-			if(res == ENOTDIR)
-			{
-				printf("ENOTDIR\n");
-			}
-			if(res == EOVERFLOW)
-			{
-				printf("EOVERFLOW\n");
-			}
+			PrintErr(res);
 			continue;
 		}
 
 		//regular file?
 		if(S_ISREG(fileStuff.st_mode))
 		{
-			StripExtension(pEnt->d_name, nameBuf, 256);		
+			StripExtension(pEnt->d_name, nameBuf, 255);
 
 			if(SoundEffectCreate(nameBuf, pathBuf, pFA))
 			{

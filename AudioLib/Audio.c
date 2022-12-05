@@ -232,6 +232,8 @@ int	main(void)
 		return	0;
 	}
 
+	printf("Loaded up %d sound effects.\n", numLoaded);
+
 	res	=FAudio_StartEngine(pFA);
 	assert(!res);
 

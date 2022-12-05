@@ -1,5 +1,6 @@
 CC=gcc
 CFLAGS=-std=c17 -g -march=x86-64 -I../dxvk-native/include/native/directx \
+	-I../SDL/include	\
 	-I../dxvk-native/include/native/windows -v	#-Xlinker --verbose
 SOURCES=$(wildcard *.c)
 

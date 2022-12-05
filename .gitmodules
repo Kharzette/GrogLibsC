@@ -10,6 +10,3 @@
 [submodule "SDL"]
 	path = SDL
 	url = git@github.com:libsdl-org/SDL.git
-[submodule "dxvk"]
-	path = dxvk
-	url = git@github.com:doitsujin/dxvk.git

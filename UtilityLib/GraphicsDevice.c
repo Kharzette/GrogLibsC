@@ -1,9 +1,12 @@
 #include	<d3d11.h>
 #include	<SDL3/SDL.h>
+#include	<SDL3/SDL_vulkan.h>
 #include	<stdint.h>
 #include	<stdio.h>
+#include	<unistd.h>
 
-ID3D11Device	sDevice;
+ID3D11Device		*spDevice	=NULL;
+ID3D11DeviceContext	*spContext	=NULL;
 
 
 int main(void)
@@ -27,9 +30,19 @@ int main(void)
 		return	0;
 	}
 
+	SDL_Vulkan_LoadLibrary(NULL);
+
 	printf("Huzzah!\n");
+	
+	D3D_FEATURE_LEVEL	featureLevels[]	={	D3D_FEATURE_LEVEL_11_0	};
+
+	HRESULT	hres	=D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
+		D3D11_CREATE_DEVICE_DEBUG, NULL, 1, D3D11_SDK_VERSION,
+		&spDevice, NULL, &spContext);
 
 	sleep(5);
+
+	SDL_Vulkan_UnloadLibrary();
 
 	SDL_DestroyWindow(pWnd);
 

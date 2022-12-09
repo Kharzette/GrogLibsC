@@ -13,3 +13,6 @@
 [submodule "dxvk-native"]
 	path = dxvk-native
 	url = git@github.com:Kharzette/dxvk-native.git
+[submodule "uthash"]
+	path = uthash
+	url = git@github.com:troydhanson/uthash.git

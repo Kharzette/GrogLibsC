@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c17 -g -march=x86-64	\
+CFLAGS=-std=c17 -g -march=x86-64 -fpic -shared	\
 	-I../dxvk-native/include/native/directx \
 	-I../SDL/include	\
 	-I../dxvk-native/include/native/windows	\
@@ -11,7 +11,7 @@ LIBS=-lvulkan
 all: UtilityLib
 
 UtilityLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o UtilityLib $(LIBS) \
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libUtilityLib.so $(LIBS) \
 	../SDL/build/libSDL3.so -lm	\
 	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_dxgi.so	\
 	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so

@@ -165,12 +165,18 @@ int main(void)
 
 	FILE	*f	=fopen("Shaders/VSEntryPoints.txt", "r");
 
-	ShaderEntryPoints	*pSEP	=ReadEntryPoints(f);
+	ShaderEntryPoints	*pVSEP	=ReadEntryPoints(f);
+
+	fclose(f);
+
+	f	=fopen("Shaders/PSEntryPoints.txt", "r");
+
+	ShaderEntryPoints	*pPSEP	=ReadEntryPoints(f);
 
 	fclose(f);
 
 	ShaderEntryPoints	*pCur, *pTmp;
-	HASH_ITER(hh, pSEP, pCur, pTmp)
+	HASH_ITER(hh, pPSEP, pCur, pTmp)
 	{
 		printf("Shader name: %s\n", utstring_body(pCur->mpShaderFile));
 
@@ -182,7 +188,7 @@ int main(void)
 	}
 
 	//delete stuff
-	HASH_ITER(hh, pSEP, pCur, pTmp)
+	HASH_ITER(hh, pVSEP, pCur, pTmp)
 	{
 		StringList	*pSLCur, *pSLTmp;
 		LL_FOREACH_SAFE(pCur->mpEntryPoints, pSLCur, pSLTmp)
@@ -190,7 +196,21 @@ int main(void)
 			utstring_free(pSLCur->mpSZ);
 			free(pSLCur);
 		}
-		HASH_DEL(pSEP, pCur);
+		HASH_DEL(pVSEP, pCur);
+		utstring_free(pCur->mpShaderFile);
+		free(pCur);
+	}
+	
+	//delete stuff
+	HASH_ITER(hh, pPSEP, pCur, pTmp)
+	{
+		StringList	*pSLCur, *pSLTmp;
+		LL_FOREACH_SAFE(pCur->mpEntryPoints, pSLCur, pSLTmp)
+		{
+			utstring_free(pSLCur->mpSZ);
+			free(pSLCur);
+		}
+		HASH_DEL(pPSEP, pCur);
 		utstring_free(pCur->mpShaderFile);
 		free(pCur);
 	}

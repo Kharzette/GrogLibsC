@@ -213,3 +213,70 @@ UT_string	*SZ_StripExtensionUT(UT_string *pSZ)
 {
 	return	SZ_StripExtension(utstring_body(pSZ));
 }
+
+
+//convert a path's slashes from \ to /, returns a new utstring or NULL if pSZ is NULL
+UT_string	*SZ_ConvertPathSlashes(const char *pSZ)
+{
+	if(pSZ == NULL)
+	{
+		return	NULL;
+	}
+
+	UT_string	*pRet;
+	utstring_new(pRet);
+
+	//copy
+	utstring_printf(pRet, pSZ);
+
+	for(;;)
+	{
+		int	idx	=SZ_IndexOfUT(pRet, '\\');
+		if(idx == -1)
+		{
+			return	pRet;
+		}
+
+		//replace
+		utstring_body(pRet)[idx]	='/';
+	}
+	return	pRet;
+}
+
+UT_string	*SZ_ConvertPathSlashesUT(UT_string *pSZ)
+{
+	return	SZ_ConvertPathSlashes(utstring_body(pSZ));
+}
+
+//convert a path's slashes from / to \, returns a new utstring or NULL if pSZ is NULL
+UT_string	*SZ_ConvertPathBackSlashes(const char *pSZ)
+{
+	if(pSZ == NULL)
+	{
+		return	NULL;
+	}
+
+	UT_string	*pRet;
+	utstring_new(pRet);
+
+	//copy
+	utstring_printf(pRet, pSZ);
+
+	for(;;)
+	{
+		int	idx	=SZ_IndexOfUT(pRet, '/');
+		if(idx == -1)
+		{
+			return	pRet;
+		}
+
+		//replace
+		utstring_body(pRet)[idx]	='\\';
+	}
+	return	pRet;
+}
+
+UT_string	*SZ_ConvertPathBackSlashesUT(UT_string *pSZ)
+{
+	return	SZ_ConvertPathBackSlashes(utstring_body(pSZ));
+}

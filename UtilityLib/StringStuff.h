@@ -28,3 +28,10 @@ extern UT_string	*SZ_GetExtensionUT(UT_string *pSZ);
 //Returns a new string or NULL if the input was NULL
 extern UT_string	*SZ_StripExtension(const char *pSZ);
 extern UT_string	*SZ_StripExtensionUT(UT_string *pSZ);
+
+//convert a path's slashes from \ to / or the other way around
+//returns a new utstring or NULL if pSZ is NULL
+extern UT_string	*SZ_ConvertPathSlashes(const char *pSZ);
+extern UT_string	*SZ_ConvertPathSlashesUT(UT_string *pSZ);
+extern UT_string	*SZ_ConvertPathBackSlashes(const char *pSZ);
+extern UT_string	*SZ_ConvertPathBackSlashesUT(UT_string *pSZ);

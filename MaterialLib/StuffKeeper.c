@@ -5,16 +5,10 @@
 #include	"utstring.h"
 #include	"utlist.h"
 #include	"../UtilityLib/StringStuff.h"
+#include	"../UtilityLib/ListStuff.h"
 
 
 //internal structs
-typedef struct	StringList_t
-{
-	UT_string	*mpSZ;
-
-	struct StringList_t	*next;
-}	StringList;
-
 typedef struct	ShaderEntryPoints_t
 {
 	UT_string	*mpShaderFile;	//blort.hlsl or whateva
@@ -33,7 +27,7 @@ ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 
 	//current shader with entries being worked on
 	ShaderEntryPoints	*pCur	=malloc(sizeof(ShaderEntryPoints));
-	pCur->mpEntryPoints	=NULL;
+	pCur->mpEntryPoints	=SZList_New();
 
 	for(;;)
 	{
@@ -54,13 +48,8 @@ ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 			//should have a shader name at this point
 			assert(utstring_len(pCur->mpShaderFile) > 0);
 
-			StringList	*pEntry	=malloc(sizeof(StringList));
-
 			//copy entry point minus tabs and \n and junx
-			pEntry->mpSZ	=SZ_Trim(szLine);
-
-			//add to list
-			LL_APPEND(pCur->mpEntryPoints, pEntry);
+			SZList_AddUTNoCopy(&pCur->mpEntryPoints, SZ_Trim(szLine));
 		}
 		else
 		{
@@ -75,7 +64,7 @@ ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 
 				//get cur ready for new data
 				pCur	=malloc(sizeof(ShaderEntryPoints));
-				pCur->mpEntryPoints	=NULL;
+				pCur->mpEntryPoints	=SZList_New();
 			}
 
 			//strip extension
@@ -117,22 +106,17 @@ int main(void)
 	{
 		printf("Shader name: %s\n", utstring_body(pCur->mpShaderFile));
 
-		StringList	*pSLCur	=NULL;
-		LL_FOREACH(pCur->mpEntryPoints, pSLCur)
+		const StringList	*pSLCur	=SZList_Iterate(pCur->mpEntryPoints);
+		while(pSLCur != NULL)
 		{
-			printf("\t%s\n", utstring_body(pSLCur->mpSZ));
+			printf("\t%s\n", SZList_IteratorVal(pSLCur));
 		}
 	}
 
 	//delete stuff
 	HASH_ITER(hh, pVSEP, pCur, pTmp)
 	{
-		StringList	*pSLCur, *pSLTmp;
-		LL_FOREACH_SAFE(pCur->mpEntryPoints, pSLCur, pSLTmp)
-		{
-			utstring_free(pSLCur->mpSZ);
-			free(pSLCur);
-		}
+		SZList_Clear(&pCur->mpEntryPoints);
 		HASH_DEL(pVSEP, pCur);
 		utstring_free(pCur->mpShaderFile);
 		free(pCur);
@@ -141,12 +125,7 @@ int main(void)
 	//delete stuff
 	HASH_ITER(hh, pPSEP, pCur, pTmp)
 	{
-		StringList	*pSLCur, *pSLTmp;
-		LL_FOREACH_SAFE(pCur->mpEntryPoints, pSLCur, pSLTmp)
-		{
-			utstring_free(pSLCur->mpSZ);
-			free(pSLCur);
-		}
+		SZList_Clear(&pCur->mpEntryPoints);
 		HASH_DEL(pPSEP, pCur);
 		utstring_free(pCur->mpShaderFile);
 		free(pCur);

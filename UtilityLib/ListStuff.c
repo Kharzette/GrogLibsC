@@ -47,6 +47,32 @@ void	SZList_AddUT(StringList **ppSL, const UT_string *pSZ)
 	LL_APPEND(*ppSL, pNew);
 }
 
+void	SZList_AddUTNoCopy(StringList **ppSL, const UT_string *pSZ)
+{
+	StringList	*pNew	=malloc(sizeof(StringList));
+
+	//directly use the supplied string
+	pNew->mpSZ	=pSZ;
+	pNew->next	=NULL;
+
+	LL_APPEND(*ppSL, pNew);
+}
+
+
+void	SZList_Clear(StringList **ppSL)
+{
+	StringList	*pTmp, *pElement	=NULL;
+
+	LL_FOREACH_SAFE(*ppSL, pElement, pTmp)
+	{
+		LL_DELETE(*ppSL, pElement);
+
+		//free data
+		utstring_done(pElement->mpSZ);
+		free(pElement);
+	}
+}
+
 
 void	SZList_Remove(StringList **ppSL, const char *pSZ)
 {
@@ -120,4 +146,22 @@ int	SZList_Count(const StringList *pSL)
 	LL_COUNT(pSL, pElement, cnt);
 
 	return	cnt;
+}
+
+
+const StringList	*SZList_Iterate(const StringList *pList)
+{
+	const StringList	*pRet	=pList;
+
+	return	pRet;
+}
+
+const StringList	*SZList_Next(const StringList *pIter)
+{
+	return	pIter->next;
+}
+
+const char	*SZList_IteratorVal(const StringList *pList)
+{
+	return	utstring_body(pList->mpSZ);
 }

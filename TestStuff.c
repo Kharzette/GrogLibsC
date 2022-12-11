@@ -17,7 +17,7 @@ int main(void)
 	char	szThree[64]	={ "Gobl" };
 	char	szFour[64]	={ "\tGobl" };
 	char	szFive[64]	={ "Gob" };
-	char	szSix[64]	={ "\nGobl" };
+	char	szSix[12]	={ "\n\n\n\n\n\n\nGobl" };
 	char	szSeven[64]	={ "\rGobl" };
 
 	printf("Does %s start with %s? : %d\n", szOne, szTwo, SZ_StartsWith(szOne, szTwo));
@@ -29,6 +29,41 @@ int main(void)
 
 	printf("IndexOf . is %d\n", SZ_IndexOf(szOne, '.'));
 	printf("LastIndexOf . is %d\n", SZ_LastIndexOf(szOne, '.'));
+
+	UT_string	*pRetOne, *pRetTwo;
+	pRetOne	=SZ_GetExtension(szOne);
+	pRetTwo	=SZ_GetExtension(szTwo);
+
+	if(pRetOne != NULL)
+	{
+		printf("Extension of %s is %s\n", szOne, utstring_body(pRetOne));
+	}
+	else
+	{
+		printf("Extension of %s is NULL\n", szOne);
+	}
+	if(pRetTwo != NULL)
+	{
+		printf("Extension of %s is %s\n", szTwo, utstring_body(pRetTwo));
+	}
+	else
+	{
+		printf("Extension of %s is NULL\n", szTwo);
+	}
+
+	UT_string	*pTrimTest	=SZ_Trim(szSix);
+
+	printf("Trim Test: %s\n", utstring_body(pTrimTest));
+
+	if(pRetOne != NULL)
+	{
+		utstring_done(pRetOne);
+	}
+	if(pRetTwo != NULL)
+	{
+		utstring_done(pRetTwo);
+	}
+	utstring_done(pTrimTest);
 
 	GraphicsDevice	*pGD;
 

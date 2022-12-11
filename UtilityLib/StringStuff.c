@@ -57,7 +57,7 @@ bool	SZ_StartsWithUTCC(UT_string *pSZ, const char *pszThing)
 }
 
 
-//trim spaces, tabs, and junx from start and end
+//trim spaces, tabs, and junx from start and end, allocs a new copy
 UT_string	*SZ_Trim(const char *pSZ)
 {
 	int	len	=strlen(pSZ);
@@ -102,7 +102,6 @@ UT_string	*SZ_Trim(const char *pSZ)
 	return	pRet;
 }
 
-//trim spaces, tabs, and junx from start and end
 UT_string	*SZ_TrimUT(UT_string *pSZ)
 {
 	char	*pBody	=utstring_body(pSZ);
@@ -111,7 +110,7 @@ UT_string	*SZ_TrimUT(UT_string *pSZ)
 }
 
 
-//find the index of cThing in pSZ
+//find the index of cThing in pSZ, -1 if not found
 int	SZ_IndexOf(const char *pSZ, char cThing)
 {
 	if(pSZ == NULL)
@@ -122,7 +121,7 @@ int	SZ_IndexOf(const char *pSZ, char cThing)
 	char	*pSpot	=strchr(pSZ, cThing);
 	if(pSpot == NULL)
 	{
-		return	NULL;
+		return	-1;
 	}
 	return	(pSpot - pSZ);
 }
@@ -133,7 +132,7 @@ int	SZ_IndexOfUT(UT_string *pSZ, char cThing)
 }
 
 
-//find the last index of cThing in pSZ
+//find the last index of cThing in pSZ, -1 if not found
 int	SZ_LastIndexOf(const char *pSZ, char cThing)
 {
 	if(pSZ == NULL)
@@ -144,7 +143,7 @@ int	SZ_LastIndexOf(const char *pSZ, char cThing)
 	char	*pSpot	=strrchr(pSZ, cThing);
 	if(pSpot == NULL)
 	{
-		return	NULL;
+		return	-1;
 	}
 	return	(pSpot - pSZ);
 }
@@ -152,4 +151,65 @@ int	SZ_LastIndexOf(const char *pSZ, char cThing)
 int	SZ_LastIndexOfUT(UT_string *pSZ, char cThing)
 {
 	return	SZ_LastIndexOf(utstring_body(pSZ), cThing);
+}
+
+
+//return the extension of a filename or NULL if none
+UT_string	*SZ_GetExtension(const char *pSZ)
+{
+	if(pSZ == NULL)
+	{
+		return	NULL;
+	}
+
+	int	dotPos	=SZ_LastIndexOf(pSZ, '.');
+	if(dotPos == -1)
+	{
+		return	NULL;
+	}
+
+	UT_string	*pRet;
+	utstring_new(pRet);
+
+	utstring_printf(pRet, "%s", pSZ + dotPos);
+
+	return	pRet;
+}
+
+UT_string	*SZ_GetExtensionUT(UT_string *pSZ)
+{
+	return	SZ_GetExtension(utstring_body(pSZ));
+}
+
+
+//remove the extension from the filename if there is one
+//Returns a new string or NULL if the input was NULL
+UT_string	*SZ_StripExtension(const char *pSZ)
+{
+	if(pSZ == NULL)
+	{
+		return	NULL;
+	}
+
+	UT_string	*pRet;
+	utstring_new(pRet);
+
+	//copy
+	utstring_printf(pRet, "%s", pSZ);
+
+	int	dotPos	=SZ_LastIndexOf(pSZ, '.');
+	if(dotPos == -1)
+	{
+		return	pRet;
+	}
+
+	//null terminate at .
+	utstring_body(pRet)[dotPos]	=0;
+
+	return	pRet;
+}
+
+UT_string	*SZ_StripExtensionUT(UT_string *pSZ)
+{
+	return	SZ_StripExtension(utstring_body(pSZ));
 }

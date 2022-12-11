@@ -4,6 +4,7 @@
 #include	"uthash.h"
 #include	"utstring.h"
 #include	"utlist.h"
+#include	"../UtilityLib/StringStuff.h"
 
 
 //internal structs
@@ -24,60 +25,6 @@ typedef struct	ShaderEntryPoints_t
 }	ShaderEntryPoints;
 
 
-//trim spaces, tabs, and junx from start and end
-UT_string	*StringTrim(const char *pSZ)
-{
-	int	len	=strlen(pSZ);
-
-	//trim start
-	int	newStart	=0;
-	for(int i=0;i < len;i++)
-	{
-		if(isgraph(pSZ[i]))
-		{
-			newStart	=i;
-			break;
-		}
-	}
-
-	//trim end
-	int	newEnd	=len - 1;
-	for(int i=len-1;i >= 0;i--)
-	{
-		if(isgraph(pSZ[i]))
-		{
-			newEnd	=i;
-			break;
-		}
-	}
-
-	UT_string	*pRet;
-	utstring_new(pRet);
-
-	//length of trimmed segment + space for null terminator
-	int		newLen	=newEnd - newStart + 2;
-
-	utstring_reserve(pRet, newLen);
-	char	*pRetBody	=utstring_body(pRet);
-
-	//copy trimmed contents
-	memcpy(pRetBody, pSZ + newStart, newLen - 1);
-
-	//null terminate
-	pRetBody[newLen - 1]	=0;
-
-	return	pRet;
-}
-
-//trim spaces, tabs, and junx from start and end
-UT_string	*StringTrimUT(UT_string *pSZ)
-{
-	char	*pBody	=utstring_body(pSZ);
-
-	return	StringTrim(pBody);
-}
-
-
 ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 {
 	ShaderEntryPoints	*pRet	=NULL;
@@ -86,7 +33,6 @@ ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 
 	//current shader with entries being worked on
 	ShaderEntryPoints	*pCur	=malloc(sizeof(ShaderEntryPoints));
-	utstring_new(pCur->mpShaderFile);
 	pCur->mpEntryPoints	=NULL;
 
 	for(;;)
@@ -110,10 +56,8 @@ ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 
 			StringList	*pEntry	=malloc(sizeof(StringList));
 
-			utstring_new(pEntry->mpSZ);
-
 			//copy entry point minus tabs and \n and junx
-			pEntry->mpSZ	=StringTrim(szLine);
+			pEntry->mpSZ	=SZ_Trim(szLine);
 
 			//add to list
 			LL_APPEND(pCur->mpEntryPoints, pEntry);
@@ -131,18 +75,11 @@ ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 
 				//get cur ready for new data
 				pCur	=malloc(sizeof(ShaderEntryPoints));
-				utstring_new(pCur->mpShaderFile);
 				pCur->mpEntryPoints	=NULL;
 			}
 
 			//strip extension
-			char	*pDotPos	=strrchr(szLine, '.');
-			if(pDotPos != NULL)
-			{
-				*pDotPos	=0;
-			}
-
-			utstring_printf(pCur->mpShaderFile, "%s", szLine);
+			pCur->mpShaderFile	=SZ_StripExtension(szLine);
 		}
 
 		if(feof(f))

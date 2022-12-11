@@ -1,6 +1,7 @@
 #include	<stdint.h>
 #include	<stdbool.h>
-#include	<utstring.h>
+#include	<ctype.h>
+#include	"utstring.h"
 
 
 //an attempt to do C# style string manip stuffs
@@ -29,7 +30,7 @@ bool	SZ_StartsWith(const char *pSZ, const char *pszThing)
 	return	(cmp == 0);
 }
 
-bool	SZ_StartsWithCCUT(const char *pSZ, UT_string *pszThing)
+bool	SZ_StartsWithCCUT(const char *pSZ, const UT_string *pszThing)
 {
 	if(pSZ == NULL || pszThing == NULL)
 	{
@@ -38,7 +39,7 @@ bool	SZ_StartsWithCCUT(const char *pSZ, UT_string *pszThing)
 	return	SZ_StartsWith(pSZ, utstring_body(pszThing));
 }
 
-bool	SZ_StartsWithUTUT(UT_string *pSZ, UT_string *pszThing)
+bool	SZ_StartsWithUTUT(const UT_string *pSZ, const UT_string *pszThing)
 {
 	if(pSZ == NULL || pszThing == NULL)
 	{
@@ -47,7 +48,7 @@ bool	SZ_StartsWithUTUT(UT_string *pSZ, UT_string *pszThing)
 	return	SZ_StartsWith(utstring_body(pSZ), utstring_body(pszThing));
 }
 
-bool	SZ_StartsWithUTCC(UT_string *pSZ, const char *pszThing)
+bool	SZ_StartsWithUTCC(const UT_string *pSZ, const char *pszThing)
 {
 	if(pSZ == NULL || pszThing == NULL)
 	{
@@ -102,7 +103,7 @@ UT_string	*SZ_Trim(const char *pSZ)
 	return	pRet;
 }
 
-UT_string	*SZ_TrimUT(UT_string *pSZ)
+UT_string	*SZ_TrimUT(const UT_string *pSZ)
 {
 	char	*pBody	=utstring_body(pSZ);
 
@@ -126,7 +127,7 @@ int	SZ_IndexOf(const char *pSZ, char cThing)
 	return	(pSpot - pSZ);
 }
 
-int	SZ_IndexOfUT(UT_string *pSZ, char cThing)
+int	SZ_IndexOfUT(const UT_string *pSZ, char cThing)
 {
 	return	SZ_IndexOf(utstring_body(pSZ), cThing);
 }
@@ -148,7 +149,7 @@ int	SZ_LastIndexOf(const char *pSZ, char cThing)
 	return	(pSpot - pSZ);
 }
 
-int	SZ_LastIndexOfUT(UT_string *pSZ, char cThing)
+int	SZ_LastIndexOfUT(const UT_string *pSZ, char cThing)
 {
 	return	SZ_LastIndexOf(utstring_body(pSZ), cThing);
 }
@@ -209,7 +210,7 @@ UT_string	*SZ_StripExtension(const char *pSZ)
 	return	pRet;
 }
 
-UT_string	*SZ_StripExtensionUT(UT_string *pSZ)
+UT_string	*SZ_StripExtensionUT(const UT_string *pSZ)
 {
 	return	SZ_StripExtension(utstring_body(pSZ));
 }
@@ -227,7 +228,7 @@ UT_string	*SZ_ConvertPathSlashes(const char *pSZ)
 	utstring_new(pRet);
 
 	//copy
-	utstring_printf(pRet, pSZ);
+	utstring_printf(pRet, "%s", pSZ);
 
 	for(;;)
 	{
@@ -243,7 +244,7 @@ UT_string	*SZ_ConvertPathSlashes(const char *pSZ)
 	return	pRet;
 }
 
-UT_string	*SZ_ConvertPathSlashesUT(UT_string *pSZ)
+UT_string	*SZ_ConvertPathSlashesUT(const UT_string *pSZ)
 {
 	return	SZ_ConvertPathSlashes(utstring_body(pSZ));
 }
@@ -260,7 +261,7 @@ UT_string	*SZ_ConvertPathBackSlashes(const char *pSZ)
 	utstring_new(pRet);
 
 	//copy
-	utstring_printf(pRet, pSZ);
+	utstring_printf(pRet, "%s", pSZ);
 
 	for(;;)
 	{
@@ -276,7 +277,7 @@ UT_string	*SZ_ConvertPathBackSlashes(const char *pSZ)
 	return	pRet;
 }
 
-UT_string	*SZ_ConvertPathBackSlashesUT(UT_string *pSZ)
+UT_string	*SZ_ConvertPathBackSlashesUT(const UT_string *pSZ)
 {
 	return	SZ_ConvertPathBackSlashes(utstring_body(pSZ));
 }

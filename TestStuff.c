@@ -7,6 +7,7 @@
 #include	"MaterialLib/StuffKeeper.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
+#include	"UtilityLib/ListStuff.h"
 
 int main(void)
 {
@@ -146,6 +147,43 @@ int main(void)
 		utstring_done(pRetTwo);
 	}
 	utstring_done(pTrimTest);
+
+	//test lists
+	StringList	*pList	=SZList_New();
+
+	SZList_Add(&pList, "Splart");
+	SZList_Add(&pList, "blort");
+	SZList_Add(&pList, "gnarfargeblef");
+	SZList_Add(&pList, "braf");
+	SZList_Add(&pList, "gnorgleblorgle");
+	SZList_Add(&pList, "gack");
+	SZList_Add(&pList, "flort");
+
+	printf("List count: %d\n", SZList_Count(pList));
+	printf("List contains blort: %d\n", SZList_Contains(pList, "blort"));
+
+	printf("Removing blort...\n");
+
+	SZList_Remove(&pList, "blort");
+	printf("List count: %d\n", SZList_Count(pList));
+	printf("List contains blort: %d\n", SZList_Contains(pList, "blort"));
+
+	printf("Adding blort again...\n");
+	SZList_Add(&pList, "blort");
+	printf("List count: %d\n", SZList_Count(pList));
+	printf("List contains blort: %d\n", SZList_Contains(pList, "blort"));
+
+	//test removing all, see what happens to the list pointer and such
+	SZList_Remove(&pList, "Splart");
+	SZList_Remove(&pList, "blort");
+	SZList_Remove(&pList, "gnarfargeblef");
+	SZList_Remove(&pList, "braf");
+	SZList_Remove(&pList, "gnorgleblorgle");
+	SZList_Remove(&pList, "gack");
+	SZList_Remove(&pList, "flort");
+	
+	printf("List count: %d\n", SZList_Count(pList));
+	printf("List contains blort: %d\n", SZList_Contains(pList, "blort"));
 
 	GraphicsDevice	*pGD;
 

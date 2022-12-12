@@ -1,33 +1,27 @@
 #include	<stdint.h>
 #include	<stdio.h>
 #include	<ctype.h>
-#include	"uthash.h"
+#include	<assert.h>
 #include	"utstring.h"
-#include	"utlist.h"
 #include	"../UtilityLib/StringStuff.h"
 #include	"../UtilityLib/ListStuff.h"
+#include	"../UtilityLib/DictionaryStuff.h"
 
 
-//internal structs
-typedef struct	ShaderEntryPoints_t
+DictSZ	*ReadEntryPoints(FILE *f)
 {
-	UT_string	*mpShaderFile;	//blort.hlsl or whateva
+	DictSZ	*pRet;
 
-	StringList	*mpEntryPoints;
-
-	UT_hash_handle	hh;
-}	ShaderEntryPoints;
-
-
-ShaderEntryPoints	*ReadEntryPoints(FILE *f)
-{
-	ShaderEntryPoints	*pRet	=NULL;
+	DictSZ_New(&pRet);
 
 	char	szLine[256];	//line buffer
 
-	//current shader with entries being worked on
-	ShaderEntryPoints	*pCur	=malloc(sizeof(ShaderEntryPoints));
-	pCur->mpEntryPoints	=SZList_New();
+	//current shader data with entries being worked on
+	UT_string	*pCurShader;
+	StringList	*pEntryPoints;
+
+	utstring_new(pCurShader);
+	pEntryPoints	=SZList_New();
 
 	for(;;)
 	{
@@ -46,29 +40,27 @@ ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 		if(szLine[0] == '\t')
 		{
 			//should have a shader name at this point
-			assert(utstring_len(pCur->mpShaderFile) > 0);
+			assert(utstring_len(pCurShader) > 0);
 
 			//copy entry point minus tabs and \n and junx
-			SZList_AddUTNoCopy(&pCur->mpEntryPoints, SZ_Trim(szLine));
+			SZList_AddUTNoCopy(&pEntryPoints, SZ_Trim(szLine));
 		}
 		else
 		{
 			//must be a new shader name
 
 			//is there a previous entry in cur?
-			if(utstring_len(pCur->mpShaderFile) > 0)
+			if(utstring_len(pCurShader) > 0)
 			{
 				//add data to pRet
-				HASH_ADD_KEYPTR(hh, pRet, utstring_body(pCur->mpShaderFile),
-					utstring_len(pCur->mpShaderFile), pCur);
+				DictSZ_Add(pRet, pCurShader, pEntryPoints);
 
-				//get cur ready for new data
-				pCur	=malloc(sizeof(ShaderEntryPoints));
-				pCur->mpEntryPoints	=SZList_New();
+				//get ready for new data
+				pEntryPoints	=SZList_New();
 			}
 
 			//strip extension
-			pCur->mpShaderFile	=SZ_StripExtension(szLine);
+			pCurShader	=SZ_StripExtension(szLine);
 		}
 
 		if(feof(f))
@@ -78,10 +70,24 @@ ShaderEntryPoints	*ReadEntryPoints(FILE *f)
 	}
 
 	//add last data to pRet
-	HASH_ADD_KEYPTR(hh, pRet, utstring_body(pCur->mpShaderFile),
-		utstring_len(pCur->mpShaderFile), pCur);
+	DictSZ_Add(pRet, pCurShader, pEntryPoints);
 
 	return	pRet;
+}
+
+
+//callback for the dictionary foreach below
+void	PrintEntryPointsCB(const UT_string *pKey, const void *pValue)
+{
+	const StringList	*pList	=pValue;
+	const StringList	*pCur	=SZList_Iterate(pList);
+
+	while(pCur != NULL)
+	{
+		printf("\t%s\n", SZList_IteratorVal(pCur));
+
+		pCur	=SZList_Next(pCur);
+	}
 }
 
 
@@ -91,43 +97,21 @@ int main(void)
 
 	FILE	*f	=fopen("Shaders/VSEntryPoints.txt", "r");
 
-	ShaderEntryPoints	*pVSEP	=ReadEntryPoints(f);
+	DictSZ	*pVSEP	=ReadEntryPoints(f);
 
 	fclose(f);
 
 	f	=fopen("Shaders/PSEntryPoints.txt", "r");
 
-	ShaderEntryPoints	*pPSEP	=ReadEntryPoints(f);
+	DictSZ	*pPSEP	=ReadEntryPoints(f);
 
 	fclose(f);
 
-	ShaderEntryPoints	*pCur, *pTmp;
-	HASH_ITER(hh, pPSEP, pCur, pTmp)
-	{
-		printf("Shader name: %s\n", utstring_body(pCur->mpShaderFile));
+	DictSZ	*pCur, *pTmp;
 
-		const StringList	*pSLCur	=SZList_Iterate(pCur->mpEntryPoints);
-		while(pSLCur != NULL)
-		{
-			printf("\t%s\n", SZList_IteratorVal(pSLCur));
-		}
-	}
+	DictSZ_ForEach(pPSEP, PrintEntryPointsCB);
 
 	//delete stuff
-	HASH_ITER(hh, pVSEP, pCur, pTmp)
-	{
-		SZList_Clear(&pCur->mpEntryPoints);
-		HASH_DEL(pVSEP, pCur);
-		utstring_free(pCur->mpShaderFile);
-		free(pCur);
-	}
-	
-	//delete stuff
-	HASH_ITER(hh, pPSEP, pCur, pTmp)
-	{
-		SZList_Clear(&pCur->mpEntryPoints);
-		HASH_DEL(pPSEP, pCur);
-		utstring_free(pCur->mpShaderFile);
-		free(pCur);
-	}
+	DictSZ_Clear(&pVSEP);
+	DictSZ_Clear(&pPSEP);
 }

@@ -16,7 +16,7 @@ typedef struct	DictSZ_t
 }	DictSZ;
 
 
-void	DictSZ_Add(DictSZ *pHead, const UT_string *pKey, const void *pValue)
+void	DictSZ_Add(DictSZ **ppHead, const UT_string *pKey, void *pValue)
 {
 	DictSZ	*pAdd	=malloc(sizeof(DictSZ));
 
@@ -25,7 +25,7 @@ void	DictSZ_Add(DictSZ *pHead, const UT_string *pKey, const void *pValue)
 
 	pAdd->pValue	=pValue;
 
-	HASH_ADD_KEYPTR(hh, pHead, utstring_body(pKey), utstring_len(pKey), pAdd);
+	HASH_ADD_KEYPTR(hh, *ppHead, utstring_body(pKey), utstring_len(pKey), pAdd);
 }
 
 
@@ -77,6 +77,37 @@ void	DictSZ_Clear(DictSZ **ppHead)
 }
 
 
+void	DictSZ_ClearNoFree(DictSZ **ppHead)
+{
+	DictSZ	*pIt, *pTmp;
+
+	HASH_ITER(hh, *ppHead, pIt, pTmp)
+	{
+		//nuke data, user will nuke value
+		utstring_done(pIt->mpKey);
+
+		HASH_DEL(*ppHead, pIt);
+	}
+}
+
+
+void	DictSZ_ClearCB(DictSZ **ppHead, DictSZ_ValueNukeCB pCB)
+{
+	DictSZ	*pIt, *pTmp;
+
+	HASH_ITER(hh, *ppHead, pIt, pTmp)
+	{
+		//call callback so the user can clean up this void *
+		pCB(pIt->pValue);
+
+		//nuke key
+		utstring_done(pIt->mpKey);
+
+		HASH_DEL(*ppHead, pIt);
+	}
+}
+
+
 void	DictSZ_New(DictSZ **ppHead)
 {
 	*ppHead	=NULL;
@@ -97,7 +128,7 @@ int	DictSZ_Count(const DictSZ *pHead)
 
 void	DictSZ_ForEach(const DictSZ *pHead, DictSZ_ForEachCB pCB)
 {
-	DictSZ	*pCur, *pTmp;
+	const DictSZ	*pCur, *pTmp;
 
 	HASH_ITER(hh, pHead, pCur, pTmp)
 	{

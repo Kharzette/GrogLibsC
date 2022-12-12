@@ -8,6 +8,23 @@
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
+#include	"UtilityLib/DictionaryStuff.h"
+
+
+//test struct
+struct testJunx
+{
+	int		someVal;
+	char	desc[32];
+};
+
+//print stuff in DictSZ
+void	PrintDictItems(const UT_string *pKey, const void *pValue)
+{
+	const struct testJunx	*pJunx	=pValue;
+
+	printf("Key: %s, Value: %d, %s\n", utstring_body(pKey), pJunx->someVal, pJunx->desc);
+}
 
 int main(void)
 {
@@ -181,9 +198,39 @@ int main(void)
 	SZList_Remove(&pList, "gnorgleblorgle");
 	SZList_Remove(&pList, "gack");
 	SZList_Remove(&pList, "flort");
-	
+
 	printf("List count: %d\n", SZList_Count(pList));
 	printf("List contains blort: %d\n", SZList_Contains(pList, "blort"));
+
+	//test some dictionary stuff
+	DictSZ	*pTestDict;
+	DictSZ_New(&pTestDict);
+
+	//some data to test with
+	UT_string	*pKey0, *pKey1, *pKey2;
+
+	utstring_new(pKey0);
+	utstring_new(pKey1);
+	utstring_new(pKey2);
+
+	utstring_printf(pKey0, "%s", "fred");
+	utstring_printf(pKey1, "%s", "bob");
+	utstring_printf(pKey2, "%s", "jimmy");
+
+	struct testJunx	fredData	={ 69, "slkfdjsdlfjads" };
+	struct testJunx	bobData	={ 523, "blarahsdkfjhaskfdh" };
+	struct testJunx	jimmyData	={ 78924, "yarrrrrrrrrrrrrrr matey" };
+
+	DictSZ_Add(&pTestDict, pKey0, &fredData);
+	DictSZ_Add(&pTestDict, pKey1, &bobData);
+	DictSZ_Add(&pTestDict, pKey2, &jimmyData);
+
+	DictSZ_ForEach(pTestDict, PrintDictItems);
+
+	//nuke all
+	//test structs are on the stack so no free call
+	DictSZ_ClearNoFree(&pTestDict);
+
 
 	GraphicsDevice	*pGD;
 

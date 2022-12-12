@@ -47,7 +47,7 @@ void	SZList_AddUT(StringList **ppSL, const UT_string *pSZ)
 	LL_APPEND(*ppSL, pNew);
 }
 
-void	SZList_AddUTNoCopy(StringList **ppSL, const UT_string *pSZ)
+void	SZList_AddUTNoCopy(StringList **ppSL, UT_string *pSZ)
 {
 	StringList	*pNew	=malloc(sizeof(StringList));
 

@@ -53,7 +53,7 @@ DictSZ	*ReadEntryPoints(FILE *f)
 			if(utstring_len(pCurShader) > 0)
 			{
 				//add data to pRet
-				DictSZ_Add(pRet, pCurShader, pEntryPoints);
+				DictSZ_Add(&pRet, pCurShader, pEntryPoints);
 
 				//get ready for new data
 				pEntryPoints	=SZList_New();
@@ -70,7 +70,7 @@ DictSZ	*ReadEntryPoints(FILE *f)
 	}
 
 	//add last data to pRet
-	DictSZ_Add(pRet, pCurShader, pEntryPoints);
+	DictSZ_Add(&pRet, pCurShader, pEntryPoints);
 
 	return	pRet;
 }
@@ -90,6 +90,13 @@ void	PrintEntryPointsCB(const UT_string *pKey, const void *pValue)
 	}
 }
 
+//callback for deleting the StringList in every entry
+void	NukeSZListCB(void *pValue)
+{
+	StringList	*pList	=pValue;
+
+	SZList_Clear(&pList);
+}
 
 int main(void)
 {
@@ -111,7 +118,11 @@ int main(void)
 
 	DictSZ_ForEach(pPSEP, PrintEntryPointsCB);
 
+	//delete stuff, note that because our void * in the dictionary
+	//is a complicated SZList type, additional work needs to be done
+	//to clean it up beyond just a free()
+
 	//delete stuff
-	DictSZ_Clear(&pVSEP);
-	DictSZ_Clear(&pPSEP);
+	DictSZ_ClearCB(&pVSEP, NukeSZListCB);
+	DictSZ_ClearCB(&pPSEP, NukeSZListCB);
 }

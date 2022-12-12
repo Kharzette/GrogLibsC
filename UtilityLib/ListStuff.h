@@ -13,7 +13,7 @@ extern StringList *SZList_New(void);
 //standard listy stuff
 extern void	SZList_Add(StringList **ppSL, const char *pSZ);
 extern void	SZList_AddUT(StringList **ppSL, const UT_string *pSZ);
-extern void	SZList_AddUTNoCopy(StringList **ppSL, const UT_string *pSZ);
+extern void	SZList_AddUTNoCopy(StringList **ppSL, UT_string *pSZ);
 extern void	SZList_Clear(StringList **ppSL);
 extern void	SZList_Remove(StringList **ppSL, const char *pSZ);
 extern void	SZList_RemoveUT(StringList **ppSL, const UT_string *pSZ);

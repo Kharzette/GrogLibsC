@@ -22,7 +22,8 @@ extern int	SZList_Count(const StringList *pSL);
 
 //const iteration, return null when done?
 extern const StringList *SZList_Iterate(const StringList *pList);
-extern const StringList *SZList_Next(const StringList *pList);
+extern const StringList *SZList_IteratorNext(const StringList *pIter);
 
 //get value
-extern const char	*SZList_IteratorVal(const StringList *pList);
+extern const char		*SZList_IteratorVal(const StringList *pIter);
+extern const UT_string	*SZList_IteratorValUT(const StringList *pIter);

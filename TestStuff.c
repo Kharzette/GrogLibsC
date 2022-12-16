@@ -234,7 +234,9 @@ int main(void)
 
 	GraphicsDevice	*pGD;
 
-	GraphicsDevice_Init(&pGD, "Blortallius!", 800, 600);
+	GraphicsDevice_Init(&pGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_0);
+
+	StuffKeeper	*pSK	=StuffKeeper_Create(pGD);
 
 	sleep(5);
 

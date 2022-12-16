@@ -156,12 +156,17 @@ const StringList	*SZList_Iterate(const StringList *pList)
 	return	pRet;
 }
 
-const StringList	*SZList_Next(const StringList *pIter)
+const StringList	*SZList_IteratorNext(const StringList *pIter)
 {
 	return	pIter->next;
 }
 
-const char	*SZList_IteratorVal(const StringList *pList)
+const char	*SZList_IteratorVal(const StringList *pIter)
 {
-	return	utstring_body(pList->mpSZ);
+	return	utstring_body(pIter->mpSZ);
+}
+
+const UT_string	*SZList_IteratorValUT(const StringList *pIter)
+{
+	return	pIter->mpSZ;
 }

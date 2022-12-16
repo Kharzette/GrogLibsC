@@ -12,6 +12,7 @@
 
 typedef struct GraphicsDevice_t
 {
+	//D3D interfaces
 	HWND					mWnd;
 	ID3D11Device			*mpDevice;
 	ID3D11Device1			*mpDevice1;
@@ -19,10 +20,16 @@ typedef struct GraphicsDevice_t
 	ID3D11DeviceContext		*mpContext;
 	ID3D11DeviceContext1	*mpContext1;
 	IDXGISwapChain			*mpSwapChain;
+
+	//featurelevel the device was created with
+	D3D_FEATURE_LEVEL	mFeatureLevel;
 }	GraphicsDevice;
 
 
-bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle, int w, int h)
+//try to make a device of the desired feature level
+//TODO: get the swap effect stuff right
+bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
+			int w, int h, D3D_FEATURE_LEVEL desiredFeatureLevel)
 {
 	//alloc
 	*ppGD	=malloc(sizeof(GraphicsDevice));
@@ -49,10 +56,13 @@ bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle, int w,
 		return	FALSE;
 	}
 
-	D3D_FEATURE_LEVEL	retFL, featureLevels[]	={	D3D_FEATURE_LEVEL_11_1	};
+	D3D_FEATURE_LEVEL	featureLevels[]	={	desiredFeatureLevel	};
 
 	DXGI_SWAP_CHAIN_DESC	scDesc	={};
 
+	//important to note that dxvk native expects an SDL_Window in place
+	//of an ordinary hwnd in most cases.  This wasn't very clear at first
+	//and cost me hours of debugging!
 	scDesc.BufferDesc.Format					=DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	scDesc.BufferDesc.RefreshRate.Numerator		=144;
 	scDesc.BufferDesc.RefreshRate.Denominator	=1;
@@ -68,7 +78,7 @@ bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle, int w,
 	//device create go!
 	HRESULT	hres	=D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
 		D3D11_CREATE_DEVICE_DEBUG, featureLevels, 1, D3D11_SDK_VERSION,
-		&scDesc, &pGD->mpSwapChain, &pGD->mpDevice, &retFL, &pGD->mpContext);
+		&scDesc, &pGD->mpSwapChain, &pGD->mpDevice, &pGD->mFeatureLevel, &pGD->mpContext);
 	if(hres != S_OK)
 	{
 		printf("Error creating device & chain: %dX\n", hres);
@@ -121,6 +131,11 @@ quit:
 	SDL_Quit();
 
 	return	FALSE;
+}
+
+D3D_FEATURE_LEVEL	GraphicsDevice_GetFeatureLevel(GraphicsDevice *pGD)
+{
+	return	pGD->mFeatureLevel;
 }
 
 void	GraphicsDevice_Destroy(GraphicsDevice **ppGD)

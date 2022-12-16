@@ -281,3 +281,15 @@ UT_string	*SZ_ConvertPathBackSlashesUT(const UT_string *pSZ)
 {
 	return	SZ_ConvertPathBackSlashes(utstring_body(pSZ));
 }
+
+//I really hate non ascii
+//caller responsible for freeing
+wchar_t	*SZ_ConvertToWCHAR(const UT_string *pSZ)
+{
+	int	len	=utstring_len(pSZ);
+
+	wchar_t	*pBuf	=malloc(sizeof(wchar_t) * (len + 1));
+	mbstowcs(pBuf, utstring_body(pSZ), len);
+
+	return	pBuf;
+}

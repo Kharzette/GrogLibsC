@@ -35,3 +35,6 @@ extern UT_string	*SZ_ConvertPathSlashes(const char *pSZ);
 extern UT_string	*SZ_ConvertPathSlashesUT(const UT_string *pSZ);
 extern UT_string	*SZ_ConvertPathBackSlashes(const char *pSZ);
 extern UT_string	*SZ_ConvertPathBackSlashesUT(const UT_string *pSZ);
+
+//caller responsible for freeing
+extern wchar_t	*SZ_ConvertToWCHAR(const UT_string *pSZ);

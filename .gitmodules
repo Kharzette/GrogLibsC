@@ -16,3 +16,6 @@
 [submodule "uthash"]
 	path = uthash
 	url = git@github.com:troydhanson/uthash.git
+[submodule "GrogHLSLCompileTool"]
+	path = GrogHLSLCompileTool
+	url = git@github.com:Kharzette/GrogHLSLCompileTool.git

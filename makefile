@@ -1,6 +1,8 @@
 CC=gcc
 CFLAGS=-std=c17 -g -march=x86-64		\
 	-Iuthash/include	\
+	-Idxvk-native/include/native/windows	\
+	-Idxvk-native/include/native/directx \
 	-Wl,-rpath='libs/',--disable-new-dtags	#so exe looks in libs for shared libs
 #	-Xlinker --verbose
 SOURCES=$(wildcard *.c)

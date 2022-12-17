@@ -11,7 +11,7 @@
 //handy stuff I'm used to from C#
 bool	FileStuff_DirExists(const char *szPath)
 {
-	DIR	*pDir	=opendir("Shaders");
+	DIR	*pDir	=opendir(szPath);
 
 	if(pDir == NULL)
 	{

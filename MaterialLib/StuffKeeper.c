@@ -5,7 +5,6 @@
 #include	<dirent.h>
 #include	<sys/stat.h>
 #include	<errno.h>
-#include	<d3dcompiler.h>
 #include	"utstring.h"
 #include	"../UtilityLib/StringStuff.h"
 #include	"../UtilityLib/ListStuff.h"
@@ -23,6 +22,9 @@ typedef struct	StuffKeeper_t
 {
 	DictSZ	*mpVSEntryPoints;	//entry points for vertex
 	DictSZ	*mpPSEntryPoints;	//entry points for pixel
+
+	DictSZ	*mpVSCode;	//VS code bytes for entry point key
+	DictSZ	*mpPSCode;	//PS code bytes for entry point key
 
 }	StuffKeeper;
 
@@ -113,6 +115,7 @@ DictSZ	*ReadEntryPoints(FILE *f)
 }
 
 
+//caller should free
 static UT_string	*VersionString(ShaderModel sm)
 {
 	UT_string	*pRet;
@@ -131,6 +134,31 @@ static UT_string	*VersionString(ShaderModel sm)
 			return	pRet;
 		case	SM5:
 			utstring_printf(pRet, "%s", "5_0");
+			return	pRet;
+		default:
+			assert(false);
+	}
+}
+
+//caller should free
+static UT_string	*SMToString(ShaderModel sm)
+{
+	UT_string	*pRet;
+	utstring_new(pRet);
+
+	switch(sm)
+	{
+		case	SM2:
+			utstring_printf(pRet, "%s", "SM2");
+			return	pRet;
+		case	SM4:
+			utstring_printf(pRet, "%s", "SM4");
+			return	pRet;
+		case	SM41:
+			utstring_printf(pRet, "%s", "SM41");
+			return	pRet;
+		case	SM5:
+			utstring_printf(pRet, "%s", "SM5");
 			return	pRet;
 		default:
 			assert(false);
@@ -174,61 +202,6 @@ static UT_string	*ProfileFromSM(ShaderModel sm, ShaderEntryType set)
 }
 
 
-static void LoadShader(const UT_string *pFilePath, const UT_string *pEntryPoint,
-	ShaderModel sm, ShaderEntryType set)
-{
-	//annoying wide crap
-	wchar_t	*pFatPath	=SZ_ConvertToWCHAR(pFilePath);
-
-	UT_string	*pProfile	=ProfileFromSM(sm, set);
-
-	UINT	flags	=D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_WARNINGS_ARE_ERRORS
-#ifdef SHADER_DEBUG
-		| D3DCOMPILE_OPTIMIZATION_LEVEL0 | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_DEBUG;
-#else
-		| D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-
-	ID3DBlob	*pCode, *pErrors;
-
-	char	szSM2[4]	="SM2\0";
-	char	szSM4[4]	="SM4\0";
-	char	szSM41[5]	="SM41\0";
-	char	szSM5[4]	="SM5\0";
-	char	szOne[2]	="1\0";
-
-	D3D_SHADER_MACRO	macz[2];
-	macz[0].Definition	=szOne;
-
-	switch(sm)
-	{
-		case	SM2:
-			macz[0].Name	=szSM2;
-			break;
-		case	SM4:
-			macz[0].Name	=szSM4;
-			break;
-		case	SM41:
-			macz[0].Name	=szSM41;
-			break;
-		case	SM5:
-			macz[0].Name	=szSM5;
-			break;
-		default:
-			assert(false);
-	}
-
-	HRESULT	res	=D3DCompileFromFile(pFatPath, macz, NULL, utstring_body(pEntryPoint),
-		utstring_body(pProfile), flags, 0, &pCode, &pErrors);
-	if(res != S_OK)
-	{
-		printf("Shader: %s compile failed.  Errors: %s\n",
-			utstring_body(pFilePath),
-			(char *)pErrors->lpVtbl->GetBufferPointer(pErrors));
-	}
-}
-
-
 //callback for the dictionary foreach below
 void	PrintEntryPointsCB(const UT_string *pKey, const void *pValue)
 {
@@ -252,18 +225,87 @@ void	NukeSZListCB(void *pValue)
 }
 
 
+//load and store bytecode
+static void LoadCompiledShader(DictSZ **ppStorage, const UT_string *pPath, const UT_string *pEntryPoint)
+{
+	FILE	*f	=fopen(utstring_body(pPath), "rb");
+
+	//see how big the file is
+	fseek(f, 0, SEEK_END);
+	long	fileLen	=ftell(f);
+	rewind(f);
+
+	//alloc space
+	uint8_t	*pCode	=malloc(fileLen);
+
+	size_t	read	=fread(pCode, 1, fileLen, f);
+	assert(read == fileLen);
+
+	//store
+	DictSZ_Add(ppStorage, pEntryPoint, pCode);
+
+	fclose(f);
+}
+
+
 static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 {
-	if(!FileStuff_DirExists("Shaders"))
+	//prepare bytecode storage
+	DictSZ_New(&pSK->mpVSCode);
+	DictSZ_New(&pSK->mpPSCode);
+
+	//check dirs
+	UT_string	*pCSDir;
+	utstring_new(pCSDir);
+
+	UT_string	*pVer	=SMToString(sm);
+
+	utstring_printf(pCSDir, "%s", "CompiledShaders/");
+
+	if(!FileStuff_DirExists(utstring_body(pCSDir)))
 	{
+		utstring_done(pVer);
+		utstring_done(pCSDir);
 		return;
 	}
+
+	utstring_concat(pCSDir, pVer);
+	if(!FileStuff_DirExists(utstring_body(pCSDir)))
+	{
+		utstring_done(pVer);
+		utstring_done(pCSDir);
+		return;
+	}
+
+	UT_string	*pVSDir, *pPSDir;
+	utstring_new(pVSDir);
+	utstring_new(pPSDir);
+
+	utstring_printf(pVSDir, "%s/VS/", utstring_body(pCSDir));
+	utstring_printf(pPSDir, "%s/PS/", utstring_body(pCSDir));
+
+	if(!FileStuff_DirExists(utstring_body(pVSDir)))
+	{
+		utstring_done(pVer);
+		utstring_done(pCSDir);
+		utstring_done(pVSDir);
+		utstring_done(pPSDir);
+		return;
+	}
+	if(!FileStuff_DirExists(utstring_body(pPSDir)))
+	{
+		utstring_done(pVer);
+		utstring_done(pCSDir);
+		utstring_done(pVSDir);
+		utstring_done(pPSDir);
+		return;
+	}	
 
 	UT_string	*pFilePath;
 	utstring_new(pFilePath);
 
-	int	count	=0;
-	DIR	*pDir	=opendir("Shaders");
+	//load all vertex
+	DIR	*pDir	=opendir(utstring_body(pVSDir));
 	for(;;)
 	{
 		struct dirent	*pDE	=readdir(pDir);
@@ -272,7 +314,14 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 			break;
 		}
 
-		utstring_printf(pFilePath, "Shaders/%s", pDE->d_name);
+		UT_string	*pDName;
+		utstring_new(pDName);
+		utstring_printf(pDName, "%s", pDE->d_name);
+
+		utstring_clear(pFilePath);
+
+		utstring_concat(pFilePath, pVSDir);
+		utstring_concat(pFilePath, pDName);
 
 		struct stat	fileStuff;
 		int	res	=stat(utstring_body(pFilePath), &fileStuff);
@@ -285,25 +334,48 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 		//regular file?
 		if(S_ISREG(fileStuff.st_mode))
 		{
-			UT_string	*pExtLess	=SZ_StripExtensionUT(pFilePath);
+			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
 
-			//check entry points
-			if(DictSZ_ContainsKey(pSK->mpVSEntryPoints, pExtLess))
-			{
-				StringList	*pEntries	=DictSZ_GetValue(pSK->mpVSEntryPoints, pExtLess);
-
-				ShaderEntryType	set	=Vertex;
-
-				for(const StringList *pIter	=SZList_Iterate(pEntries);pIter != NULL;pIter=SZList_IteratorNext(pIter))
-				{
-					LoadShader(pFilePath, SZList_IteratorValUT(pIter), sm, set);
-				}
-			}
-
+			LoadCompiledShader(&pSK->mpVSCode, pFilePath, pExtLess);
 		}
 	}
-
 	closedir(pDir);
+
+	//load pixel
+	pDir	=opendir(utstring_body(pPSDir));
+	for(;;)
+	{
+		struct dirent	*pDE	=readdir(pDir);
+		if(pDE == NULL)
+		{
+			break;
+		}
+
+		UT_string	*pDName;
+		utstring_new(pDName);
+		utstring_printf(pDName, "%s", pDE->d_name);
+
+		utstring_clear(pFilePath);
+
+		utstring_concat(pFilePath, pPSDir);
+		utstring_concat(pFilePath, pDName);
+
+		struct stat	fileStuff;
+		int	res	=stat(utstring_body(pFilePath), &fileStuff);
+		if(res)
+		{
+			FileStuff_PrintErrno(res);
+			continue;
+		}
+
+		//regular file?
+		if(S_ISREG(fileStuff.st_mode))
+		{
+			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
+
+			LoadCompiledShader(&pSK->mpPSCode, pFilePath, pExtLess);
+		}
+	}
 }
 
 

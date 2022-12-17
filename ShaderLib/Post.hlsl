@@ -6,7 +6,7 @@
 //
 //edge detection from nvidia
 //
-#include "types.hlsli"
+#include "Types.hlsli"
 
 //gaussianblur stuff
 #if !defined(SM2)

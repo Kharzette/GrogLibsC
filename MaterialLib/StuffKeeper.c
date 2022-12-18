@@ -9,6 +9,7 @@
 #include	"d3d11.h"
 #include	"utstring.h"
 #include	"png.h"
+#include	"Font.h"
 #include	"../UtilityLib/StringStuff.h"
 #include	"../UtilityLib/ListStuff.h"
 #include	"../UtilityLib/DictionaryStuff.h"
@@ -34,6 +35,12 @@ typedef struct	StuffKeeper_t
 
 	DictSZ	*mpVShaders;
 	DictSZ	*mpPShaders;
+
+	DictSZ	*mpFonts;
+	DictSZ	*mpFontTextures;
+
+	DictSZ	*mpSRVs;
+	DictSZ	*mpFontSRVs;
 
 }	StuffKeeper;
 
@@ -276,10 +283,6 @@ static void LoadCompiledShader(DictSZ **ppStorage, const UT_string *pPath, const
 
 static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 {
-	//prepare bytecode storage
-	DictSZ_New(&pSK->mpVSCode);
-	DictSZ_New(&pSK->mpPSCode);
-
 	//check dirs
 	UT_string	*pCSDir;
 	utstring_new(pCSDir);
@@ -508,6 +511,33 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 	png_byte	bitDepth	=png_get_bit_depth(pPng, pInfo);
 
 	int	numPasses	=png_set_interlace_handling(pPng);
+	
+	if(bitDepth == 16)
+	{
+		png_set_strip_16(pPng);
+	}
+	
+	if(colType == PNG_COLOR_TYPE_PALETTE)
+	{
+		png_set_palette_to_rgb(pPng);
+	}
+	
+	//PNG_COLOR_TYPE_GRAY_ALPHA is always 8 or 16bit depth.
+	if(colType == PNG_COLOR_TYPE_GRAY && bitDepth < 8)
+	{
+		png_set_expand_gray_1_2_4_to_8(pPng);
+	}
+	
+	if(png_get_valid(pPng, pInfo, PNG_INFO_tRNS))
+	{
+		png_set_tRNS_to_alpha(pPng);
+	}
+	
+	if(colType == PNG_COLOR_TYPE_GRAY ||
+		colType == PNG_COLOR_TYPE_GRAY_ALPHA)
+	{
+		png_set_gray_to_rgb(pPng);
+	}
 
 	png_read_update_info(pPng, pInfo);
 
@@ -535,6 +565,10 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 	else if(colType == PNG_COLOR_TYPE_RGBA)
 	{
 		PreMultAndLinearRGBA(pRows, width, height);
+	}
+	else if(colType == PNG_COLOR_TYPE_PALETTE)
+	{
+
 	}
 	else
 	{
@@ -570,9 +604,6 @@ static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
 	{
 		return;
 	}
-
-	DictSZ_New(&pSK->mpResources);
-	DictSZ_New(&pSK->mpTextures);
 
 	UT_string	*pTexDir, *pFilePath;
 	utstring_new(pTexDir);
@@ -694,11 +725,112 @@ static void CreateShadersFromCode(StuffKeeper *pSK, GraphicsDevice *pGD)
 	sc.mpGD	=pGD;
 	sc.mpSK	=pSK;
 	
-	DictSZ_New(&pSK->mpVShaders);
-	DictSZ_New(&pSK->mpPShaders);
-
 	DictSZ_ForEach(pSK->mpVSCode, CreateVShaderCB, &sc);
 	DictSZ_ForEach(pSK->mpPSCode, CreatePShaderCB, &sc);
+}
+
+
+void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
+{
+	if(!FileStuff_DirExists("Fonts"))
+	{
+		return;
+	}
+
+	UT_string	*pFontDir, *pFilePath;
+	utstring_new(pFontDir);
+	utstring_new(pFilePath);
+
+	utstring_printf(pFontDir, "%s", "Fonts");
+	
+	DIR	*pDir	=opendir(utstring_body(pFontDir));
+	for(;;)
+	{
+		struct dirent	*pDE	=readdir(pDir);
+		if(pDE == NULL)
+		{
+			break;
+		}
+
+		int	len	=strlen(pDE->d_name);
+		if(len < 3)
+		{
+			continue;	//probably . or ..
+		}
+
+		UT_string	*pExt	=SZ_GetExtension(pDE->d_name);
+		if(pExt == NULL)
+		{
+			continue;
+		}
+
+		//png?
+		int	upper	=strncmp(utstring_body(pExt), ".PNG", utstring_len(pExt));
+		int	lower	=strncmp(utstring_body(pExt), ".png", utstring_len(pExt));
+
+		utstring_done(pExt);
+
+		if(upper && lower)
+		{
+			continue;
+		}
+
+		utstring_clear(pFilePath);
+		utstring_printf(pFilePath, "%s/%s", utstring_body(pFontDir), pDE->d_name);
+
+		struct stat	fileStuff;
+		int	res	=stat(utstring_body(pFilePath), &fileStuff);
+		if(res)
+		{
+			FileStuff_PrintErrno(res);
+			continue;
+		}
+
+		//regular file?
+		if(S_ISREG(fileStuff.st_mode))
+		{
+			//isolate the filename without the extension
+			UT_string	*pExtLess	=SZ_StripExtensionUT(pFilePath);
+			UT_string	*pJustName	=SZ_SubStringUTStart(pExtLess, 6);
+
+			ID3D11Texture2D	*pTex	=LoadTexture(pGD, pFilePath);
+			if(pTex != NULL)
+			{
+				DictSZ_Add(&pSK->mpFontTextures, pJustName, pTex);
+
+				ID3D11Resource	*pRes;
+				pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
+				if(pRes == NULL)
+				{
+					printf("Error getting resource interface from a font texture!\n");					
+				}
+				else
+				{
+					DictSZ_Add(&pSK->mpResources, pJustName, pRes);
+				}
+
+				//make the actual font
+				utstring_clear(pFilePath);
+				utstring_printf(pFilePath, "%s.dat", utstring_body(pExtLess));
+
+				Font	*pFont	=Font_Create(pFilePath);
+				if(pFont == NULL)
+				{
+					printf("Error reading font %s\n", utstring_body(pFilePath));
+				}
+				else
+				{
+					DictSZ_Add(&pSK->mpFonts, pJustName, pFont);
+				}
+			}
+			utstring_done(pExtLess);
+			utstring_done(pJustName);
+		}
+	}
+	closedir(pDir);
+
+	utstring_done(pFontDir);
+	utstring_done(pFilePath);
 }
 
 
@@ -743,9 +875,22 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 			assert(0);
 	}
 
+	//prepare all dictionaries for new data
+	DictSZ_New(&pRet->mpVSCode);
+	DictSZ_New(&pRet->mpPSCode);
+	DictSZ_New(&pRet->mpVShaders);
+	DictSZ_New(&pRet->mpPShaders);
+	DictSZ_New(&pRet->mpResources);
+	DictSZ_New(&pRet->mpTextures);
+	DictSZ_New(&pRet->mpFonts);
+	DictSZ_New(&pRet->mpFontTextures);
+	DictSZ_New(&pRet->mpSRVs);
+	DictSZ_New(&pRet->mpFontSRVs);
+
 	LoadShaders(pRet, sm);
 	CreateShadersFromCode(pRet, pGD);
 	LoadResources(pGD, pRet);
+	LoadFonts(pGD, pRet);
 
 	int	numShaderData	=DictSZ_Count(pRet->mpVSCode);
 	numShaderData		+=DictSZ_Count(pRet->mpPSCode);
@@ -753,9 +898,10 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	int	numRes			=DictSZ_Count(pRet->mpResources);
 	int	numVS			=DictSZ_Count(pRet->mpVShaders);
 	int	numPS			=DictSZ_Count(pRet->mpPShaders);
+	int	numFonts		=DictSZ_Count(pRet->mpFonts);
 
-	printf("Loaded %d shader data, %d textures, with %d resources, %d vertex shaders, and %d pixel shaders\n",
-		numShaderData, numTex, numRes, numVS, numPS);
+	printf("Loaded %d shader data, %d textures, with %d resources, %d vertex shaders, %d pixel shaders, and %d fonts.\n",
+		numShaderData, numTex, numRes, numVS, numPS, numFonts);
 
 	return	pRet;
 }

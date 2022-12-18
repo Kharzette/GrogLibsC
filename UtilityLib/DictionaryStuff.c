@@ -28,6 +28,19 @@ void	DictSZ_Add(DictSZ **ppHead, const UT_string *pKey, void *pValue)
 	HASH_ADD_KEYPTR(hh, *ppHead, utstring_body(pKey), utstring_len(pKey), pAdd);
 }
 
+//char * ver
+void	DictSZ_Addccp(DictSZ **ppHead, const char *pKey, void *pValue)
+{
+	DictSZ	*pAdd	=malloc(sizeof(DictSZ));
+
+	utstring_new(pAdd->mpKey);
+	utstring_printf(pAdd->mpKey, "%s", pKey);
+
+	pAdd->pValue	=pValue;
+
+	HASH_ADD_KEYPTR(hh, *ppHead, utstring_body(pAdd->mpKey), utstring_len(pAdd->mpKey), pAdd);
+}
+
 
 void	DictSZ_Remove(DictSZ **ppHead, const UT_string *pKey)
 {

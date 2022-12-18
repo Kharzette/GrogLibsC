@@ -260,6 +260,22 @@ ID3D11RasterizerState	*GraphicsDevice_CreateRasterizerState(
 	return	NULL;
 }
 
+ID3D11SamplerState	*GraphicsDevice_CreateSamplerState(
+	GraphicsDevice		*pGD,
+	D3D11_SAMPLER_DESC	*pDesc)
+{
+	ID3D11SamplerState	*pState;
+	HRESULT	res	=pGD->mpDevice1->lpVtbl->CreateSamplerState(
+		pGD->mpDevice1,	pDesc, &pState);
+	
+	if(res == S_OK)
+	{
+		return	pState;
+	}
+	printf("Error creating sampler state: %dX\n", res);
+	return	NULL;
+}
+
 ID3D11BlendState	*GraphicsDevice_CreateBlendState(
 	GraphicsDevice		*pGD,
 	D3D11_BLEND_DESC	*pDesc)
@@ -290,4 +306,10 @@ ID3D11DepthStencilState	*GraphicsDevice_CreateDepthStencilState(
 	}
 	printf("Error creating depth/stencil state: %dX\n", res);
 	return	NULL;
+}
+
+//set target 0's blend state
+void GraphicsDevice_OMSetBlendState(GraphicsDevice *pGD, ID3D11BlendState *pBlend)
+{
+	pGD->mpContext1->lpVtbl->OMSetBlendState(pGD->mpContext1, pBlend, NULL, 0xFFFFFFFF);
 }

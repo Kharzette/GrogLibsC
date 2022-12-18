@@ -27,19 +27,25 @@ typedef struct	StuffKeeper_t
 	DictSZ	*mpVSEntryPoints;	//entry points for vertex
 	DictSZ	*mpPSEntryPoints;	//entry points for pixel
 
-	DictSZ	*mpVSCode;	//VS code bytes for entry point key
-	DictSZ	*mpPSCode;	//PS code bytes for entry point key
+	DictSZ	*mpVSCode;			//VS code bytes for entry point key
+	DictSZ	*mpPSCode;			//PS code bytes for entry point key
 
-	DictSZ	*mpTextures;
+	DictSZ	*mpTextures;		//ID3D11Texture2D
 
-	DictSZ	*mpVShaders;
-	DictSZ	*mpPShaders;
+	DictSZ	*mpVShaders;		//ID3D11VertexShader
+	DictSZ	*mpPShaders;		//ID3D11PixelShader
 
-	DictSZ	*mpFonts;
-	DictSZ	*mpFontTextures;
+	DictSZ	*mpFonts;			//Font from my Font.h
+	DictSZ	*mpFontTextures;	//ID3D11Texture2D
 
-	DictSZ	*mpSRVs;
-	DictSZ	*mpFontSRVs;
+	DictSZ	*mpSRVs;			//ID3D11ShaderResourceView
+	DictSZ	*mpFontSRVs;		//ID3D11ShaderResourceView
+
+	DictSZ	*mpBlends;			//D3D11_RENDER_TARGET_BLEND_DESC
+	DictSZ	*mpDSSs;			//ID3D11DepthStencilState
+	DictSZ	*mpSSs;				//ID3D11SamplerState
+
+	DictSZ	*mpLayouts;			//ID3D11InputLayout
 
 }	StuffKeeper;
 
@@ -869,6 +875,207 @@ static void	CreateSRVs(GraphicsDevice *pGD, StuffKeeper *pSK)
 }
 
 
+static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
+{
+	D3D11_SAMPLER_DESC	sampDesc;
+
+	sampDesc.AddressU			=D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressV			=D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressW			=D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.BorderColor[0]		=0.0f;	//never use this
+	sampDesc.BorderColor[1]		=0.0f;	//never use this
+	sampDesc.BorderColor[2]		=0.0f;	//never use this
+	sampDesc.BorderColor[3]		=0.0f;	//never use this
+	sampDesc.ComparisonFunc		=D3D11_COMPARISON_LESS;
+	sampDesc.Filter				=D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.MaxAnisotropy		=16;
+	sampDesc.MaxLOD				=D3D11_FLOAT32_MAX;
+	sampDesc.MinLOD				=0;
+	sampDesc.MipLODBias			=0.0f;
+
+	ID3D11SamplerState	*pSS	=GraphicsDevice_CreateSamplerState(pGD, &sampDesc);
+	if(pSS == NULL)
+	{
+		printf("Error creating sampler state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpSSs, "LinearClamp", pSS);
+
+	//make same but wrapping textures
+	sampDesc.AddressU	=D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV	=D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW	=D3D11_TEXTURE_ADDRESS_WRAP;
+	pSS	=GraphicsDevice_CreateSamplerState(pGD, &sampDesc);
+	if(pSS == NULL)
+	{
+		printf("Error creating sampler state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpSSs, "LinearWrap", pSS);
+
+	//point filter for a pixelly look
+	sampDesc.Filter	=D3D11_FILTER_MIN_MAG_MIP_POINT;
+	pSS	=GraphicsDevice_CreateSamplerState(pGD, &sampDesc);
+	if(pSS == NULL)
+	{
+		printf("Error creating sampler state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpSSs, "PointWrap", pSS);
+
+	//point clamp
+	sampDesc.AddressU	=D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressV	=D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressW	=D3D11_TEXTURE_ADDRESS_CLAMP;
+	pSS	=GraphicsDevice_CreateSamplerState(pGD, &sampDesc);
+	if(pSS == NULL)
+	{
+		printf("Error creating sampler state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpSSs, "PointClamp", pSS);
+
+	//depth stencils
+	D3D11_DEPTH_STENCILOP_DESC	dsd;
+	dsd.StencilDepthFailOp	=D3D11_STENCIL_OP_KEEP;
+	dsd.StencilFailOp		=D3D11_STENCIL_OP_KEEP;
+	dsd.StencilPassOp		=D3D11_STENCIL_OP_KEEP;
+	dsd.StencilFunc			=D3D11_COMPARISON_ALWAYS;
+
+	D3D11_DEPTH_STENCIL_DESC	dssDesc;
+	dssDesc.DepthEnable			=true;
+	dssDesc.DepthWriteMask		=D3D11_DEPTH_WRITE_MASK_ALL;
+	dssDesc.DepthFunc			=D3D11_COMPARISON_LESS;
+	dssDesc.StencilEnable		=false;
+	dssDesc.StencilReadMask		=0;
+	dssDesc.StencilWriteMask	=0;
+	dssDesc.FrontFace			=dsd;
+	dssDesc.BackFace			=dsd;
+
+	ID3D11DepthStencilState	*pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	if(pDSS == NULL)
+	{
+		printf("Error creating depth stencil state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpDSSs, "EnableDepth", pDSS);
+
+	//equal test for shadows
+	dssDesc.DepthWriteMask	=D3D11_DEPTH_WRITE_MASK_ZERO;
+	dssDesc.DepthFunc		=D3D11_COMPARISON_EQUAL;
+	pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	if(pDSS == NULL)
+	{
+		printf("Error creating depth stencil state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpDSSs, "ShadowDepth", pDSS);
+
+	//no depth
+	dssDesc.DepthEnable	=false;
+	dssDesc.DepthFunc	=D3D11_COMPARISON_ALWAYS;
+	pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	if(pDSS == NULL)
+	{
+		printf("Error creating depth stencil state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpDSSs, "DisableDepth", pDSS);
+
+	//no depth write
+	dssDesc.DepthEnable	=true;
+	dssDesc.DepthFunc	=D3D11_COMPARISON_LESS;
+	pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	if(pDSS == NULL)
+	{
+		printf("Error creating depth stencil state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpDSSs, "DisableDepthWrite", pDSS);
+
+	//no depth test
+	dssDesc.DepthWriteMask	=D3D11_DEPTH_WRITE_MASK_ALL;
+	dssDesc.DepthFunc		=D3D11_COMPARISON_ALWAYS;
+	pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	if(pDSS == NULL)
+	{
+		printf("Error creating depth stencil state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpDSSs, "DisableDepthTest", pDSS);
+
+	//blend states... all of these will set a single target
+	//and use that if multiple rendertargets are in use
+	//but each one can have a seperate if needed
+	D3D11_RENDER_TARGET_BLEND_DESC	rtbDesc, nullDesc={0};
+	rtbDesc.BlendEnable				=true;
+	rtbDesc.SrcBlend				=D3D11_BLEND_ONE;
+	rtbDesc.DestBlend				=D3D11_BLEND_INV_SRC_ALPHA;
+	rtbDesc.BlendOp					=D3D11_BLEND_OP_ADD;
+	rtbDesc.SrcBlendAlpha			=D3D11_BLEND_ZERO;
+	rtbDesc.DestBlendAlpha			=D3D11_BLEND_ZERO;
+	rtbDesc.BlendOpAlpha			=D3D11_BLEND_OP_ADD;
+	rtbDesc.RenderTargetWriteMask	=D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	D3D11_BLEND_DESC	blendDesc;
+	blendDesc.AlphaToCoverageEnable		=false;
+	blendDesc.IndependentBlendEnable	=false;	//set this to true for using all 8 different
+	blendDesc.RenderTarget[0]			=rtbDesc;
+	blendDesc.RenderTarget[1]			=nullDesc;
+	blendDesc.RenderTarget[2]			=nullDesc;
+	blendDesc.RenderTarget[3]			=nullDesc;
+	blendDesc.RenderTarget[4]			=nullDesc;
+	blendDesc.RenderTarget[5]			=nullDesc;
+	blendDesc.RenderTarget[6]			=nullDesc;
+	blendDesc.RenderTarget[7]			=nullDesc;
+
+	ID3D11BlendState	*pBS	=GraphicsDevice_CreateBlendState(pGD, &blendDesc);
+	if(pBS == NULL)
+	{
+		printf("Error creating blend state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpBlends, "AlphaBlending", pBS);
+
+	//multichannedepth I think this is for my 8 point shadows at once attempt
+	rtbDesc.SrcBlend		=D3D11_BLEND_ONE;
+	rtbDesc.DestBlend		=D3D11_BLEND_ONE;
+	rtbDesc.BlendOp			=D3D11_BLEND_OP_MIN;
+	rtbDesc.SrcBlendAlpha	=D3D11_BLEND_ONE;
+	rtbDesc.DestBlendAlpha	=D3D11_BLEND_ONE;
+	rtbDesc.BlendOpAlpha	=D3D11_BLEND_OP_MIN;
+
+	pBS	=GraphicsDevice_CreateBlendState(pGD, &blendDesc);
+	if(pBS == NULL)
+	{
+		printf("Error creating blend state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpBlends, "MultiChannelDepth", pBS);
+
+	//typical shadow map blending
+	rtbDesc.BlendOp			=D3D11_BLEND_OP_REV_SUBTRACT;
+	rtbDesc.BlendOpAlpha	=D3D11_BLEND_OP_ADD;
+
+	pBS	=GraphicsDevice_CreateBlendState(pGD, &blendDesc);
+	if(pBS == NULL)
+	{
+		printf("Error creating blend state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpBlends, "ShadowBlending", pBS);
+
+	rtbDesc.BlendEnable		=false;
+	pBS	=GraphicsDevice_CreateBlendState(pGD, &blendDesc);
+	if(pBS == NULL)
+	{
+		printf("Error creating blend state!\n");
+		return;
+	}
+	DictSZ_Addccp(&pSK->mpBlends, "NoBlending", pBS);
+}
+
+
 StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 {
 	StuffKeeper	*pRet	=malloc(sizeof(StuffKeeper));
@@ -920,12 +1127,17 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	DictSZ_New(&pRet->mpFontTextures);
 	DictSZ_New(&pRet->mpSRVs);
 	DictSZ_New(&pRet->mpFontSRVs);
+	DictSZ_New(&pRet->mpBlends);
+	DictSZ_New(&pRet->mpDSSs);
+	DictSZ_New(&pRet->mpSSs);
+	DictSZ_New(&pRet->mpLayouts);
 
 	LoadShaders(pRet, sm);
 	CreateShadersFromCode(pRet, pGD);
 	LoadResources(pGD, pRet);
 	LoadFonts(pGD, pRet);
 	CreateSRVs(pGD, pRet);
+	MakeCommonRenderStates(pGD, pRet);
 
 	int	numShaderData	=DictSZ_Count(pRet->mpVSCode);
 	numShaderData		+=DictSZ_Count(pRet->mpPSCode);

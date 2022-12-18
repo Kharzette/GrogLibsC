@@ -126,12 +126,12 @@ int	DictSZ_Count(const DictSZ *pHead)
 }
 
 
-void	DictSZ_ForEach(const DictSZ *pHead, DictSZ_ForEachCB pCB)
+void	DictSZ_ForEach(const DictSZ *pHead, DictSZ_ForEachCB pCB, void *pContext)
 {
 	const DictSZ	*pCur, *pTmp;
 
 	HASH_ITER(hh, pHead, pCur, pTmp)
 	{
-		pCB(pCur->mpKey, pCur->pValue);
+		pCB(pCur->mpKey, pCur->pValue, pContext);
 	}
 }

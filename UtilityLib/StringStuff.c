@@ -155,6 +155,64 @@ int	SZ_LastIndexOfUT(const UT_string *pSZ, char cThing)
 }
 
 
+//return the substring beginning at startPos or NULL
+UT_string	*SZ_SubStringStart(const char *pSZ, int startPos)
+{
+	if(pSZ == NULL)
+	{
+		return	NULL;
+	}
+
+	int	len	=strlen(pSZ);
+	if(startPos >= len)
+	{
+		return	NULL;
+	}
+
+	UT_string	*pRet;
+	utstring_new(pRet);
+
+	utstring_printf(pRet, "%s", pSZ + startPos);
+
+	return	pRet;
+}
+
+UT_string	*SZ_SubStringStartEnd(const char *pSZ, int startPos, int endPos)
+{
+	if(pSZ == NULL)
+	{
+		return	NULL;
+	}
+
+	int	len		=strlen(pSZ);
+	int	newLen	=endPos - startPos;
+	if(startPos >= len || endPos >= len || newLen >= len)
+	{
+		return	NULL;
+	}
+
+
+	UT_string	*pRet;
+	utstring_reserve(pRet, newLen + 1);
+
+	memcpy(utstring_body(pRet), pSZ + startPos, newLen);
+
+	utstring_body(pRet)[newLen]	=0;	//null terminate
+
+	return	pRet;
+}
+
+UT_string	*SZ_SubStringUTStart(const UT_string *pSZ, int startPos)
+{
+	return	SZ_SubStringStart(utstring_body(pSZ), startPos);
+}
+
+UT_string	*SZ_SubStringUTStartEnd(const UT_string *pSZ, int startPos, int endPos)
+{
+	return	SZ_SubStringStartEnd(utstring_body(pSZ), startPos, endPos);
+}
+
+
 //return the extension of a filename or NULL if none
 UT_string	*SZ_GetExtension(const char *pSZ)
 {

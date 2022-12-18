@@ -36,5 +36,12 @@ extern UT_string	*SZ_ConvertPathSlashesUT(const UT_string *pSZ);
 extern UT_string	*SZ_ConvertPathBackSlashes(const char *pSZ);
 extern UT_string	*SZ_ConvertPathBackSlashesUT(const UT_string *pSZ);
 
+//substring calls, return the portion of pSZ or null if the positions are bad
+extern UT_string	*SZ_SubStringStart(const char *pSZ, int startPos);
+extern UT_string	*SZ_SubStringStartEnd(const char *pSZ, int startPos, int endPos);
+extern UT_string	*SZ_SubStringUTStart(const UT_string *pSZ, int startPos);
+extern UT_string	*SZ_SubStringUTStartEnd(const UT_string *pSZ, int startPos, int endPos);
+
+
 //caller responsible for freeing
 extern wchar_t	*SZ_ConvertToWCHAR(const UT_string *pSZ);

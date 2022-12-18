@@ -1,11 +1,14 @@
 #include	<stdint.h>
 #include	<stdio.h>
+#include	<math.h>
 #include	<ctype.h>
 #include	<assert.h>
 #include	<dirent.h>
 #include	<sys/stat.h>
 #include	<errno.h>
+#include	"d3d11.h"
 #include	"utstring.h"
+#include	"png.h"
 #include	"../UtilityLib/StringStuff.h"
 #include	"../UtilityLib/ListStuff.h"
 #include	"../UtilityLib/DictionaryStuff.h"
@@ -26,7 +29,26 @@ typedef struct	StuffKeeper_t
 	DictSZ	*mpVSCode;	//VS code bytes for entry point key
 	DictSZ	*mpPSCode;	//PS code bytes for entry point key
 
+	DictSZ	*mpResources;
+	DictSZ	*mpTextures;
+
+	DictSZ	*mpVShaders;
+	DictSZ	*mpPShaders;
+
 }	StuffKeeper;
+
+typedef struct	ShaderBytes_t
+{
+	uint8_t	*mpBytes;
+	int		mLen;
+}	ShaderBytes;
+
+//context for iterators
+typedef struct	StuffContext_t
+{
+	StuffKeeper		*mpSK;
+	GraphicsDevice	*mpGD;
+}	StuffContext;
 
 //shader models
 typedef enum ShaderModel_t
@@ -203,7 +225,7 @@ static UT_string	*ProfileFromSM(ShaderModel sm, ShaderEntryType set)
 
 
 //callback for the dictionary foreach below
-void	PrintEntryPointsCB(const UT_string *pKey, const void *pValue)
+void	PrintEntryPointsCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
 	const StringList	*pList	=pValue;
 	const StringList	*pCur	=SZList_Iterate(pList);
@@ -235,14 +257,18 @@ static void LoadCompiledShader(DictSZ **ppStorage, const UT_string *pPath, const
 	long	fileLen	=ftell(f);
 	rewind(f);
 
-	//alloc space
-	uint8_t	*pCode	=malloc(fileLen);
+	ShaderBytes	*sb	=malloc(sizeof(ShaderBytes));
 
-	size_t	read	=fread(pCode, 1, fileLen, f);
+	sb->mLen	=fileLen;
+
+	//alloc space
+	sb->mpBytes	=malloc(fileLen);
+
+	size_t	read	=fread(sb->mpBytes, 1, fileLen, f);
 	assert(read == fileLen);
 
 	//store
-	DictSZ_Add(ppStorage, pEntryPoint, pCode);
+	DictSZ_Add(ppStorage, pEntryPoint, sb);
 
 	fclose(f);
 }
@@ -379,6 +405,303 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 }
 
 
+static void	PreMultAndLinearRGB(uint8_t **pRows, int width, int height)
+{
+	float	oo255	=1.0f / 255.0f;
+
+	for(int y=0;y < height;y++)
+	{
+		for(int x=0;x < width;x++)
+		{
+			int	ofsX	=(x * 3);
+
+			uint8_t	cR	=pRows[y][ofsX];
+			uint8_t	cG	=pRows[y][ofsX + 1];
+			uint8_t	cB	=pRows[y][ofsX + 2];
+
+			float	xc	=cR * 00255;
+			float	yc	=cG * 00255;
+			float	zc	=cB * 00255;
+
+			//convert to linear
+			xc	=powf(xc, 2.2);
+			yc	=powf(yc, 2.2);
+			zc	=powf(zc, 2.2);
+
+			pRows[y][ofsX]		=(uint8_t)(xc * 255.0f);
+			pRows[y][ofsX + 1]	=(uint8_t)(yc * 255.0f);
+			pRows[y][ofsX + 2]	=(uint8_t)(zc * 255.0f);
+		}
+	}
+}
+
+static void	PreMultAndLinearRGBA(uint8_t **pRows, int width, int height)
+{
+	float	oo255	=1.0f / 255.0f;
+
+	for(int y=0;y < height;y++)
+	{
+		for(int x=0;x < width;x++)
+		{
+			int	ofsX	=(x * 4);
+
+			uint8_t	cR	=pRows[y][ofsX];
+			uint8_t	cG	=pRows[y][ofsX + 1];
+			uint8_t	cB	=pRows[y][ofsX + 2];
+			uint8_t	cA	=pRows[y][ofsX + 3];
+
+			float	xc	=cR * 00255;
+			float	yc	=cG * 00255;
+			float	zc	=cB * 00255;
+			float	wc	=cA * 00255;
+
+			//convert to linear
+			xc	=powf(xc, 2.2);
+			yc	=powf(yc, 2.2);
+			zc	=powf(zc, 2.2);
+
+			//premultiply alpha
+			xc	*=wc;
+			yc	*=wc;
+			zc	*=wc;
+
+			pRows[y][ofsX]		=(uint8_t)(xc * 255.0f);
+			pRows[y][ofsX + 1]	=(uint8_t)(yc * 255.0f);
+			pRows[y][ofsX + 2]	=(uint8_t)(zc * 255.0f);
+		}
+	}
+}
+
+
+static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
+{
+	FILE	*f	=fopen(utstring_body(pPath), "rb");
+	if(f == NULL)
+	{
+		return	NULL;
+	}
+
+	png_structp	pPng	=png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	if(pPng == NULL)
+	{
+		return	NULL;
+	}
+
+	png_infop	pInfo	=png_create_info_struct(pPng);
+	if(pInfo == NULL)
+	{
+		return	NULL;
+	}
+
+	if(setjmp(png_jmpbuf(pPng)))
+	{
+		return	NULL;
+	}
+
+	png_init_io(pPng, f);
+	png_read_info(pPng, pInfo);
+
+	png_uint_32	width	=png_get_image_width(pPng, pInfo);
+	png_uint_32	height	=png_get_image_height(pPng, pInfo);
+
+	png_byte	colType		=png_get_color_type(pPng, pInfo);
+	png_byte	bitDepth	=png_get_bit_depth(pPng, pInfo);
+
+	int	numPasses	=png_set_interlace_handling(pPng);
+
+	png_read_update_info(pPng, pInfo);
+
+	if(setjmp(png_jmpbuf(pPng)))
+	{
+		return	NULL;
+	}
+
+	int	rowPitch	=png_get_rowbytes(pPng, pInfo);
+
+	png_bytep	*pRows	=malloc(sizeof(png_bytep) * height);
+	for(int y=0;y < height;y++)
+	{
+		pRows[y]	=malloc(rowPitch);
+	}
+
+	png_read_image(pPng, pRows);
+
+	fclose(f);
+
+	if(colType == PNG_COLOR_TYPE_RGB)
+	{
+		PreMultAndLinearRGB(pRows, width, height);
+	}
+	else if(colType == PNG_COLOR_TYPE_RGBA)
+	{
+		PreMultAndLinearRGBA(pRows, width, height);
+	}
+	else
+	{
+		printf("png %s color type %d unsupported!\n", utstring_body(pPath), colType);
+
+		png_destroy_read_struct(&pPng, &pInfo, NULL);
+		for(int y=0;y < height;y++)
+		{
+			free(pRows[y]);
+		}
+		free(pRows);
+		return	NULL;
+	}
+
+	png_destroy_read_struct(&pPng, &pInfo, NULL);
+
+	ID3D11Texture2D	*pTex	=GraphicsDevice_MakeTexture(pGD, pRows, width, height, rowPitch);
+
+	//free data
+	for(int y=0;y < height;y++)
+	{
+		free(pRows[y]);
+	}
+	free(pRows);
+
+	return	pTex;
+}
+
+
+static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
+{
+	if(!FileStuff_DirExists("Textures"))
+	{
+		return;
+	}
+
+	DictSZ_New(&pSK->mpResources);
+	DictSZ_New(&pSK->mpTextures);
+
+	UT_string	*pTexDir, *pFilePath;
+	utstring_new(pTexDir);
+	utstring_new(pFilePath);
+
+	utstring_printf(pTexDir, "%s", "Textures");
+	
+	DIR	*pDir	=opendir(utstring_body(pTexDir));
+	for(;;)
+	{
+		struct dirent	*pDE	=readdir(pDir);
+		if(pDE == NULL)
+		{
+			break;
+		}
+
+		int	len	=strlen(pDE->d_name);
+		if(len < 3)
+		{
+			continue;	//probably . or ..
+		}
+
+		UT_string	*pExt	=SZ_GetExtension(pDE->d_name);
+		if(pExt == NULL)
+		{
+			continue;
+		}
+
+		//png?
+		int	upper	=strncmp(utstring_body(pExt), ".PNG", utstring_len(pExt));
+		int	lower	=strncmp(utstring_body(pExt), ".png", utstring_len(pExt));
+
+		utstring_done(pExt);
+
+		if(upper && lower)
+		{
+			continue;
+		}
+
+		utstring_clear(pFilePath);
+		utstring_printf(pFilePath, "%s/%s", utstring_body(pTexDir), pDE->d_name);
+
+		struct stat	fileStuff;
+		int	res	=stat(utstring_body(pFilePath), &fileStuff);
+		if(res)
+		{
+			FileStuff_PrintErrno(res);
+			continue;
+		}
+
+		//regular file?
+		if(S_ISREG(fileStuff.st_mode))
+		{
+			//isolate the filename without the extension
+			UT_string	*pExtLess	=SZ_StripExtensionUT(pFilePath);
+			UT_string	*pJustName	=SZ_SubStringUTStart(pExtLess, 9);
+
+			ID3D11Texture2D	*pTex	=LoadTexture(pGD, pFilePath);
+			if(pTex != NULL)
+			{
+				DictSZ_Add(&pSK->mpTextures, pJustName, pTex);
+
+				ID3D11Resource	*pRes;
+				pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
+				if(pRes == NULL)
+				{
+					printf("Error getting resource interface from a texture!\n");					
+				}
+				else
+				{
+					DictSZ_Add(&pSK->mpResources, pJustName, pRes);
+				}
+			}
+
+			utstring_done(pExtLess);
+			utstring_done(pJustName);
+		}
+	}
+	closedir(pDir);
+
+	utstring_done(pTexDir);
+	utstring_done(pFilePath);
+}
+
+
+static void	CreateVShaderCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	StuffContext	*pCon	=pContext;
+
+	const ShaderBytes	*pSB	=pValue;
+
+	ID3D11VertexShader	*pVS	=GraphicsDevice_CreateVertexShader(
+									pCon->mpGD, pSB->mpBytes, pSB->mLen);
+	if(pVS != NULL)
+	{
+		DictSZ_Add(&pCon->mpSK->mpVShaders, pKey, pVS);
+	}
+}
+
+static void	CreatePShaderCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	StuffContext	*pCon	=pContext;
+
+	const ShaderBytes	*pSB	=pValue;
+
+	ID3D11VertexShader	*pVS	=GraphicsDevice_CreatePixelShader(
+									pCon->mpGD, pSB->mpBytes, pSB->mLen);
+	if(pVS != NULL)
+	{
+		DictSZ_Add(&pCon->mpSK->mpPShaders, pKey, pVS);
+	}
+}
+
+
+static void CreateShadersFromCode(StuffKeeper *pSK, GraphicsDevice *pGD)
+{
+	StuffContext	sc;
+
+	sc.mpGD	=pGD;
+	sc.mpSK	=pSK;
+	
+	DictSZ_New(&pSK->mpVShaders);
+	DictSZ_New(&pSK->mpPShaders);
+
+	DictSZ_ForEach(pSK->mpVSCode, CreateVShaderCB, &sc);
+	DictSZ_ForEach(pSK->mpPSCode, CreatePShaderCB, &sc);
+}
+
+
 StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 {
 	StuffKeeper	*pRet	=malloc(sizeof(StuffKeeper));
@@ -421,6 +744,18 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	}
 
 	LoadShaders(pRet, sm);
+	CreateShadersFromCode(pRet, pGD);
+	LoadResources(pGD, pRet);
+
+	int	numShaderData	=DictSZ_Count(pRet->mpVSCode);
+	numShaderData		+=DictSZ_Count(pRet->mpPSCode);
+	int	numTex			=DictSZ_Count(pRet->mpTextures);
+	int	numRes			=DictSZ_Count(pRet->mpResources);
+	int	numVS			=DictSZ_Count(pRet->mpVShaders);
+	int	numPS			=DictSZ_Count(pRet->mpPShaders);
+
+	printf("Loaded %d shader data, %d textures, with %d resources, %d vertex shaders, and %d pixel shaders\n",
+		numShaderData, numTex, numRes, numVS, numPS);
 
 	return	pRet;
 }
@@ -444,7 +779,7 @@ int main(void)
 
 	DictSZ	*pCur, *pTmp;
 
-	DictSZ_ForEach(pPSEP, PrintEntryPointsCB);
+	DictSZ_ForEach(pPSEP, PrintEntryPointsCB, NULL);
 
 	//delete stuff, note that because our void * in the dictionary
 	//is a complicated SZList type, additional work needs to be done

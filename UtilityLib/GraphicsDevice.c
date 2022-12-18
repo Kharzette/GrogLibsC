@@ -157,6 +157,69 @@ void	GraphicsDevice_Destroy(GraphicsDevice **ppGD)
 	SDL_Quit();
 }
 
+ID3D11Texture2D	*GraphicsDevice_MakeTexture(GraphicsDevice *pGD, uint8_t **pRows, int w, int h, int rowPitch)
+{
+	D3D11_TEXTURE2D_DESC	texDesc;
+
+	texDesc.ArraySize			=1;
+	texDesc.BindFlags			=D3D11_BIND_SHADER_RESOURCE;
+	texDesc.CPUAccessFlags		=0;
+	texDesc.MipLevels			=1;
+	texDesc.MiscFlags			=0;
+	texDesc.Usage				=D3D11_USAGE_IMMUTABLE;
+	texDesc.Width				=w;
+	texDesc.Height				=h;
+	texDesc.Format				=DXGI_FORMAT_R8G8B8A8_UNORM;
+	texDesc.SampleDesc.Count	=1;
+	texDesc.SampleDesc.Quality	=0;
+
+	//get this into a linear chunk
+	uint8_t	*pBytes	=malloc(h * (w * 4));
+
+	for(int y=0;y < h;y++)
+	{
+		memcpy(pBytes + (y * w), pRows[y], w * 4);
+	}
+
+	D3D11_SUBRESOURCE_DATA	sd	={ pBytes, w, 0 };
+
+	ID3D11Texture2D	*pRet;
+
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateTexture2D(pGD->mpDevice1, &texDesc, &sd, &pRet);
+	free(pBytes);
+
+	if(hr != S_OK)
+	{
+		printf("Error creating texture: %dX\n", hr);
+		return	NULL;
+	}
+	return	pRet;
+}
+
+ID3D11VertexShader	*GraphicsDevice_CreateVertexShader(GraphicsDevice *pGD, uint8_t *pCodeBytes, int codeLen)
+{
+	ID3D11VertexShader	*pRet;
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateVertexShader(pGD->mpDevice1, pCodeBytes, codeLen, NULL, &pRet);
+	if(hr != S_OK)
+	{
+		printf("Error creating vertex shader: %dX\n", hr);
+		return	NULL;
+	}
+	return	pRet;
+}
+
+ID3D11PixelShader	*GraphicsDevice_CreatePixelShader(GraphicsDevice *pGD, uint8_t *pCodeBytes, int codeLen)
+{
+	ID3D11PixelShader	*pRet;
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreatePixelShader(pGD->mpDevice1, pCodeBytes, codeLen, NULL, &pRet);
+	if(hr != S_OK)
+	{
+		printf("Error creating pixel shader: %dX\n", hr);
+		return	NULL;
+	}
+	return	pRet;
+}
+
 ID3D11RasterizerState	*GraphicsDevice_CreateRasterizerState(
 	GraphicsDevice			*pGD,
 	D3D11_RASTERIZER_DESC	*pDesc)

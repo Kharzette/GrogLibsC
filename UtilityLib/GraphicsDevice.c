@@ -220,6 +220,30 @@ ID3D11PixelShader	*GraphicsDevice_CreatePixelShader(GraphicsDevice *pGD, uint8_t
 	return	pRet;
 }
 
+ID3D11ShaderResourceView	*GraphicsDevice_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes)
+{
+	D3D11_SHADER_RESOURCE_VIEW_DESC	desc;
+
+	D3D11_BUFFER_SRV	buf	={0, 0};
+	D3D11_TEX2D_SRV		tex	={-1, -1};
+
+	desc.Format				=DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ViewDimension		=D3D11_SRV_DIMENSION_TEXTURE2D;
+	desc.Buffer				=buf;
+	desc.Texture2D			=tex;
+
+	ID3D11ShaderResourceView	*pRet;
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateShaderResourceView(pGD->mpDevice1,
+		pRes, &desc, &pRet);
+
+	if(hr != S_OK)
+	{
+		printf("Error creating SRV: %dX\n", hr);
+		return	NULL;
+	}
+	return	pRet;
+}
+
 ID3D11RasterizerState	*GraphicsDevice_CreateRasterizerState(
 	GraphicsDevice			*pGD,
 	D3D11_RASTERIZER_DESC	*pDesc)

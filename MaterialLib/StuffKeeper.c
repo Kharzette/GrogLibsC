@@ -30,7 +30,6 @@ typedef struct	StuffKeeper_t
 	DictSZ	*mpVSCode;	//VS code bytes for entry point key
 	DictSZ	*mpPSCode;	//PS code bytes for entry point key
 
-	DictSZ	*mpResources;
 	DictSZ	*mpTextures;
 
 	DictSZ	*mpVShaders;
@@ -665,17 +664,6 @@ static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
 			if(pTex != NULL)
 			{
 				DictSZ_Add(&pSK->mpTextures, pJustName, pTex);
-
-				ID3D11Resource	*pRes;
-				pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
-				if(pRes == NULL)
-				{
-					printf("Error getting resource interface from a texture!\n");					
-				}
-				else
-				{
-					DictSZ_Add(&pSK->mpResources, pJustName, pRes);
-				}
 			}
 
 			utstring_done(pExtLess);
@@ -715,6 +703,52 @@ static void	CreatePShaderCB(const UT_string *pKey, const void *pValue, void *pCo
 	{
 		DictSZ_Add(&pCon->mpSK->mpPShaders, pKey, pVS);
 	}
+}
+
+static void	CreateSRVCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	StuffContext	*pCon	=pContext;
+
+	ID3D11Texture2D	*pTex	=pValue;
+
+	ID3D11Resource	*pRes;
+	pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
+	if(pRes == NULL)
+	{
+		printf("Error getting resource interface from a texture!\n");
+		return;
+	}
+
+	ID3D11ShaderResourceView	*pSRV	=GraphicsDevice_CreateSRV(pCon->mpGD, pRes);
+	if(pSRV != NULL)
+	{
+		DictSZ_Add(&pCon->mpSK->mpSRVs, pKey, pSRV);
+	}
+
+	pRes->lpVtbl->Release(pRes);
+}
+
+static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	StuffContext	*pCon	=pContext;
+
+	ID3D11Texture2D	*pTex	=pValue;
+
+	ID3D11Resource	*pRes;
+	pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
+	if(pRes == NULL)
+	{
+		printf("Error getting resource interface from a texture!\n");
+		return;
+	}
+
+	ID3D11ShaderResourceView	*pSRV	=GraphicsDevice_CreateSRV(pCon->mpGD, pRes);
+	if(pSRV != NULL)
+	{
+		DictSZ_Add(&pCon->mpSK->mpFontSRVs, pKey, pSRV);
+	}
+
+	pRes->lpVtbl->Release(pRes);
 }
 
 
@@ -798,17 +832,6 @@ void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
 			{
 				DictSZ_Add(&pSK->mpFontTextures, pJustName, pTex);
 
-				ID3D11Resource	*pRes;
-				pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
-				if(pRes == NULL)
-				{
-					printf("Error getting resource interface from a font texture!\n");					
-				}
-				else
-				{
-					DictSZ_Add(&pSK->mpResources, pJustName, pRes);
-				}
-
 				//make the actual font
 				utstring_clear(pFilePath);
 				utstring_printf(pFilePath, "%s.dat", utstring_body(pExtLess));
@@ -831,6 +854,18 @@ void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
 
 	utstring_done(pFontDir);
 	utstring_done(pFilePath);
+}
+
+
+static void	CreateSRVs(GraphicsDevice *pGD, StuffKeeper *pSK)
+{
+	StuffContext	sc;
+
+	sc.mpGD	=pGD;
+	sc.mpSK	=pSK;
+	
+	DictSZ_ForEach(pSK->mpTextures, CreateSRVCB, &sc);
+	DictSZ_ForEach(pSK->mpFontTextures, CreateFontSRVCB, &sc);
 }
 
 
@@ -880,7 +915,6 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	DictSZ_New(&pRet->mpPSCode);
 	DictSZ_New(&pRet->mpVShaders);
 	DictSZ_New(&pRet->mpPShaders);
-	DictSZ_New(&pRet->mpResources);
 	DictSZ_New(&pRet->mpTextures);
 	DictSZ_New(&pRet->mpFonts);
 	DictSZ_New(&pRet->mpFontTextures);
@@ -891,17 +925,19 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	CreateShadersFromCode(pRet, pGD);
 	LoadResources(pGD, pRet);
 	LoadFonts(pGD, pRet);
+	CreateSRVs(pGD, pRet);
 
 	int	numShaderData	=DictSZ_Count(pRet->mpVSCode);
 	numShaderData		+=DictSZ_Count(pRet->mpPSCode);
 	int	numTex			=DictSZ_Count(pRet->mpTextures);
-	int	numRes			=DictSZ_Count(pRet->mpResources);
 	int	numVS			=DictSZ_Count(pRet->mpVShaders);
 	int	numPS			=DictSZ_Count(pRet->mpPShaders);
 	int	numFonts		=DictSZ_Count(pRet->mpFonts);
+	int	numSRVs			=DictSZ_Count(pRet->mpSRVs);
+	int	numFontSRVs		=DictSZ_Count(pRet->mpFontSRVs);
 
-	printf("Loaded %d shader data, %d textures, with %d resources, %d vertex shaders, %d pixel shaders, and %d fonts.\n",
-		numShaderData, numTex, numRes, numVS, numPS, numFonts);
+	printf("Loaded %d shader data, %d textures, %d vertex shaders, %d pixel shaders, %d fonts, %d srv, and %d font srv.\n",
+		numShaderData, numTex, numVS, numPS, numFonts, numSRVs, numFontSRVs);
 
 	return	pRet;
 }

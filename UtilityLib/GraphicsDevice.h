@@ -14,7 +14,8 @@ extern D3D_FEATURE_LEVEL	GraphicsDevice_GetFeatureLevel(GraphicsDevice *pGD);
 extern ID3D11Texture2D	*GraphicsDevice_MakeTexture(GraphicsDevice *pGD,
 							uint8_t **pRows, int w, int h, int rowPitch);
 
-ID3D11VertexShader	*GraphicsDevice_CreateVertexShader(GraphicsDevice *pGD,
+extern ID3D11VertexShader	*GraphicsDevice_CreateVertexShader(GraphicsDevice *pGD,
 						uint8_t	*pCodeBytes, int codeLen);
-ID3D11VertexShader	*GraphicsDevice_CreatePixelShader(GraphicsDevice *pGD,
+extern ID3D11VertexShader	*GraphicsDevice_CreatePixelShader(GraphicsDevice *pGD,
 						uint8_t	*pCodeBytes, int codeLen);
+extern ID3D11ShaderResourceView	*GraphicsDevice_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes);

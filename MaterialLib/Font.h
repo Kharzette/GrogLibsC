@@ -1,3 +1,4 @@
+#pragma once
 #include	"utstring.h"
 
 typedef struct	Font_t	Font;

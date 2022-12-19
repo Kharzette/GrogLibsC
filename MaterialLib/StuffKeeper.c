@@ -10,6 +10,7 @@
 #include	"utstring.h"
 #include	"png.h"
 #include	"Font.h"
+#include	"Layouts.h"
 #include	"../UtilityLib/StringStuff.h"
 #include	"../UtilityLib/ListStuff.h"
 #include	"../UtilityLib/DictionaryStuff.h"
@@ -41,11 +42,12 @@ typedef struct	StuffKeeper_t
 	DictSZ	*mpSRVs;			//ID3D11ShaderResourceView
 	DictSZ	*mpFontSRVs;		//ID3D11ShaderResourceView
 
-	DictSZ	*mpBlends;			//D3D11_RENDER_TARGET_BLEND_DESC
+	DictSZ	*mpBlends;			//ID3D11BlendState
 	DictSZ	*mpDSSs;			//ID3D11DepthStencilState
 	DictSZ	*mpSSs;				//ID3D11SamplerState
 
 	DictSZ	*mpLayouts;			//ID3D11InputLayout
+	DictSZ	*mpEntryLayouts;	//UT_string layout name
 
 }	StuffKeeper;
 
@@ -146,6 +148,51 @@ DictSZ	*ReadEntryPoints(FILE *f)
 	DictSZ_Add(&pRet, pCurShader, pEntryPoints);
 
 	return	pRet;
+}
+
+
+static void ReadEntryLayouts(FILE *f, DictSZ **ppDict)
+{
+	char	szLine[256];	//line buffer
+
+	UT_string	*pShaderEntry, *pLayout, *pLTrimmed;
+	for(;;)
+	{
+		//TODO test super long line or otherwise malformed file
+		if(fgets(szLine, 256, f) == NULL)
+		{
+			break;
+		}
+
+		if(szLine[0] == '/' && szLine[1] == '/')
+		{
+			continue;	//comment
+		}
+
+		//find first tab
+		int	tabPos	=SZ_IndexOf(szLine, '\t');
+		if(tabPos == -1)
+		{
+			//weird?
+			continue;
+		}
+
+		pLayout			=SZ_SubStringStart(szLine, tabPos);
+		pShaderEntry	=SZ_SubStringStartEnd(szLine, 0, tabPos);
+		pLTrimmed		=SZ_TrimUT(pLayout);
+
+		//add data
+		DictSZ_Add(ppDict, pShaderEntry, pLTrimmed);
+
+		if(feof(f))
+		{
+			break;
+		}
+	}
+
+	utstring_done(pShaderEntry);
+	utstring_done(pLayout);
+	utstring_done(pLTrimmed);
 }
 
 
@@ -371,7 +418,10 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
 
 			LoadCompiledShader(&pSK->mpVSCode, pFilePath, pExtLess);
+
+			utstring_done(pExtLess);
 		}
+		utstring_done(pDName);
 	}
 	closedir(pDir);
 
@@ -1076,6 +1126,18 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 }
 
 
+static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
+{
+	//load EntryLayouts, this maps from a shader entry point
+	//to a layout name (such as VPosNormBone etc...)
+	FILE	*f	=fopen("Shaders/EntryLayouts.txt", "r");
+	ReadEntryLayouts(f, &pSK->mpEntryLayouts);
+
+	//fill the layouts dictionary
+	MakeLayouts(pGD, &pSK->mpLayouts, pSK->mpVSCode);
+}
+
+
 StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 {
 	StuffKeeper	*pRet	=malloc(sizeof(StuffKeeper));
@@ -1131,6 +1193,7 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	DictSZ_New(&pRet->mpDSSs);
 	DictSZ_New(&pRet->mpSSs);
 	DictSZ_New(&pRet->mpLayouts);
+	DictSZ_New(&pRet->mpEntryLayouts);
 
 	LoadShaders(pRet, sm);
 	CreateShadersFromCode(pRet, pGD);
@@ -1138,6 +1201,7 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	LoadFonts(pGD, pRet);
 	CreateSRVs(pGD, pRet);
 	MakeCommonRenderStates(pGD, pRet);
+	CreateInputLayouts(pGD, pRet);
 
 	int	numShaderData	=DictSZ_Count(pRet->mpVSCode);
 	numShaderData		+=DictSZ_Count(pRet->mpPSCode);

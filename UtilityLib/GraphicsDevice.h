@@ -21,14 +21,20 @@ extern ID3D11VertexShader	*GraphicsDevice_CreateVertexShader(GraphicsDevice *pGD
 extern ID3D11VertexShader	*GraphicsDevice_CreatePixelShader(GraphicsDevice *pGD,
 						uint8_t	*pCodeBytes, int codeLen);
 extern ID3D11ShaderResourceView	*GraphicsDevice_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes);
+extern ID3D11InputLayout	*GraphicsDevice_CreateInputLayout(
+	GraphicsDevice				*pGD,
+	D3D11_INPUT_ELEMENT_DESC	*pIEDs,
+	int							numIEDs,
+	const void					*byteCode,
+	size_t						codeLen);
 
 //renderstate creation stuff
 extern ID3D11RasterizerState	*GraphicsDevice_CreateRasterizerState(
-		GraphicsDevice *pGD,	D3D11_RASTERIZER_DESC *pDesc);
+		GraphicsDevice *pGD,	D3D11_RASTERIZER_DESC 		*pDesc);
 extern ID3D11SamplerState		*GraphicsDevice_CreateSamplerState(
-		GraphicsDevice	*pGD,	D3D11_SAMPLER_DESC	*pDesc);
+		GraphicsDevice	*pGD,	D3D11_SAMPLER_DESC			*pDesc);
 extern ID3D11BlendState			*GraphicsDevice_CreateBlendState(
-		GraphicsDevice	*pGD,	D3D11_BLEND_DESC	*pDesc);
+		GraphicsDevice	*pGD,	D3D11_BLEND_DESC			*pDesc);
 extern ID3D11DepthStencilState	*GraphicsDevice_CreateDepthStencilState(
 		GraphicsDevice	*pGD,	D3D11_DEPTH_STENCIL_DESC	*pDesc);
 

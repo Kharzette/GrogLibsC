@@ -308,6 +308,24 @@ ID3D11DepthStencilState	*GraphicsDevice_CreateDepthStencilState(
 	return	NULL;
 }
 
+ID3D11InputLayout	*GraphicsDevice_CreateInputLayout(
+	GraphicsDevice				*pGD,
+	D3D11_INPUT_ELEMENT_DESC	*pIEDs,
+	int							numIEDs,
+	const void					*byteCode,
+	size_t						codeLen)
+{
+	ID3D11InputLayout	*pRet;
+
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateInputLayout(pGD->mpDevice1, pIEDs, numIEDs, byteCode, codeLen, &pRet);
+	if(hr == S_OK)
+	{
+		return	pRet;
+	}
+	printf("Error creating input layout: %dX\n", hr);
+	return	NULL;
+}
+
 //set target 0's blend state
 void GraphicsDevice_OMSetBlendState(GraphicsDevice *pGD, ID3D11BlendState *pBlend)
 {

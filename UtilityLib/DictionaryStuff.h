@@ -1,3 +1,4 @@
+#pragma once
 #include	<stdint.h>
 #include	<stdbool.h>
 #include	"uthash.h"
@@ -18,6 +19,7 @@ extern void	DictSZ_Add(DictSZ **ppHead, const UT_string *pKey, void *pValue);
 extern void	DictSZ_Addccp(DictSZ **ppHead, const char *pKey, void *pValue);
 extern void	DictSZ_Remove(DictSZ **ppHead, const UT_string *pKey);
 extern void *DictSZ_GetValue(const DictSZ *pHead, const UT_string *pKey);
+extern void *DictSZ_GetValueccp(const DictSZ *pHead, const char *pKey);
 extern void	DictSZ_New(DictSZ **ppHead);
 extern bool	DictSZ_ContainsKey(const DictSZ *pHead, UT_string *pKey);
 extern int	DictSZ_Count(const DictSZ *pHead);

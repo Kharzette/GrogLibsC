@@ -19,7 +19,7 @@ struct testJunx
 };
 
 //print stuff in DictSZ
-void	PrintDictItems(const UT_string *pKey, const void *pValue)
+void	PrintDictItems(const UT_string *pKey, const void *pValue, void *pContext)
 {
 	const struct testJunx	*pJunx	=pValue;
 
@@ -225,7 +225,9 @@ int main(void)
 	DictSZ_Add(&pTestDict, pKey1, &bobData);
 	DictSZ_Add(&pTestDict, pKey2, &jimmyData);
 
-	DictSZ_ForEach(pTestDict, PrintDictItems);
+	void	*shet	=DictSZ_GetValueccp(pTestDict, "bob");
+
+	DictSZ_ForEach(pTestDict, PrintDictItems, NULL);
 
 	//nuke all
 	//test structs are on the stack so no free call

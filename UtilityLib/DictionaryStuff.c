@@ -25,7 +25,7 @@ void	DictSZ_Add(DictSZ **ppHead, const UT_string *pKey, void *pValue)
 
 	pAdd->pValue	=pValue;
 
-	HASH_ADD_KEYPTR(hh, *ppHead, utstring_body(pKey), utstring_len(pKey), pAdd);
+	HASH_ADD_KEYPTR(hh, *ppHead, utstring_body(pAdd->mpKey), utstring_len(pAdd->mpKey), pAdd);
 }
 
 //char * ver
@@ -46,7 +46,7 @@ void	DictSZ_Remove(DictSZ **ppHead, const UT_string *pKey)
 {
 	DictSZ	*pHash;
 
-	HASH_FIND(hh, *ppHead, pKey, utstring_len(pKey), pHash);
+	HASH_FIND_STR(*ppHead, utstring_body(pKey), pHash);
 
 	if(pHash == NULL)
 	{
@@ -66,7 +66,37 @@ void *DictSZ_GetValue(const DictSZ *pHead, const UT_string *pKey)
 	void	*pRet	=NULL;
 	DictSZ	*pHash;
 
-	HASH_FIND(hh, pHead, pKey, utstring_len(pKey), pHash);
+	HASH_FIND_STR(pHead, utstring_body(pKey), pHash);
+	if(pHash == NULL)
+	{
+		return	NULL;
+	}
+	return	pHash->pValue;
+}
+
+void *DictSZ_GetValueccp(const DictSZ *pHead, const char *pKey)
+{
+	void	*pRet	=NULL;
+	DictSZ	*pHash;
+
+	//HASH_FIND_STR(pHead, pKey, pHash);
+	unsigned _uthash_hfstr_keylen = (unsigned)strlen(pKey);
+	//HASH_FIND(hh, head, findstr, _uthash_hfstr_keylen, out);
+	(pHash) = NULL;
+	if (pHead) {
+		unsigned _hf_hashv;
+		HASH_VALUE(pKey, _uthash_hfstr_keylen, _hf_hashv);
+		//HASH_FIND_BYHASHVALUE(hh, pHead, pKey, _uthash_hfstr_keylen, _hf_hashv, pHash);
+		(pHash) = NULL;
+		if (pHead) {
+			unsigned _hf_bkt;
+			HASH_TO_BKT(_hf_hashv, (pHead)->hh.tbl->num_buckets, _hf_bkt);
+			if (HASH_BLOOM_TEST((pHead)->hh.tbl, _hf_hashv) != 0) {
+				HASH_FIND_IN_BKT((pHead)->hh.tbl, hh, (pHead)->hh.tbl->buckets[ _hf_bkt ], pKey, _uthash_hfstr_keylen, _hf_hashv, pHash);
+			}
+		}
+	}
+
 	if(pHash == NULL)
 	{
 		return	NULL;

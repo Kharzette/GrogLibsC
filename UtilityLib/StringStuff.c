@@ -100,6 +100,9 @@ UT_string	*SZ_Trim(const char *pSZ)
 	//null terminate
 	pRetBody[newLen - 1]	=0;
 
+	//set internal length var
+	pRet->i	=strlen(utstring_body(pRet));
+
 	return	pRet;
 }
 
@@ -193,11 +196,15 @@ UT_string	*SZ_SubStringStartEnd(const char *pSZ, int startPos, int endPos)
 
 
 	UT_string	*pRet;
+	utstring_new(pRet);
 	utstring_reserve(pRet, newLen + 1);
 
 	memcpy(utstring_body(pRet), pSZ + startPos, newLen);
 
 	utstring_body(pRet)[newLen]	=0;	//null terminate
+	
+	//set internal length var
+	pRet->i	=strlen(utstring_body(pRet));
 
 	return	pRet;
 }
@@ -264,6 +271,9 @@ UT_string	*SZ_StripExtension(const char *pSZ)
 
 	//null terminate at .
 	utstring_body(pRet)[dotPos]	=0;
+
+	//set internal length var
+	pRet->i	=strlen(utstring_body(pRet));
 
 	return	pRet;
 }

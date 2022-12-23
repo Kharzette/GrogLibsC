@@ -20,6 +20,8 @@ typedef struct GraphicsDevice_t
 	ID3D11DeviceContext		*mpContext;
 	ID3D11DeviceContext1	*mpContext1;
 	IDXGISwapChain			*mpSwapChain;
+	ID3D11RenderTargetView	*mpBackBufferView;
+	ID3D11DepthStencilView	*mpDepthBufferView;
 
 	//featurelevel the device was created with
 	D3D_FEATURE_LEVEL	mFeatureLevel;
@@ -121,6 +123,29 @@ bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 		goto	quit;
 	}
 */
+
+	//render target view
+	ID3D11Texture2D	*backBuffer;
+	hres	=pGD->mpSwapChain->lpVtbl->GetBuffer(pGD->mpSwapChain,
+		0, &IID_ID3D11Texture2D, (void **)&backBuffer);
+	if(hres != S_OK)
+	{
+		printf("Error getting back buffer: %dX\n", hres);
+		goto	quit;
+	}
+	
+	hres	=pGD->mpDevice1->lpVtbl->CreateRenderTargetView(pGD->mpDevice1,
+		(ID3D11Resource *)backBuffer, NULL, &pGD->mpBackBufferView);
+
+	//release backbuffer, just needed for this one call
+	backBuffer->lpVtbl->Release(backBuffer);
+
+	if(hres != S_OK)
+	{
+		printf("Error making render target view: %dX\n", hres);
+		goto	quit;
+	}
+
 	return	TRUE;
 
 quit:
@@ -326,8 +351,136 @@ ID3D11InputLayout	*GraphicsDevice_CreateInputLayout(
 	return	NULL;
 }
 
+ID3D11Buffer	*GraphicsDevice_CreateBufferWithData(
+	GraphicsDevice		*pGD,
+	D3D11_BUFFER_DESC	*pDesc,
+	const void			*pData,
+	size_t				dataSize)
+{
+	ID3D11Buffer	*pRet;
+
+	D3D11_SUBRESOURCE_DATA	sd	={ pData, 0, 0 };
+
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateBuffer(pGD->mpDevice1, pDesc, &sd, &pRet);
+	if(hr == S_OK)
+	{
+		return	pRet;
+	}
+	printf("Error creating vertex buffer: %dX\n", hr);
+	return	NULL;
+}
+
+ID3D11Buffer	*GraphicsDevice_CreateBuffer(
+	GraphicsDevice		*pGD,
+	D3D11_BUFFER_DESC	*pDesc)
+{
+	ID3D11Buffer	*pRet;
+
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateBuffer(pGD->mpDevice1, pDesc, NULL, &pRet);
+	if(hr == S_OK)
+	{
+		return	pRet;
+	}
+	printf("Error creating buffer: %dX\n", hr);
+	return	NULL;
+}
+
+
 //set target 0's blend state
 void GraphicsDevice_OMSetBlendState(GraphicsDevice *pGD, ID3D11BlendState *pBlend)
 {
 	pGD->mpContext1->lpVtbl->OMSetBlendState(pGD->mpContext1, pBlend, NULL, 0xFFFFFFFF);
+}
+
+void GraphicsDevice_OMSetDepthStencilState(GraphicsDevice *pGD, ID3D11DepthStencilState *pDSS)
+{
+	pGD->mpContext1->lpVtbl->OMSetDepthStencilState(pGD->mpContext1, pDSS, 0);
+}
+
+void GraphicsDevice_ClearDepthStencilView(GraphicsDevice *pGD)
+{
+	pGD->mpContext1->lpVtbl->ClearDepthStencilView(pGD->mpContext1,
+		pGD->mpDepthBufferView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+}
+
+void GraphicsDevice_ClearRenderTargetView(GraphicsDevice *pGD, const float *pF4ClearColor)
+{
+	pGD->mpContext1->lpVtbl->ClearRenderTargetView(pGD->mpContext1,
+		pGD->mpBackBufferView, pF4ClearColor);
+}
+
+void GraphicsDevice_OMSetRenderTargets(GraphicsDevice *pGD)
+{
+	pGD->mpContext1->lpVtbl->OMSetRenderTargets(
+		pGD->mpContext1, 1, &pGD->mpBackBufferView, pGD->mpDepthBufferView);
+}
+
+void GraphicsDevice_IASetInputLayout(GraphicsDevice *pGD, ID3D11InputLayout *pLay)
+{
+	pGD->mpContext1->lpVtbl->IASetInputLayout(pGD->mpContext1, pLay);
+}
+
+void GraphicsDevice_IASetVertexBuffers(GraphicsDevice *pGD,
+	ID3D11Buffer *pVB, uint32_t stride, uint32_t offset)
+{
+	pGD->mpContext1->lpVtbl->IASetVertexBuffers(pGD->mpContext1,
+		0, 1, &pVB, &stride, &offset);
+}
+
+void	GraphicsDevice_UpdateSubResource(GraphicsDevice *pGD,
+	ID3D11Resource *pDest, const void *pSrcData)
+{
+	pGD->mpContext1->lpVtbl->UpdateSubresource(pGD->mpContext1,
+		pDest, 0, NULL, pSrcData, 0, 0);
+
+}
+
+void GraphicsDevice_IASetPrimitiveTopology(GraphicsDevice *pGD, D3D11_PRIMITIVE_TOPOLOGY top)
+{
+	pGD->mpContext1->lpVtbl->IASetPrimitiveTopology(pGD->mpContext1, top);
+}
+
+void GraphicsDevice_VSSetShader(GraphicsDevice *pGD, ID3D11VertexShader *pVS)
+{
+	pGD->mpContext1->lpVtbl->VSSetShader(pGD->mpContext1, pVS, NULL, 0);
+}
+
+void GraphicsDevice_VSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf)
+{
+	pGD->mpContext1->lpVtbl->VSSetConstantBuffers(pGD->mpContext1, slot, 1, &pBuf);
+}
+
+void GraphicsDevice_PSSetShader(GraphicsDevice *pGD, ID3D11PixelShader *pPS)
+{
+	pGD->mpContext1->lpVtbl->PSSetShader(pGD->mpContext1, pPS, NULL, 0);
+}
+
+void GraphicsDevice_PSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf)
+{
+	pGD->mpContext1->lpVtbl->PSSetConstantBuffers(pGD->mpContext1, slot, 1, &pBuf);
+}
+
+void GraphicsDevice_RSSetState(GraphicsDevice *pGD, ID3D11RasterizerState *pRS)
+{
+	pGD->mpContext1->lpVtbl->RSSetState(pGD->mpContext1, pRS);
+}
+
+void GraphicsDevice_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV)
+{
+	pGD->mpContext1->lpVtbl->PSSetShaderResources(pGD->mpContext1, 0, 1, &pSRV);
+}
+
+void GraphicsDevice_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert)
+{
+	pGD->mpContext1->lpVtbl->Draw(pGD->mpContext1, vertCount, startVert);
+}
+
+void GraphicsDevice_Present(GraphicsDevice *pGD)
+{
+	HRESULT	hr	=pGD->mpSwapChain->lpVtbl->Present(pGD->mpSwapChain, 0, DXGI_PRESENT_ALLOW_TEARING);
+	if(hr == S_OK)
+	{
+		return;
+	}
+	printf("Present error 0x%X\n", hr);
 }

@@ -765,7 +765,7 @@ static void	CreateSRVCB(const UT_string *pKey, const void *pValue, void *pContex
 {
 	StuffContext	*pCon	=pContext;
 
-	ID3D11Texture2D	*pTex	=pValue;
+	const ID3D11Texture2D	*pTex	=pValue;
 
 	ID3D11Resource	*pRes;
 	pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
@@ -788,7 +788,7 @@ static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pCo
 {
 	StuffContext	*pCon	=pContext;
 
-	ID3D11Texture2D	*pTex	=pValue;
+	const ID3D11Texture2D	*pTex	=pValue;
 
 	ID3D11Resource	*pRes;
 	pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
@@ -1216,6 +1216,47 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 		numShaderData, numTex, numVS, numPS, numFonts, numSRVs, numFontSRVs);
 
 	return	pRet;
+}
+
+
+ID3D11DepthStencilState	*StuffKeeper_GetDepthStencilState(StuffKeeper *pSK, const char *pStateName)
+{
+	return	DictSZ_GetValueccp(pSK->mpDSSs, pStateName);
+}
+
+ID3D11BlendState	*StuffKeeper_GetBlendState(StuffKeeper *pSK, const char *pStateName)
+{
+	return	DictSZ_GetValueccp(pSK->mpBlends, pStateName);
+}
+
+ID3D11SamplerState	*StuffKeeper_GetSamplerState(StuffKeeper *pSK, const char *pStateName)
+{
+	return	DictSZ_GetValueccp(pSK->mpSSs, pStateName);
+}
+
+ID3D11Texture2D	*StuffKeeper_GetTexture2D(StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpTextures, pName);
+}
+
+ID3D11VertexShader	*StuffKeeper_GetVertexShader(StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpVShaders, pName);
+}
+
+ID3D11PixelShader	*StuffKeeper_GetPixelShader(StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpPShaders, pName);
+}
+
+ID3D11InputLayout	*StuffKeeper_GetInputLayout(StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpLayouts, pName);
+}
+
+ID3D11ShaderResourceView	*StuffKeeper_GetSRV(StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpSRVs, pName);
 }
 
 

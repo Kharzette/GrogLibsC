@@ -6,6 +6,7 @@ CFLAGS=-std=c17 -g -march=x86-64 -fpic -shared	\
 	-I../dxvk-native/include/native/windows	\
 	-I../dxvk-native/include/native	\
 	-I../uthash/include	\
+	-I../cglm/include	\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
 SOURCES=$(wildcard *.c)
 LIBS=-lvulkan
@@ -17,4 +18,5 @@ MaterialLib: $(SOURCES)
 	../SDL/build/libSDL3.so -lm	\
 	../libpng/build/lib/libpng.so	\
 	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_dxgi.so	\
-	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so
+	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so	\
+	../cglm/build/libcglm.so

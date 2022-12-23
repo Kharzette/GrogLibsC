@@ -37,14 +37,15 @@ cbuffer Post : register(b0)
 	float	mBlurFallOff;
 	float	mSharpNess;
 	float	mOpacity;
+	
+	//gaussianblur stuff
+	float	mWeightsX[KERNEL_SIZE], mWeightsY[KERNEL_SIZE];
+	float	mOffsetsX[KERNEL_SIZE], mOffsetsY[KERNEL_SIZE];
 }
 
 //this will probably be a KERNEL_SIZE * 4 float array on the C# side
 cbuffer PostBlur : register(b1)
 {
-	//gaussianblur stuff
-	float	mWeightsX[KERNEL_SIZE], mWeightsY[KERNEL_SIZE];
-	float	mOffsetsX[KERNEL_SIZE], mOffsetsY[KERNEL_SIZE];
 }
 
 //textures

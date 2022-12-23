@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-std=c17 -g -march=x86-64		\
+CFLAGS=-std=gnu2x -g -march=x86-64 -msse2	\
+	-ISDL/include	\
 	-Iuthash/include	\
 	-Idxvk-native/include/native/windows	\
 	-Idxvk-native/include/native/directx \

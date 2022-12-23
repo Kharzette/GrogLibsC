@@ -90,7 +90,7 @@ int main(void)
 	vertices[2].u	=ConvertToF16(0.0f);
 	vertices[2].v	=ConvertToF16(0.0f);
 
-	ID3D11Buffer	*pVB	=GraphicsDevice_CreateVertexBuffer(pGD, &vbDesc, vertices, sizeof(vertices));
+	ID3D11Buffer	*pVB	=GraphicsDevice_CreateBufferWithData(pGD, &vbDesc, vertices, sizeof(vertices));
 
 	//good old xna blue
 	float	clearColor[]	={ 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f };

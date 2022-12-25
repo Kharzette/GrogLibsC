@@ -165,7 +165,7 @@ static ID3D11Buffer	*MakeConstantBuffer(GraphicsDevice *pGD, size_t size)
 	D3D11_BUFFER_DESC	cbDesc;
 
 	//these are kind of odd, but change any one and it breaks		
-	cbDesc.BindFlags			=D3D10_BIND_CONSTANT_BUFFER;
+	cbDesc.BindFlags			=D3D11_BIND_CONSTANT_BUFFER;
 	cbDesc.ByteWidth			=size;
 	cbDesc.CPUAccessFlags		=0;	//you'd think write, but nope
 	cbDesc.MiscFlags			=0;
@@ -213,6 +213,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 }
 
 
+//assign buffers to shaders
 void	CBK_SetCommonCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//commonfunctions
@@ -263,6 +264,7 @@ void	CBK_SetTextModeToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 }
 
 
+//push changed cpu structs onto gpu
 void	CBK_UpdateFrame(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpPerFrameRes, pCBK->mpPerFrame);
@@ -305,7 +307,7 @@ void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD)
 
 
 //perframe stuff
-void SetView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
+void CBK_SetView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
 {
 	glmc_mat4_transpose_to(view, pCBK->mpPerFrame->mView);
 
@@ -313,8 +315,7 @@ void SetView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
 	glmc_vec3_flipsign_to(eyePos, pCBK->mpPerFrame->mEyePos);
 }
 
-
-void SetTransposedView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
+void CBK_SetTransposedView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
 {
 	glmc_mat4_copy(view, pCBK->mpPerFrame->mView);
 
@@ -322,32 +323,29 @@ void SetTransposedView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
 	glmc_vec3_flipsign_to(eyePos, pCBK->mpPerFrame->mEyePos);
 }
 
-
-void SetTransposedLightViewProj(CBKeeper *pCBK, const mat4 lvp)
+void CBK_SetTransposedLightViewProj(CBKeeper *pCBK, const mat4 lvp)
 {
 	glmc_mat4_copy(lvp, pCBK->mpPerFrame->mLightViewProj);
 }
 
-
-void SetLightViewProj(CBKeeper *pCBK, const mat4 lvp)
+void CBK_SetLightViewProj(CBKeeper *pCBK, const mat4 lvp)
 {
 	glmc_mat4_transpose_to(lvp, pCBK->mpPerFrame->mLightViewProj);
 }
 
-
-void SetTransposedProjection(CBKeeper *pCBK, const mat4 proj)
+void CBK_SetTransposedProjection(CBKeeper *pCBK, const mat4 proj)
 {
 	glmc_mat4_copy(proj, pCBK->mpPerFrame->mProjection);
 }
 
-
-void SetProjection(CBKeeper *pCBK, const mat4 proj)
+void CBK_SetProjection(CBKeeper *pCBK, const mat4 proj)
 {
 	glmc_mat4_transpose_to(proj, pCBK->mpPerFrame->mProjection);
 }
 
 
-void SetTrilights(CBKeeper *pCBK, const vec4 L0, const vec4 L1, const vec4 L2, const vec3 lightDir)
+//per object stuff
+void CBK_SetTrilights(CBKeeper *pCBK, const vec4 L0, const vec4 L1, const vec4 L2, const vec3 lightDir)
 {
 	glmc_vec4_copy(L0, pCBK->mpPerObject->mLightColor0);
 	glmc_vec4_copy(L1, pCBK->mpPerObject->mLightColor1);
@@ -355,8 +353,7 @@ void SetTrilights(CBKeeper *pCBK, const vec4 L0, const vec4 L1, const vec4 L2, c
 	glmc_vec3_copy(lightDir, pCBK->mpPerObject->mLightDirection);
 }
 
-
-void SetTrilights3(CBKeeper *pCBK, const vec3 L0, const vec3 L1, const vec3 L2, const vec3 lightDir)
+void CBK_SetTrilights3(CBKeeper *pCBK, const vec3 L0, const vec3 L1, const vec3 L2, const vec3 lightDir)
 {
 	glmc_vec4_copy3(L0, pCBK->mpPerObject->mLightColor0);
 	glmc_vec4_copy3(L1, pCBK->mpPerObject->mLightColor1);
@@ -369,81 +366,74 @@ void SetTrilights3(CBKeeper *pCBK, const vec3 L0, const vec3 L1, const vec3 L2, 
 	pCBK->mpPerObject->mLightColor2[3]	=1.0f;
 }
 
-
-void SetSolidColour(CBKeeper *pCBK, const vec4 sc)
+void CBK_SetSolidColour(CBKeeper *pCBK, const vec4 sc)
 {
 	glmc_vec4_copy(sc, pCBK->mpPerObject->mSolidColour);
 }
 
-
-void SetSpecular(CBKeeper *pCBK, const vec4 specColour, float specPow)
+void CBK_SetSpecular(CBKeeper *pCBK, const vec4 specColour, float specPow)
 {
 	glmc_vec4_copy(specColour, pCBK->mpPerObject->mSpecColor);
 
 	pCBK->mpPerObject->mSpecPower	=specPow;
 }
 
-
-void SetSpecularPower(CBKeeper *pCBK, float specPow)
+void CBK_SetSpecularPower(CBKeeper *pCBK, float specPow)
 {
 	pCBK->mpPerObject->mSpecPower	=specPow;
 }
 
-
-void SetWorldMat(CBKeeper *pCBK, const mat4 world)
+void CBK_SetWorldMat(CBKeeper *pCBK, const mat4 world)
 {
 	glmc_mat4_transpose_to(world, pCBK->mpPerObject->mWorld);
 }
 
-
-void SetTransposedWorldMat(CBKeeper *pCBK, const mat4 world)
+void CBK_SetTransposedWorldMat(CBKeeper *pCBK, const mat4 world)
 {
 	glmc_mat4_copy(world, pCBK->mpPerObject->mWorld);
 }
 
-
-void SetMaterialID(CBKeeper *pCBK, int matID)
+void CBK_SetMaterialID(CBKeeper *pCBK, int matID)
 {
 	pCBK->mpPerObject->mMaterialID	=matID;
 }
 
-
-void SetDanglyForce(CBKeeper *pCBK, const vec3 force)
+void CBK_SetDanglyForce(CBKeeper *pCBK, const vec3 force)
 {
 	glmc_vec3_copy(force, pCBK->mpPerObject->mDanglyForce);
 }
 
 
-void SetTextTransform(CBKeeper *pCBK, const vec2 textPos, const vec2 textScale)
+//2d stuff
+void CBK_SetTextTransform(CBKeeper *pCBK, const vec2 textPos, const vec2 textScale)
 {
 	glmc_vec2_copy(textPos, pCBK->mpTwoD->mTextPosition);
 	glmc_vec2_copy(textScale, pCBK->mpTwoD->mTextScale);
 }
 
-void SetSecondLayerOffset(CBKeeper *pCBK, const vec2 ofs)
+void CBK_SetSecondLayerOffset(CBKeeper *pCBK, const vec2 ofs)
 {
 	glmc_vec2_copy(ofs, pCBK->mpTwoD->mSecondLayerOffset);
 }
 
-void SetTextColor(CBKeeper *pCBK, const vec4 col)
+void CBK_SetTextColor(CBKeeper *pCBK, const vec4 col)
 {
 	glmc_vec4_copy(col, pCBK->mpTwoD->mTextColor);
 }
 
 
-void SetTextureEnabled(CBKeeper *pCBK, bool bOn)
+//BSP Stuff
+void CBK_SetTextureEnabled(CBKeeper *pCBK, bool bOn)
 {
 	pCBK->mpBSP->mbTextureEnabled	=bOn;
 }
 
-
-void SetTexSize(CBKeeper *pCBK, const vec2 size)
+void CBK_SetTexSize(CBKeeper *pCBK, const vec2 size)
 {
 	glmc_vec2_copy(size, pCBK->mpBSP->mTexSize);
 }
 
-
-void SetAniIntensities(CBKeeper *pCBK, const float *pAni)
+void CBK_SetAniIntensities(CBKeeper *pCBK, const float *pAni)
 {
 	if(pAni == NULL)
 	{
@@ -454,12 +444,13 @@ void SetAniIntensities(CBKeeper *pCBK, const float *pAni)
 }
 
 
-void SetBones(CBKeeper *pCBK, const mat4 *pBones)
+//character bones
+void CBK_SetBones(CBKeeper *pCBK, const mat4 *pBones)
 {
 	memcpy(pCBK->mBones, pBones, MAX_BONES * sizeof(mat4));
 }
 
-void SetBonesWithTranspose(CBKeeper *pCBK, const mat4 *pBones)
+void CBK_SetBonesWithTranspose(CBKeeper *pCBK, const mat4 *pBones)
 {
 	if(pBones == NULL)
 	{
@@ -473,13 +464,13 @@ void SetBonesWithTranspose(CBKeeper *pCBK, const mat4 *pBones)
 }
 
 
-void SetInvViewPort(CBKeeper *pCBK, const vec2 port)
+//postprocessing
+void CBK_SetInvViewPort(CBKeeper *pCBK, const vec2 port)
 {
 	glmc_vec2_copy(port, pCBK->mpPost->mInvViewPort);
 }
 
-
-void SetOutlinerVars(CBKeeper *pCBK, const vec2 size, float texelSteps, float threshold)
+void CBK_SetOutlinerVars(CBKeeper *pCBK, const vec2 size, float texelSteps, float threshold)
 {
 	glmc_vec2_copy(size, pCBK->mpPost->mScreenSize);
 
@@ -487,16 +478,14 @@ void SetOutlinerVars(CBKeeper *pCBK, const vec2 size, float texelSteps, float th
 	pCBK->mpPost->mThreshold	=threshold;
 }
 
-
-void SetBilateralBlurVars(CBKeeper *pCBK, float fallOff, float sharpness, float opacity)
+void CBK_SetBilateralBlurVars(CBKeeper *pCBK, float fallOff, float sharpness, float opacity)
 {
 	pCBK->mpPost->mBlurFallOff	=fallOff;
 	pCBK->mpPost->mSharpNess	=sharpness;
 	pCBK->mpPost->mOpacity		=opacity;
 }
 
-
-void SetBloomVars(CBKeeper *pCBK, float thresh, float intensity,
+void CBK_SetBloomVars(CBKeeper *pCBK, float thresh, float intensity,
 	float sat, float baseIntensity, float baseSat)
 {
 	pCBK->mpPost->mBloomThreshold	=thresh;
@@ -506,8 +495,7 @@ void SetBloomVars(CBKeeper *pCBK, float thresh, float intensity,
 	pCBK->mpPost->mBaseSaturation	=baseSat;
 }
 
-
-void SetWeightsOffsets(CBKeeper *pCBK,
+void CBK_SetWeightsOffsets(CBKeeper *pCBK,
 	const float *pWX, const float *pWY,
 	const float *pOffx, const float *pOffy)
 {
@@ -518,27 +506,27 @@ void SetWeightsOffsets(CBKeeper *pCBK,
 }
 
 
-void SetPerShadow(CBKeeper *pCBK, const vec3 shadowLightPos, bool bDirectional, float shadowAtten)
+//shadows
+void CBK_SetPerShadow(CBKeeper *pCBK, const vec3 shadowLightPos, bool bDirectional, float shadowAtten)
 {
 	glmc_vec3_copy(shadowLightPos, pCBK->mpPerShadow->mShadowLightPos);
 	pCBK->mpPerShadow->mbDirectional	=bDirectional;
 	pCBK->mpPerShadow->mShadowAtten		=shadowAtten;
 }
 
-
-void SetPerShadowDirectional(CBKeeper *pCBK, bool bDirectional)
+void CBK_SetPerShadowDirectional(CBKeeper *pCBK, bool bDirectional)
 {
 	pCBK->mpPerShadow->mbDirectional	=bDirectional;
 }
 
-
-void SetPerShadowLightPos(CBKeeper *pCBK, const vec3 pos)
+void CBK_SetPerShadowLightPos(CBKeeper *pCBK, const vec3 pos)
 {
 	glmc_vec3_copy(pos, pCBK->mpPerShadow->mShadowLightPos);
 }
 
 
-void SetTextModeScreenSize(CBKeeper *pCBK, uint32_t width, uint32_t height, uint32_t cwidth, uint32_t cheight)
+//Text Mode
+void CBK_SetTextModeScreenSize(CBKeeper *pCBK, uint32_t width, uint32_t height, uint32_t cwidth, uint32_t cheight)
 {
 	pCBK->mpTextMode->mWidth	=width;
 	pCBK->mpTextMode->mHeight	=height;
@@ -546,8 +534,7 @@ void SetTextModeScreenSize(CBKeeper *pCBK, uint32_t width, uint32_t height, uint
 	pCBK->mpTextMode->mCHeight	=cheight;
 }
 
-
-void SetTextModeFontInfo(CBKeeper *pCBK, uint32_t startChar, uint32_t numColumns, uint32_t charWidth, uint32_t charHeight)
+void CBK_SetTextModeFontInfo(CBKeeper *pCBK, uint32_t startChar, uint32_t numColumns, uint32_t charWidth, uint32_t charHeight)
 {
 	pCBK->mpTextMode->mStartChar	=startChar;
 	pCBK->mpTextMode->mNumColumns	=numColumns;

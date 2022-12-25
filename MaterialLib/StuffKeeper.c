@@ -477,9 +477,9 @@ static void	PreMultAndLinearRGB(uint8_t **pRows, int width, int height)
 			uint8_t	cG	=pRows[y][ofsX + 1];
 			uint8_t	cB	=pRows[y][ofsX + 2];
 
-			float	xc	=cR * 00255;
-			float	yc	=cG * 00255;
-			float	zc	=cB * 00255;
+			float	xc	=cR * oo255;
+			float	yc	=cG * oo255;
+			float	zc	=cB * oo255;
 
 			//convert to linear
 			xc	=powf(xc, 2.2);
@@ -508,10 +508,10 @@ static void	PreMultAndLinearRGBA(uint8_t **pRows, int width, int height)
 			uint8_t	cB	=pRows[y][ofsX + 2];
 			uint8_t	cA	=pRows[y][ofsX + 3];
 
-			float	xc	=cR * 00255;
-			float	yc	=cG * 00255;
-			float	zc	=cB * 00255;
-			float	wc	=cA * 00255;
+			float	xc	=cR * oo255;
+			float	yc	=cG * oo255;
+			float	zc	=cB * oo255;
+			float	wc	=cA * oo255;
 
 			//convert to linear
 			xc	=powf(xc, 2.2);
@@ -768,7 +768,7 @@ static void	CreateSRVCB(const UT_string *pKey, const void *pValue, void *pContex
 	const ID3D11Texture2D	*pTex	=pValue;
 
 	ID3D11Resource	*pRes;
-	pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
+	pTex->lpVtbl->QueryInterface((ID3D11Texture2D *)pTex, &IID_ID3D11Resource, (void **)&pRes);
 	if(pRes == NULL)
 	{
 		printf("Error getting resource interface from a texture!\n");
@@ -791,7 +791,7 @@ static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pCo
 	const ID3D11Texture2D	*pTex	=pValue;
 
 	ID3D11Resource	*pRes;
-	pTex->lpVtbl->QueryInterface(pTex, &IID_ID3D11Resource, (void **)&pRes);
+	pTex->lpVtbl->QueryInterface((ID3D11Texture2D *)pTex, &IID_ID3D11Resource, (void **)&pRes);
 	if(pRes == NULL)
 	{
 		printf("Error getting resource interface from a texture!\n");

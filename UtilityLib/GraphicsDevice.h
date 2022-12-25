@@ -48,6 +48,8 @@ extern ID3D11DepthStencilState	*GraphicsDevice_CreateDepthStencilState(
 
 //do stuff
 extern void GraphicsDevice_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert);
+extern void GraphicsDevice_DrawIndexed(GraphicsDevice *pGD,
+	uint32_t indexCount, uint32_t startIndex, uint32_t baseVert);
 extern void GraphicsDevice_Present(GraphicsDevice *pGD);
 
 //set states
@@ -62,9 +64,13 @@ extern void GraphicsDevice_VSSetShader(GraphicsDevice *pGD, ID3D11VertexShader *
 extern void GraphicsDevice_VSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf);
 extern void GraphicsDevice_PSSetShader(GraphicsDevice *pGD, ID3D11PixelShader *pPS);
 extern void GraphicsDevice_PSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf);
+extern void	GraphicsDevice_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp);
 extern void GraphicsDevice_RSSetState(GraphicsDevice *pGD, ID3D11RasterizerState *pRS);
+extern void GraphicsDevice_RSSetViewPort(GraphicsDevice *pGD, const D3D11_VIEWPORT *pVP);
 extern void GraphicsDevice_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV);
 extern void GraphicsDevice_IASetVertexBuffers(GraphicsDevice *pGD,
 	ID3D11Buffer *pVB, uint32_t stride, uint32_t offset);
+extern void GraphicsDevice_IASetIndexBuffers(GraphicsDevice *pGD,
+	ID3D11Buffer *pIB, DXGI_FORMAT fmt, uint32_t offset);
 extern void	GraphicsDevice_UpdateSubResource(GraphicsDevice *pGD,
 	ID3D11Resource *pDest, const void *pSrcData);

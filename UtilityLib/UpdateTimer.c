@@ -1,6 +1,7 @@
 #include	<stdint.h>
 #include	<stdbool.h>
 #include	<stdlib.h>
+#include	<string.h>
 #include	<assert.h>
 #include	<threads.h>
 #include	<time.h>
@@ -69,6 +70,8 @@ static long MilliSecondsToTics(float milliSeconds)
 UpdateTimer	*UpdateTimer_Create(bool bFixed, bool bSpendRemainder)
 {
 	UpdateTimer	*pRet	=malloc(sizeof(UpdateTimer));
+
+	memset(pRet, 0, sizeof(UpdateTimer));
 
 	pRet->mbFixedStep		=bFixed;
 	pRet->mbSpendRemainder	=bSpendRemainder;
@@ -165,6 +168,8 @@ void UpdateTimer_UpdateDone(UpdateTimer *pUT)
 	{
 		pUT->mFullUpdateTime	=0;
 	}
+
+	assert(pUT->mFullUpdateTime <= pUT->mMaxDelta);
 }
 
 

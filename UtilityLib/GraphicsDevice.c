@@ -203,10 +203,10 @@ ID3D11Texture2D	*GraphicsDevice_MakeTexture(GraphicsDevice *pGD, uint8_t **pRows
 
 	for(int y=0;y < h;y++)
 	{
-		memcpy(pBytes + (y * w), pRows[y], w * 4);
+		memcpy(pBytes + (y * (w * 4)), pRows[y], w * 4);
 	}
 
-	D3D11_SUBRESOURCE_DATA	sd	={ pBytes, w, 0 };
+	D3D11_SUBRESOURCE_DATA	sd	={ pBytes, w * 4, 0 };
 
 	ID3D11Texture2D	*pRet;
 
@@ -427,6 +427,12 @@ void GraphicsDevice_IASetVertexBuffers(GraphicsDevice *pGD,
 		0, 1, &pVB, &stride, &offset);
 }
 
+void GraphicsDevice_IASetIndexBuffers(GraphicsDevice *pGD,
+	ID3D11Buffer *pIB, DXGI_FORMAT fmt, uint32_t offset)
+{
+	pGD->mpContext1->lpVtbl->IASetIndexBuffer(pGD->mpContext1, pIB, fmt, offset);
+}
+
 void	GraphicsDevice_UpdateSubResource(GraphicsDevice *pGD,
 	ID3D11Resource *pDest, const void *pSrcData)
 {
@@ -465,6 +471,11 @@ void GraphicsDevice_RSSetState(GraphicsDevice *pGD, ID3D11RasterizerState *pRS)
 	pGD->mpContext1->lpVtbl->RSSetState(pGD->mpContext1, pRS);
 }
 
+void GraphicsDevice_RSSetViewPort(GraphicsDevice *pGD, const D3D11_VIEWPORT *pVP)
+{
+	pGD->mpContext1->lpVtbl->RSSetViewports(pGD->mpContext1, 1, pVP);
+}
+
 void GraphicsDevice_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV)
 {
 	pGD->mpContext1->lpVtbl->PSSetShaderResources(pGD->mpContext1, 0, 1, &pSRV);
@@ -473,6 +484,17 @@ void GraphicsDevice_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV
 void GraphicsDevice_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert)
 {
 	pGD->mpContext1->lpVtbl->Draw(pGD->mpContext1, vertCount, startVert);
+}
+
+void	GraphicsDevice_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp)
+{
+	pGD->mpContext1->lpVtbl->PSSetSamplers(pGD->mpContext1, 0, 1, &pSamp);
+}
+
+void GraphicsDevice_DrawIndexed(GraphicsDevice *pGD,
+	uint32_t indexCount, uint32_t startIndex, uint32_t baseVert)
+{
+	pGD->mpContext1->lpVtbl->DrawIndexed(pGD->mpContext1, indexCount, startIndex, baseVert);
 }
 
 void GraphicsDevice_Present(GraphicsDevice *pGD)

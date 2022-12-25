@@ -1,10 +1,11 @@
 CC=gcc
-CFLAGS=-std=gnu17 -g -march=x86-64 -fpic -shared \
+CFLAGS=-std=gnu17 -g -march=x86-64 -msse2 -mf16c -fpic -shared \
 	-I../SDL/include	\
 	-I../uthash/include	\
 	-I../dxvk-native/include/native/directx \
 	-I../dxvk-native/include/native/windows	\
 	-I../dxvk-native/include/native	\
+	-I../cglm/include	\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
 SOURCES=$(wildcard *.c)
 LIBS=-lvulkan

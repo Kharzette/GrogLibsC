@@ -133,6 +133,12 @@ bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 		printf("Error getting back buffer: %dX\n", hres);
 		goto	quit;
 	}
+
+	D3D11_RENDER_TARGET_VIEW_DESC	rtvDesc;
+	memset(&rtvDesc, 0, sizeof(D3D11_RENDER_TARGET_VIEW_DESC));
+
+	rtvDesc.ViewDimension		=D3D11_SRV_DIMENSION_TEXTURE2D;
+	rtvDesc.Format				=DXGI_FORMAT_R8G8B8A8_UNORM;
 	
 	hres	=pGD->mpDevice1->lpVtbl->CreateRenderTargetView(pGD->mpDevice1,
 		(ID3D11Resource *)backBuffer, NULL, &pGD->mpBackBufferView);
@@ -199,14 +205,36 @@ ID3D11Texture2D	*GraphicsDevice_MakeTexture(GraphicsDevice *pGD, uint8_t **pRows
 	texDesc.SampleDesc.Quality	=0;
 
 	//get this into a linear chunk
-	uint8_t	*pBytes	=malloc(h * (w * 4));
+	uint8_t	*pBytes	=malloc(h * w * 4);
 
-	for(int y=0;y < h;y++)
+	if(rowPitch > (w * 3))
 	{
-		memcpy(pBytes + (y * (w * 4)), pRows[y], w * 4);
+		//already has alpha?
+		for(int y=0;y < h;y++)
+		{
+			memcpy(pBytes + (y * rowPitch), pRows[y], rowPitch);
+		}
+	}
+	else
+	{
+		for(int y=0;y < h;y++)
+		{
+			uint8_t *pRow	=pBytes + (y * (w * 4));
+
+			for(int x=0;x < w;x++)
+			{
+				int	ofs3	=x * 3;
+				int	ofs4	=x * 4;
+
+				pRow[ofs4]		=pRows[y][ofs3];
+				pRow[ofs4 + 1]	=pRows[y][ofs3 + 1];
+				pRow[ofs4 + 2]	=pRows[y][ofs3 + 2];
+				pRow[ofs4 + 3]	=0xFF;
+			}
+		}
 	}
 
-	D3D11_SUBRESOURCE_DATA	sd	={ pBytes, w * 4, 0 };
+	D3D11_SUBRESOURCE_DATA	sd	={ pBytes, (w * 4), 0 };
 
 	ID3D11Texture2D	*pRet;
 
@@ -249,8 +277,10 @@ ID3D11ShaderResourceView	*GraphicsDevice_CreateSRV(GraphicsDevice *pGD, ID3D11Re
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC	desc;
 
+	memset(&desc, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+
 	D3D11_BUFFER_SRV	buf	={0, 0};
-	D3D11_TEX2D_SRV		tex	={-1, -1};
+	D3D11_TEX2D_SRV		tex	={0, -1};
 
 	desc.Format				=DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.ViewDimension		=D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -486,9 +516,9 @@ void GraphicsDevice_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t start
 	pGD->mpContext1->lpVtbl->Draw(pGD->mpContext1, vertCount, startVert);
 }
 
-void	GraphicsDevice_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp)
+void	GraphicsDevice_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot)
 {
-	pGD->mpContext1->lpVtbl->PSSetSamplers(pGD->mpContext1, 0, 1, &pSamp);
+	pGD->mpContext1->lpVtbl->PSSetSamplers(pGD->mpContext1, slot, 1, &pSamp);
 }
 
 void GraphicsDevice_DrawIndexed(GraphicsDevice *pGD,

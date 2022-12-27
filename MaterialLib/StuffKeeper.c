@@ -623,7 +623,7 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 	}
 	else if(colType == PNG_COLOR_TYPE_PALETTE)
 	{
-
+		PreMultAndLinearRGB(pRows, width, height);
 	}
 	else
 	{
@@ -932,14 +932,14 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	sampDesc.AddressU			=D3D11_TEXTURE_ADDRESS_CLAMP;
 	sampDesc.AddressV			=D3D11_TEXTURE_ADDRESS_CLAMP;
 	sampDesc.AddressW			=D3D11_TEXTURE_ADDRESS_CLAMP;
-	sampDesc.BorderColor[0]		=0.0f;	//never use this
+	sampDesc.BorderColor[0]		=1.0f;	//never use this
 	sampDesc.BorderColor[1]		=0.0f;	//never use this
 	sampDesc.BorderColor[2]		=0.0f;	//never use this
-	sampDesc.BorderColor[3]		=0.0f;	//never use this
-	sampDesc.ComparisonFunc		=D3D11_COMPARISON_LESS;
+	sampDesc.BorderColor[3]		=1.0f;	//never use this
+	sampDesc.ComparisonFunc		=D3D11_COMPARISON_NEVER;
 	sampDesc.Filter				=D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	sampDesc.MaxAnisotropy		=16;
-	sampDesc.MaxLOD				=D3D11_FLOAT32_MAX;
+	sampDesc.MaxLOD				=0;//D3D11_FLOAT32_MAX;
 	sampDesc.MinLOD				=0;
 	sampDesc.MipLODBias			=0.0f;
 

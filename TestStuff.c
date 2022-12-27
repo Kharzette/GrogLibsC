@@ -17,8 +17,9 @@
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
 
-#define	RESX	800
-#define	RESY	600
+#define	RESX		800
+#define	RESY		600
+#define	ROT_RATE	10.0f
 
 
 int main(void)
@@ -49,7 +50,7 @@ int main(void)
 
 	float	aspect	=(float)RESX / (float)RESY;
 
-	mat4	world, view, proj;
+	mat4	ident, world, view, proj, yaw, pitch;
 	vec3	eyePos	={ 9.0f, 10.0f, 22.0f };
 	vec3	targPos	={ 0.0f, 0.0f, 0.0f };
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
@@ -59,6 +60,7 @@ int main(void)
 
 	glm_lookat_rh(eyePos, targPos, upVec, view);
 
+	glmc_mat4_identity(ident);
 	glmc_mat4_identity(world);
 
 	CBK_SetWorldMat(pCBK, world);
@@ -80,19 +82,20 @@ int main(void)
 	GraphicsDevice_RSSetViewPort(pGD, &vp);
 
 	GraphicsDevice_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-	GraphicsDevice_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidPS"));
+//	GraphicsDevice_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidPS"));
+	GraphicsDevice_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
 	GraphicsDevice_RSSetState(pGD, pRast);
 	GraphicsDevice_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
-	GraphicsDevice_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "MortaredStone"));
+	GraphicsDevice_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Brick"));
 	GraphicsDevice_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 	GraphicsDevice_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	GraphicsDevice_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"));
+	GraphicsDevice_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
 
 	vec4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	vec4	solidColor	={	1.0f, 0.0f, 1.0f, 1.0f	};
+	vec4	solidColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	vec3	light0		={	1.0f, 1.0f, 1.0f	};
-	vec3	light1		={	0.3f, 0.3f, 0.3f	};
-	vec3	light2		={	0.2f, 0.2f, 0.2f	};
+	vec3	light1		={	0.2f, 0.3f, 0.3f	};
+	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 	vec3	lightDir	={	0.3f, -0.7f, 0.2f	};
 
 	glmc_vec3_normalize(lightDir);
@@ -104,6 +107,9 @@ int main(void)
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, true);
 
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
+
+	float	cubeYaw		=0.0f;
+	float	cubePitch	=0.0f;
 
 	bool	bRunning	=true;
 	while(bRunning)
@@ -121,11 +127,28 @@ int main(void)
 			}
 			//do input here
 			//move camera etc
+
+			cubeYaw		+=ROT_RATE * UpdateTimer_GetUpdateDeltaSeconds(pUT);
+			cubePitch	+=0.25f * ROT_RATE * UpdateTimer_GetUpdateDeltaSeconds(pUT);
+
+			//wrap angles
+			cubeYaw		=fmodf(cubeYaw, 360.0f);
+			cubePitch	=fmodf(cubePitch, 360.0f);
+
+			glmc_rotate_y(ident, glm_rad(cubeYaw), yaw);
+			glmc_rotate_x(ident, glm_rad(cubePitch), pitch);
+
+			glmc_mat4_mul(yaw, pitch, world);
+
+			CBK_SetWorldMat(pCBK, world);
+
 			UpdateTimer_UpdateDone(pUT);
 		}
 
 		GraphicsDevice_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
 		GraphicsDevice_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+
+		CBK_SetWorldMat(pCBK, world);
 
 		//camera update
 

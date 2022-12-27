@@ -64,7 +64,7 @@ extern void GraphicsDevice_VSSetShader(GraphicsDevice *pGD, ID3D11VertexShader *
 extern void GraphicsDevice_VSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf);
 extern void GraphicsDevice_PSSetShader(GraphicsDevice *pGD, ID3D11PixelShader *pPS);
 extern void GraphicsDevice_PSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf);
-extern void	GraphicsDevice_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp);
+extern void	GraphicsDevice_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot);
 extern void GraphicsDevice_RSSetState(GraphicsDevice *pGD, ID3D11RasterizerState *pRS);
 extern void GraphicsDevice_RSSetViewPort(GraphicsDevice *pGD, const D3D11_VIEWPORT *pVP);
 extern void GraphicsDevice_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV);

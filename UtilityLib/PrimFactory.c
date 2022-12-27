@@ -8,6 +8,7 @@
 #include	<cglm/call.h>
 #include	"GraphicsDevice.h"
 #include	"PrimFactory.h"
+#include	"MiscStuff.h"
 
 
 typedef struct	VPosNormTex0_t
@@ -20,34 +21,6 @@ typedef struct	VPosNormTex0_t
 static	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
 static	vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
 static	vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
-
-static __m128i	Convert4F32ToF16m128i(float f0, float f1, float f2, float f3)
-{
-	__attribute__((aligned(16)))	float	vec[4]	={ f0, f1, f2, f3 };
-
-	__m128	arg	=_mm_load_ps(vec);
-
-	//according to stacko:
-	//0	nearest
-	//1	floor
-	//2	ceil
-	//3	trunc
-	return	_mm_cvtps_ph(arg, 0);
-}
-
-static void	Convert4ToF16(float f0, float f1, float f2, float f3, uint16_t *pDest)
-{
-	__m128i	converted	=Convert4F32ToF16m128i(f0, f1, f2, f3);
-
-	memcpy(pDest, &converted, 8);
-}
-
-static	void	Convert2ToF16(float f0, float f1, uint16_t *pDest)
-{
-	__m128i	converted	=Convert4F32ToF16m128i(f0, f1, f0, f1);
-
-	memcpy(pDest, &converted, 4);
-}
 
 static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {
@@ -129,43 +102,43 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD)
 	glmc_vec3_copy(lowerTopRight,	vpnt[20].Position);
 
 	//normals
-	Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[0].Normal);
-	Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[1].Normal);
-	Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[2].Normal);
-	Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[3].Normal);
+	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[0].Normal);
+	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[1].Normal);
+	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[2].Normal);
+	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[3].Normal);
 
-	Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnt[4].Normal);
-	Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnt[5].Normal);
-	Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnt[6].Normal);
-	Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnt[7].Normal);
+	Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnt[4].Normal);
+	Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnt[5].Normal);
+	Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnt[6].Normal);
+	Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnt[7].Normal);
 
-	Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnt[8].Normal);
-	Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnt[9].Normal);
-	Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnt[10].Normal);
-	Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnt[11].Normal);
+	Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnt[8].Normal);
+	Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnt[9].Normal);
+	Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnt[10].Normal);
+	Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnt[11].Normal);
 
-	Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnt[12].Normal);
-	Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnt[13].Normal);
-	Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnt[14].Normal);
-	Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnt[15].Normal);
+	Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnt[12].Normal);
+	Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnt[13].Normal);
+	Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnt[14].Normal);
+	Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnt[15].Normal);
 
-	Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnt[16].Normal);
-	Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnt[17].Normal);
-	Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnt[18].Normal);
-	Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnt[19].Normal);
+	Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnt[16].Normal);
+	Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnt[17].Normal);
+	Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnt[18].Normal);
+	Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnt[19].Normal);
 
-	Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnt[20].Normal);
-	Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnt[21].Normal);
-	Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnt[22].Normal);
-	Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnt[23].Normal);
+	Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnt[20].Normal);
+	Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnt[21].Normal);
+	Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnt[22].Normal);
+	Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnt[23].Normal);
 
 	//texcoords
 	for(int i=0;i < 24;i+=4)
 	{
-		Convert2ToF16(0.0f, 0.0f, vpnt[i].TexCoord0);
-		Convert2ToF16(1.0f, 0.0f, vpnt[i + 1].TexCoord0);
-		Convert2ToF16(1.0f, 1.0f, vpnt[i + 2].TexCoord0);
-		Convert2ToF16(0.0f, 1.0f, vpnt[i + 3].TexCoord0);
+		Misc_Convert2ToF16(0.0f, 0.0f, vpnt[i].TexCoord0);
+		Misc_Convert2ToF16(1.0f, 0.0f, vpnt[i + 1].TexCoord0);
+		Misc_Convert2ToF16(1.0f, 1.0f, vpnt[i + 2].TexCoord0);
+		Misc_Convert2ToF16(0.0f, 1.0f, vpnt[i + 3].TexCoord0);
 	}
 
 	//indexes
@@ -193,11 +166,11 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD)
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
 	MakeVBDesc(&bufDesc, sizeof(VPosNormTex0) * 24);
-	pObj->mpVB	=GraphicsDevice_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
+	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
 
 	//make index buffer
 	MakeIBDesc(&bufDesc, 36 * 2);
-	pObj->mpIB	=GraphicsDevice_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
+	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
 
 	return	pObj;
 }

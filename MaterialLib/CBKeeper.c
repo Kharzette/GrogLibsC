@@ -173,7 +173,7 @@ static ID3D11Buffer	*MakeConstantBuffer(GraphicsDevice *pGD, size_t size)
 	cbDesc.StructureByteStride	=0;	//only for structuredbuffer
 
 	//alloc
-	return	GraphicsDevice_CreateBuffer(pGD, &cbDesc);
+	return	GD_CreateBuffer(pGD, &cbDesc);
 }
 
 
@@ -217,92 +217,92 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 void	CBK_SetCommonCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//commonfunctions
-	GraphicsDevice_VSSetConstantBuffer(pGD, 0, pCBK->mpPerObjectBuf);
-	GraphicsDevice_PSSetConstantBuffer(pGD, 0, pCBK->mpPerObjectBuf);
-	GraphicsDevice_VSSetConstantBuffer(pGD, 1, pCBK->mpPerFrameBuf);
-	GraphicsDevice_PSSetConstantBuffer(pGD, 1, pCBK->mpPerFrameBuf);
+	GD_VSSetConstantBuffer(pGD, 0, pCBK->mpPerObjectBuf);
+	GD_PSSetConstantBuffer(pGD, 0, pCBK->mpPerObjectBuf);
+	GD_VSSetConstantBuffer(pGD, 1, pCBK->mpPerFrameBuf);
+	GD_PSSetConstantBuffer(pGD, 1, pCBK->mpPerFrameBuf);
 }
 
 void	CBK_Set2DCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//2d
-	GraphicsDevice_VSSetConstantBuffer(pGD, 3, pCBK->mpTwoDBuf);
-	GraphicsDevice_PSSetConstantBuffer(pGD, 3, pCBK->mpTwoDBuf);
+	GD_VSSetConstantBuffer(pGD, 3, pCBK->mpTwoDBuf);
+	GD_PSSetConstantBuffer(pGD, 3, pCBK->mpTwoDBuf);
 }
 
 void	CBK_SetCharacterToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//character
-	GraphicsDevice_VSSetConstantBuffer(pGD, 4, pCBK->mpCharacterBuf);
+	GD_VSSetConstantBuffer(pGD, 4, pCBK->mpCharacterBuf);
 }
 
 void	CBK_SetBSPToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//bsp
-	GraphicsDevice_VSSetConstantBuffer(pGD, 5, pCBK->mpBSPBuf);
-	GraphicsDevice_PSSetConstantBuffer(pGD, 5, pCBK->mpBSPBuf);
+	GD_VSSetConstantBuffer(pGD, 5, pCBK->mpBSPBuf);
+	GD_PSSetConstantBuffer(pGD, 5, pCBK->mpBSPBuf);
 }
 
 void	CBK_SetPostToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//post
-	GraphicsDevice_VSSetConstantBuffer(pGD, 0, pCBK->mpPostBuf);
-	GraphicsDevice_PSSetConstantBuffer(pGD, 0, pCBK->mpPostBuf);
+	GD_VSSetConstantBuffer(pGD, 0, pCBK->mpPostBuf);
+	GD_PSSetConstantBuffer(pGD, 0, pCBK->mpPostBuf);
 }
 
 void	CBK_SetPerShadowToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//shadows
-	GraphicsDevice_VSSetConstantBuffer(pGD, 2, pCBK->mpPerShadowBuf);
-	GraphicsDevice_PSSetConstantBuffer(pGD, 2, pCBK->mpPerShadowBuf);
+	GD_VSSetConstantBuffer(pGD, 2, pCBK->mpPerShadowBuf);
+	GD_PSSetConstantBuffer(pGD, 2, pCBK->mpPerShadowBuf);
 }
 
 void	CBK_SetTextModeToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//textmode
-	GraphicsDevice_PSSetConstantBuffer(pGD, 7, pCBK->mpTextModeBuf);
+	GD_PSSetConstantBuffer(pGD, 7, pCBK->mpTextModeBuf);
 }
 
 
 //push changed cpu structs onto gpu
 void	CBK_UpdateFrame(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpPerFrameRes, pCBK->mpPerFrame);
+	GD_UpdateSubResource(pGD, pCBK->mpPerFrameRes, pCBK->mpPerFrame);
 }
 
 void	CBK_UpdateObject(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpPerObjectRes, pCBK->mpPerObject);
+	GD_UpdateSubResource(pGD, pCBK->mpPerObjectRes, pCBK->mpPerObject);
 }
 
 void	CBK_UpdateTwoD(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpTwoDRes, pCBK->mpTwoD);
+	GD_UpdateSubResource(pGD, pCBK->mpTwoDRes, pCBK->mpTwoD);
 }
 
 void	CBK_UpdateCharacter(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpCharacterRes, pCBK->mBones);
+	GD_UpdateSubResource(pGD, pCBK->mpCharacterRes, pCBK->mBones);
 }
 
 void	CBK_UpdateBSP(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpBSPRes, pCBK->mpBSP);
+	GD_UpdateSubResource(pGD, pCBK->mpBSPRes, pCBK->mpBSP);
 }
 
 void	CBK_UpdatePost(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpPostRes, pCBK->mpPost);
+	GD_UpdateSubResource(pGD, pCBK->mpPostRes, pCBK->mpPost);
 }
 
 void	CBK_UpdatePerShadow(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpPerShadowRes, pCBK->mpPerShadow);
+	GD_UpdateSubResource(pGD, pCBK->mpPerShadowRes, pCBK->mpPerShadow);
 }
 
 void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	GraphicsDevice_UpdateSubResource(pGD, pCBK->mpTextModeRes, pCBK->mpTextMode);
+	GD_UpdateSubResource(pGD, pCBK->mpTextModeRes, pCBK->mpTextMode);
 }
 
 

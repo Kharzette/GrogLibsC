@@ -146,7 +146,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPos
 	ShaderBytes			*pCode	=DictSZ_GetValueccp(pVSCode, "WPosVS");
-	ID3D11InputLayout	*pLO	=GraphicsDevice_CreateInputLayout(pGD, iedVPos, 1, pCode->mpBytes, pCode->mLen);
+	ID3D11InputLayout	*pLO	=GD_CreateInputLayout(pGD, iedVPos, 1, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -156,7 +156,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosTex0
 	pCode	=DictSZ_GetValueccp(pVSCode, "SkyVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosTex0, 2, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosTex0, 2, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -166,7 +166,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPos2Tex02
 	pCode	=DictSZ_GetValueccp(pVSCode, "TextVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPos2Tex02, 2, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPos2Tex02, 2, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -176,7 +176,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPos2Tex04
 	pCode	=DictSZ_GetValueccp(pVSCode, "KeyedGumpVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPos2Tex04, 2, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPos2Tex04, 2, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -186,7 +186,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormTex0
 	pCode	=DictSZ_GetValueccp(pVSCode, "TexTriVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormTex0, 3, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex0, 3, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -196,7 +196,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormTex04
 	pCode	=DictSZ_GetValueccp(pVSCode, "LightMapVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormTex04, 3, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex04, 3, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -206,7 +206,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormTex0Col0
 	pCode	=DictSZ_GetValueccp(pVSCode, "VertexLitVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormTex0Col0, 4, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex0Col0, 4, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -216,7 +216,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPos4Tex04Tex14
 	pCode	=DictSZ_GetValueccp(pVSCode, "ParticleVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPos4Tex04Tex14, 3, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPos4Tex04Tex14, 3, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -226,7 +226,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormTex04Tex14Tex24Col04
 	pCode	=DictSZ_GetValueccp(pVSCode, "LightMapAnimVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormTex04Tex14Tex24Col04, 6, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex04Tex14Tex24Col04, 6, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -236,7 +236,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormBone
 	pCode	=DictSZ_GetValueccp(pVSCode, "DMNVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormBone, 4, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormBone, 4, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -246,7 +246,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormBoneCol0
 	pCode	=DictSZ_GetValueccp(pVSCode, "DMNDanglyVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormBoneCol0, 5, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormBoneCol0, 5, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -256,7 +256,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormBoneTex0
 	pCode	=DictSZ_GetValueccp(pVSCode, "SkinTexTriColVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormBoneTex0, 5, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormBoneTex0, 5, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -266,7 +266,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormBoneTex0Tex1
 	pCode	=DictSZ_GetValueccp(pVSCode, "SkinTex0Tex1TriColVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormBoneTex0Tex1, 6, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormBoneTex0Tex1, 6, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -276,7 +276,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 	
 	//VPosNormTanTex0
 	pCode	=DictSZ_GetValueccp(pVSCode, "WNormWTanBTanWPosVS");
-	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormTanTex0, 4, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTanTex0, 4, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -286,7 +286,7 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 
 	//VPosNormTex04Col0, do when terrain gets added
 //	pCode	=DictSZ_GetValueccp(pVSCode, "WNormWPosTexFactVS");
-//	pLO		=GraphicsDevice_CreateInputLayout(pGD, iedVPosNormTex04Col0, 4, pCode->mpBytes, pCode->mLen);
+//	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex04Col0, 4, pCode->mpBytes, pCode->mLen);
 //	if(pLO == NULL)
 //	{
 //		printf("Error creating layout.\n");

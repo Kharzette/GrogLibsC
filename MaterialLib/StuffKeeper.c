@@ -640,7 +640,7 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 
 	png_destroy_read_struct(&pPng, &pInfo, NULL);
 
-	ID3D11Texture2D	*pTex	=GraphicsDevice_MakeTexture(pGD, pRows, width, height, rowPitch);
+	ID3D11Texture2D	*pTex	=GD_MakeTexture(pGD, pRows, width, height, rowPitch);
 
 	//free data
 	for(int y=0;y < height;y++)
@@ -739,7 +739,7 @@ static void	CreateVShaderCB(const UT_string *pKey, const void *pValue, void *pCo
 
 	const ShaderBytes	*pSB	=pValue;
 
-	ID3D11VertexShader	*pVS	=GraphicsDevice_CreateVertexShader(
+	ID3D11VertexShader	*pVS	=GD_CreateVertexShader(
 									pCon->mpGD, pSB->mpBytes, pSB->mLen);
 	if(pVS != NULL)
 	{
@@ -753,7 +753,7 @@ static void	CreatePShaderCB(const UT_string *pKey, const void *pValue, void *pCo
 
 	const ShaderBytes	*pSB	=pValue;
 
-	ID3D11VertexShader	*pVS	=GraphicsDevice_CreatePixelShader(
+	ID3D11VertexShader	*pVS	=GD_CreatePixelShader(
 									pCon->mpGD, pSB->mpBytes, pSB->mLen);
 	if(pVS != NULL)
 	{
@@ -775,7 +775,7 @@ static void	CreateSRVCB(const UT_string *pKey, const void *pValue, void *pContex
 		return;
 	}
 
-	ID3D11ShaderResourceView	*pSRV	=GraphicsDevice_CreateSRV(pCon->mpGD, pRes);
+	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pCon->mpGD, pRes);
 	if(pSRV != NULL)
 	{
 		DictSZ_Add(&pCon->mpSK->mpSRVs, pKey, pSRV);
@@ -798,7 +798,7 @@ static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pCo
 		return;
 	}
 
-	ID3D11ShaderResourceView	*pSRV	=GraphicsDevice_CreateSRV(pCon->mpGD, pRes);
+	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pCon->mpGD, pRes);
 	if(pSRV != NULL)
 	{
 		DictSZ_Add(&pCon->mpSK->mpFontSRVs, pKey, pSRV);
@@ -943,7 +943,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	sampDesc.MinLOD				=0;
 	sampDesc.MipLODBias			=0.0f;
 
-	ID3D11SamplerState	*pSS	=GraphicsDevice_CreateSamplerState(pGD, &sampDesc);
+	ID3D11SamplerState	*pSS	=GD_CreateSamplerState(pGD, &sampDesc);
 	if(pSS == NULL)
 	{
 		printf("Error creating sampler state!\n");
@@ -955,7 +955,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	sampDesc.AddressU	=D3D11_TEXTURE_ADDRESS_WRAP;
 	sampDesc.AddressV	=D3D11_TEXTURE_ADDRESS_WRAP;
 	sampDesc.AddressW	=D3D11_TEXTURE_ADDRESS_WRAP;
-	pSS	=GraphicsDevice_CreateSamplerState(pGD, &sampDesc);
+	pSS	=GD_CreateSamplerState(pGD, &sampDesc);
 	if(pSS == NULL)
 	{
 		printf("Error creating sampler state!\n");
@@ -965,7 +965,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 
 	//point filter for a pixelly look
 	sampDesc.Filter	=D3D11_FILTER_MIN_MAG_MIP_POINT;
-	pSS	=GraphicsDevice_CreateSamplerState(pGD, &sampDesc);
+	pSS	=GD_CreateSamplerState(pGD, &sampDesc);
 	if(pSS == NULL)
 	{
 		printf("Error creating sampler state!\n");
@@ -977,7 +977,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	sampDesc.AddressU	=D3D11_TEXTURE_ADDRESS_CLAMP;
 	sampDesc.AddressV	=D3D11_TEXTURE_ADDRESS_CLAMP;
 	sampDesc.AddressW	=D3D11_TEXTURE_ADDRESS_CLAMP;
-	pSS	=GraphicsDevice_CreateSamplerState(pGD, &sampDesc);
+	pSS	=GD_CreateSamplerState(pGD, &sampDesc);
 	if(pSS == NULL)
 	{
 		printf("Error creating sampler state!\n");
@@ -1002,7 +1002,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	dssDesc.FrontFace			=dsd;
 	dssDesc.BackFace			=dsd;
 
-	ID3D11DepthStencilState	*pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	ID3D11DepthStencilState	*pDSS	=GD_CreateDepthStencilState(pGD, &dssDesc);
 	if(pDSS == NULL)
 	{
 		printf("Error creating depth stencil state!\n");
@@ -1013,7 +1013,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	//equal test for shadows
 	dssDesc.DepthWriteMask	=D3D11_DEPTH_WRITE_MASK_ZERO;
 	dssDesc.DepthFunc		=D3D11_COMPARISON_EQUAL;
-	pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	pDSS	=GD_CreateDepthStencilState(pGD, &dssDesc);
 	if(pDSS == NULL)
 	{
 		printf("Error creating depth stencil state!\n");
@@ -1024,7 +1024,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	//no depth
 	dssDesc.DepthEnable	=false;
 	dssDesc.DepthFunc	=D3D11_COMPARISON_ALWAYS;
-	pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	pDSS	=GD_CreateDepthStencilState(pGD, &dssDesc);
 	if(pDSS == NULL)
 	{
 		printf("Error creating depth stencil state!\n");
@@ -1035,7 +1035,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	//no depth write
 	dssDesc.DepthEnable	=true;
 	dssDesc.DepthFunc	=D3D11_COMPARISON_LESS;
-	pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	pDSS	=GD_CreateDepthStencilState(pGD, &dssDesc);
 	if(pDSS == NULL)
 	{
 		printf("Error creating depth stencil state!\n");
@@ -1046,7 +1046,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	//no depth test
 	dssDesc.DepthWriteMask	=D3D11_DEPTH_WRITE_MASK_ALL;
 	dssDesc.DepthFunc		=D3D11_COMPARISON_ALWAYS;
-	pDSS	=GraphicsDevice_CreateDepthStencilState(pGD, &dssDesc);
+	pDSS	=GD_CreateDepthStencilState(pGD, &dssDesc);
 	if(pDSS == NULL)
 	{
 		printf("Error creating depth stencil state!\n");
@@ -1079,7 +1079,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	blendDesc.RenderTarget[6]			=nullDesc;
 	blendDesc.RenderTarget[7]			=nullDesc;
 
-	ID3D11BlendState	*pBS	=GraphicsDevice_CreateBlendState(pGD, &blendDesc);
+	ID3D11BlendState	*pBS	=GD_CreateBlendState(pGD, &blendDesc);
 	if(pBS == NULL)
 	{
 		printf("Error creating blend state!\n");
@@ -1095,7 +1095,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	rtbDesc.DestBlendAlpha	=D3D11_BLEND_ONE;
 	rtbDesc.BlendOpAlpha	=D3D11_BLEND_OP_MIN;
 
-	pBS	=GraphicsDevice_CreateBlendState(pGD, &blendDesc);
+	pBS	=GD_CreateBlendState(pGD, &blendDesc);
 	if(pBS == NULL)
 	{
 		printf("Error creating blend state!\n");
@@ -1107,7 +1107,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	rtbDesc.BlendOp			=D3D11_BLEND_OP_REV_SUBTRACT;
 	rtbDesc.BlendOpAlpha	=D3D11_BLEND_OP_ADD;
 
-	pBS	=GraphicsDevice_CreateBlendState(pGD, &blendDesc);
+	pBS	=GD_CreateBlendState(pGD, &blendDesc);
 	if(pBS == NULL)
 	{
 		printf("Error creating blend state!\n");
@@ -1116,7 +1116,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	DictSZ_Addccp(&pSK->mpBlends, "ShadowBlending", pBS);
 
 	rtbDesc.BlendEnable		=false;
-	pBS	=GraphicsDevice_CreateBlendState(pGD, &blendDesc);
+	pBS	=GD_CreateBlendState(pGD, &blendDesc);
 	if(pBS == NULL)
 	{
 		printf("Error creating blend state!\n");
@@ -1154,7 +1154,7 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 
 	fclose(f);
 
-	D3D_FEATURE_LEVEL	deviceFL	=GraphicsDevice_GetFeatureLevel(pGD);
+	D3D_FEATURE_LEVEL	deviceFL	=GD_GetFeatureLevel(pGD);
 
 	ShaderModel	sm;
 

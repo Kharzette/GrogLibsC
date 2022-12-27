@@ -25,12 +25,15 @@ typedef struct GraphicsDevice_t
 
 	//featurelevel the device was created with
 	D3D_FEATURE_LEVEL	mFeatureLevel;
+
+	//size
+	int	mWidth, mHeight;
 }	GraphicsDevice;
 
 
 //try to make a device of the desired feature level
 //TODO: get the swap effect stuff right
-bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
+bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 			int w, int h, D3D_FEATURE_LEVEL desiredFeatureLevel)
 {
 	//alloc
@@ -38,6 +41,9 @@ bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 	memset(*ppGD, 0, sizeof(GraphicsDevice));
 
 	GraphicsDevice	*pGD	=*ppGD;
+
+	pGD->mWidth		=w;
+	pGD->mHeight	=h;
 
 	int	res	=SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO);
 	if(res < 0)
@@ -152,6 +158,46 @@ bool	GraphicsDevice_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 		goto	quit;
 	}
 
+	//create a depth buffer
+	D3D11_TEXTURE2D_DESC	texDesc;
+
+	texDesc.ArraySize			=1;
+	texDesc.BindFlags			=D3D11_BIND_DEPTH_STENCIL;
+	texDesc.CPUAccessFlags		=0;
+	texDesc.MipLevels			=1;
+	texDesc.MiscFlags			=0;
+	texDesc.Usage				=D3D11_USAGE_DEFAULT;
+	texDesc.Width				=w;
+	texDesc.Height				=h;
+	texDesc.Format				=DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+	texDesc.SampleDesc.Count	=1;
+	texDesc.SampleDesc.Quality	=0;
+
+	ID3D11Texture2D	*pDepthBuffer;
+	hres	=pGD->mpDevice1->lpVtbl->CreateTexture2D(pGD->mpDevice1, &texDesc, NULL, &pDepthBuffer);
+	if(hres != S_OK)
+	{
+		printf("Error creating depth buffer texture: %dX\n", hres);
+		goto	quit;
+	}
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC	depthDesc;
+	memset(&depthDesc, 0, sizeof(D3D11_DEPTH_STENCIL_VIEW_DESC));
+
+	depthDesc.Format		=DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+	depthDesc.ViewDimension	=D3D11_DSV_DIMENSION_TEXTURE2D;
+
+	hres	=pGD->mpDevice1->lpVtbl->CreateDepthStencilView(pGD->mpDevice1,
+		(ID3D11Resource *)pDepthBuffer, &depthDesc, &pGD->mpDepthBufferView);
+	if(hres != S_OK)
+	{
+		printf("Error creating depth buffer view: %dX\n", hres);
+		goto	quit;
+	}
+
+	//release depthTex, just needed for this one call
+	pDepthBuffer->lpVtbl->Release(pDepthBuffer);
+
 	return	TRUE;
 
 quit:
@@ -164,12 +210,32 @@ quit:
 	return	FALSE;
 }
 
-D3D_FEATURE_LEVEL	GraphicsDevice_GetFeatureLevel(GraphicsDevice *pGD)
+D3D_FEATURE_LEVEL	GD_GetFeatureLevel(GraphicsDevice *pGD)
 {
 	return	pGD->mFeatureLevel;
 }
 
-void	GraphicsDevice_Destroy(GraphicsDevice **ppGD)
+int	GD_GetWidth(GraphicsDevice *pGD)
+{
+	return	pGD->mWidth;
+}
+
+int	GD_GetHeight(GraphicsDevice *pGD)
+{
+	return	pGD->mHeight;
+}
+
+ID3D11RenderTargetView	*GD_GetBackBufferView(GraphicsDevice *pGD)
+{
+	return	pGD->mpBackBufferView;
+}
+
+ID3D11DepthStencilView	*GD_GetDepthView(GraphicsDevice *pGD)
+{
+	return	pGD->mpDepthBufferView;
+}
+
+void	GD_Destroy(GraphicsDevice **ppGD)
 {
 	GraphicsDevice	*pGD	=*ppGD;
 
@@ -188,7 +254,7 @@ void	GraphicsDevice_Destroy(GraphicsDevice **ppGD)
 	SDL_Quit();
 }
 
-ID3D11Texture2D	*GraphicsDevice_MakeTexture(GraphicsDevice *pGD, uint8_t **pRows, int w, int h, int rowPitch)
+ID3D11Texture2D	*GD_MakeTexture(GraphicsDevice *pGD, uint8_t **pRows, int w, int h, int rowPitch)
 {
 	D3D11_TEXTURE2D_DESC	texDesc;
 
@@ -249,7 +315,7 @@ ID3D11Texture2D	*GraphicsDevice_MakeTexture(GraphicsDevice *pGD, uint8_t **pRows
 	return	pRet;
 }
 
-ID3D11VertexShader	*GraphicsDevice_CreateVertexShader(GraphicsDevice *pGD, uint8_t *pCodeBytes, int codeLen)
+ID3D11VertexShader	*GD_CreateVertexShader(GraphicsDevice *pGD, uint8_t *pCodeBytes, int codeLen)
 {
 	ID3D11VertexShader	*pRet;
 	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateVertexShader(pGD->mpDevice1, pCodeBytes, codeLen, NULL, &pRet);
@@ -261,7 +327,7 @@ ID3D11VertexShader	*GraphicsDevice_CreateVertexShader(GraphicsDevice *pGD, uint8
 	return	pRet;
 }
 
-ID3D11PixelShader	*GraphicsDevice_CreatePixelShader(GraphicsDevice *pGD, uint8_t *pCodeBytes, int codeLen)
+ID3D11PixelShader	*GD_CreatePixelShader(GraphicsDevice *pGD, uint8_t *pCodeBytes, int codeLen)
 {
 	ID3D11PixelShader	*pRet;
 	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreatePixelShader(pGD->mpDevice1, pCodeBytes, codeLen, NULL, &pRet);
@@ -273,7 +339,7 @@ ID3D11PixelShader	*GraphicsDevice_CreatePixelShader(GraphicsDevice *pGD, uint8_t
 	return	pRet;
 }
 
-ID3D11ShaderResourceView	*GraphicsDevice_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes)
+ID3D11ShaderResourceView	*GD_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes)
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC	desc;
 
@@ -299,7 +365,7 @@ ID3D11ShaderResourceView	*GraphicsDevice_CreateSRV(GraphicsDevice *pGD, ID3D11Re
 	return	pRet;
 }
 
-ID3D11RasterizerState	*GraphicsDevice_CreateRasterizerState(
+ID3D11RasterizerState	*GD_CreateRasterizerState(
 	GraphicsDevice			*pGD,
 	D3D11_RASTERIZER_DESC	*pDesc)
 {
@@ -315,7 +381,7 @@ ID3D11RasterizerState	*GraphicsDevice_CreateRasterizerState(
 	return	NULL;
 }
 
-ID3D11SamplerState	*GraphicsDevice_CreateSamplerState(
+ID3D11SamplerState	*GD_CreateSamplerState(
 	GraphicsDevice		*pGD,
 	D3D11_SAMPLER_DESC	*pDesc)
 {
@@ -331,7 +397,7 @@ ID3D11SamplerState	*GraphicsDevice_CreateSamplerState(
 	return	NULL;
 }
 
-ID3D11BlendState	*GraphicsDevice_CreateBlendState(
+ID3D11BlendState	*GD_CreateBlendState(
 	GraphicsDevice		*pGD,
 	D3D11_BLEND_DESC	*pDesc)
 {
@@ -347,7 +413,7 @@ ID3D11BlendState	*GraphicsDevice_CreateBlendState(
 	return	NULL;
 }
 
-ID3D11DepthStencilState	*GraphicsDevice_CreateDepthStencilState(
+ID3D11DepthStencilState	*GD_CreateDepthStencilState(
 	GraphicsDevice				*pGD,
 	D3D11_DEPTH_STENCIL_DESC	*pDesc)
 {
@@ -363,7 +429,7 @@ ID3D11DepthStencilState	*GraphicsDevice_CreateDepthStencilState(
 	return	NULL;
 }
 
-ID3D11InputLayout	*GraphicsDevice_CreateInputLayout(
+ID3D11InputLayout	*GD_CreateInputLayout(
 	GraphicsDevice				*pGD,
 	D3D11_INPUT_ELEMENT_DESC	*pIEDs,
 	int							numIEDs,
@@ -381,7 +447,7 @@ ID3D11InputLayout	*GraphicsDevice_CreateInputLayout(
 	return	NULL;
 }
 
-ID3D11Buffer	*GraphicsDevice_CreateBufferWithData(
+ID3D11Buffer	*GD_CreateBufferWithData(
 	GraphicsDevice		*pGD,
 	D3D11_BUFFER_DESC	*pDesc,
 	const void			*pData,
@@ -400,7 +466,7 @@ ID3D11Buffer	*GraphicsDevice_CreateBufferWithData(
 	return	NULL;
 }
 
-ID3D11Buffer	*GraphicsDevice_CreateBuffer(
+ID3D11Buffer	*GD_CreateBuffer(
 	GraphicsDevice		*pGD,
 	D3D11_BUFFER_DESC	*pDesc)
 {
@@ -417,53 +483,53 @@ ID3D11Buffer	*GraphicsDevice_CreateBuffer(
 
 
 //set target 0's blend state
-void GraphicsDevice_OMSetBlendState(GraphicsDevice *pGD, ID3D11BlendState *pBlend)
+void GD_OMSetBlendState(GraphicsDevice *pGD, ID3D11BlendState *pBlend)
 {
 	pGD->mpContext1->lpVtbl->OMSetBlendState(pGD->mpContext1, pBlend, NULL, 0xFFFFFFFF);
 }
 
-void GraphicsDevice_OMSetDepthStencilState(GraphicsDevice *pGD, ID3D11DepthStencilState *pDSS)
+void GD_OMSetDepthStencilState(GraphicsDevice *pGD, ID3D11DepthStencilState *pDSS)
 {
 	pGD->mpContext1->lpVtbl->OMSetDepthStencilState(pGD->mpContext1, pDSS, 0);
 }
 
-void GraphicsDevice_ClearDepthStencilView(GraphicsDevice *pGD)
+void GD_ClearDepthStencilView(GraphicsDevice *pGD)
 {
 	pGD->mpContext1->lpVtbl->ClearDepthStencilView(pGD->mpContext1,
 		pGD->mpDepthBufferView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
-void GraphicsDevice_ClearRenderTargetView(GraphicsDevice *pGD, const float *pF4ClearColor)
+void GD_ClearRenderTargetView(GraphicsDevice *pGD, const float *pF4ClearColor)
 {
 	pGD->mpContext1->lpVtbl->ClearRenderTargetView(pGD->mpContext1,
 		pGD->mpBackBufferView, pF4ClearColor);
 }
 
-void GraphicsDevice_OMSetRenderTargets(GraphicsDevice *pGD)
+void GD_OMSetRenderTargets(GraphicsDevice *pGD)
 {
 	pGD->mpContext1->lpVtbl->OMSetRenderTargets(
 		pGD->mpContext1, 1, &pGD->mpBackBufferView, pGD->mpDepthBufferView);
 }
 
-void GraphicsDevice_IASetInputLayout(GraphicsDevice *pGD, ID3D11InputLayout *pLay)
+void GD_IASetInputLayout(GraphicsDevice *pGD, ID3D11InputLayout *pLay)
 {
 	pGD->mpContext1->lpVtbl->IASetInputLayout(pGD->mpContext1, pLay);
 }
 
-void GraphicsDevice_IASetVertexBuffers(GraphicsDevice *pGD,
+void GD_IASetVertexBuffers(GraphicsDevice *pGD,
 	ID3D11Buffer *pVB, uint32_t stride, uint32_t offset)
 {
 	pGD->mpContext1->lpVtbl->IASetVertexBuffers(pGD->mpContext1,
 		0, 1, &pVB, &stride, &offset);
 }
 
-void GraphicsDevice_IASetIndexBuffers(GraphicsDevice *pGD,
+void GD_IASetIndexBuffers(GraphicsDevice *pGD,
 	ID3D11Buffer *pIB, DXGI_FORMAT fmt, uint32_t offset)
 {
 	pGD->mpContext1->lpVtbl->IASetIndexBuffer(pGD->mpContext1, pIB, fmt, offset);
 }
 
-void	GraphicsDevice_UpdateSubResource(GraphicsDevice *pGD,
+void	GD_UpdateSubResource(GraphicsDevice *pGD,
 	ID3D11Resource *pDest, const void *pSrcData)
 {
 	pGD->mpContext1->lpVtbl->UpdateSubresource(pGD->mpContext1,
@@ -471,63 +537,63 @@ void	GraphicsDevice_UpdateSubResource(GraphicsDevice *pGD,
 
 }
 
-void GraphicsDevice_IASetPrimitiveTopology(GraphicsDevice *pGD, D3D11_PRIMITIVE_TOPOLOGY top)
+void GD_IASetPrimitiveTopology(GraphicsDevice *pGD, D3D11_PRIMITIVE_TOPOLOGY top)
 {
 	pGD->mpContext1->lpVtbl->IASetPrimitiveTopology(pGD->mpContext1, top);
 }
 
-void GraphicsDevice_VSSetShader(GraphicsDevice *pGD, ID3D11VertexShader *pVS)
+void GD_VSSetShader(GraphicsDevice *pGD, ID3D11VertexShader *pVS)
 {
 	pGD->mpContext1->lpVtbl->VSSetShader(pGD->mpContext1, pVS, NULL, 0);
 }
 
-void GraphicsDevice_VSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf)
+void GD_VSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf)
 {
 	pGD->mpContext1->lpVtbl->VSSetConstantBuffers(pGD->mpContext1, slot, 1, &pBuf);
 }
 
-void GraphicsDevice_PSSetShader(GraphicsDevice *pGD, ID3D11PixelShader *pPS)
+void GD_PSSetShader(GraphicsDevice *pGD, ID3D11PixelShader *pPS)
 {
 	pGD->mpContext1->lpVtbl->PSSetShader(pGD->mpContext1, pPS, NULL, 0);
 }
 
-void GraphicsDevice_PSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf)
+void GD_PSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf)
 {
 	pGD->mpContext1->lpVtbl->PSSetConstantBuffers(pGD->mpContext1, slot, 1, &pBuf);
 }
 
-void GraphicsDevice_RSSetState(GraphicsDevice *pGD, ID3D11RasterizerState *pRS)
+void GD_RSSetState(GraphicsDevice *pGD, ID3D11RasterizerState *pRS)
 {
 	pGD->mpContext1->lpVtbl->RSSetState(pGD->mpContext1, pRS);
 }
 
-void GraphicsDevice_RSSetViewPort(GraphicsDevice *pGD, const D3D11_VIEWPORT *pVP)
+void GD_RSSetViewPort(GraphicsDevice *pGD, const D3D11_VIEWPORT *pVP)
 {
 	pGD->mpContext1->lpVtbl->RSSetViewports(pGD->mpContext1, 1, pVP);
 }
 
-void GraphicsDevice_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV)
+void GD_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV)
 {
 	pGD->mpContext1->lpVtbl->PSSetShaderResources(pGD->mpContext1, 0, 1, &pSRV);
 }
 
-void GraphicsDevice_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert)
+void GD_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert)
 {
 	pGD->mpContext1->lpVtbl->Draw(pGD->mpContext1, vertCount, startVert);
 }
 
-void	GraphicsDevice_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot)
+void	GD_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot)
 {
 	pGD->mpContext1->lpVtbl->PSSetSamplers(pGD->mpContext1, slot, 1, &pSamp);
 }
 
-void GraphicsDevice_DrawIndexed(GraphicsDevice *pGD,
+void GD_DrawIndexed(GraphicsDevice *pGD,
 	uint32_t indexCount, uint32_t startIndex, uint32_t baseVert)
 {
 	pGD->mpContext1->lpVtbl->DrawIndexed(pGD->mpContext1, indexCount, startIndex, baseVert);
 }
 
-void GraphicsDevice_Present(GraphicsDevice *pGD)
+void GD_Present(GraphicsDevice *pGD)
 {
 	HRESULT	hr	=pGD->mpSwapChain->lpVtbl->Present(pGD->mpSwapChain, 0, DXGI_PRESENT_ALLOW_TEARING);
 	if(hr == S_OK)

@@ -10,6 +10,7 @@
 //#include	"AudioLib/Audio.h"	audio stuff not ready yet
 #include	"MaterialLib/StuffKeeper.h"
 #include	"MaterialLib/CBKeeper.h"
+#include	"MaterialLib/PostProcess.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
@@ -28,9 +29,11 @@ int main(void)
 
 	GraphicsDevice	*pGD;
 
-	GraphicsDevice_Init(&pGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_1);
+	GD_Init(&pGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_1);
 
 	StuffKeeper	*pSK	=StuffKeeper_Create(pGD);
+
+	PostProcess	*pPP	=PP_Create(pGD, pSK);
 
 	D3D11_RASTERIZER_DESC	rastDesc;
 	rastDesc.AntialiasedLineEnable	=false;
@@ -43,7 +46,7 @@ int main(void)
 	rastDesc.DepthClipEnable		=true;
 	rastDesc.ScissorEnable			=false;
 	rastDesc.SlopeScaledDepthBias	=0;
-	ID3D11RasterizerState	*pRast	=GraphicsDevice_CreateRasterizerState(pGD, &rastDesc);
+	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
 	PrimObject	*pCube	=PF_CreateCube(5.0f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);
@@ -79,17 +82,17 @@ int main(void)
 	vp.TopLeftX	=0;
 	vp.TopLeftY	=0;
 
-	GraphicsDevice_RSSetViewPort(pGD, &vp);
+	GD_RSSetViewPort(pGD, &vp);
 
-	GraphicsDevice_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-//	GraphicsDevice_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidPS"));
-	GraphicsDevice_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
-	GraphicsDevice_RSSetState(pGD, pRast);
-	GraphicsDevice_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
-	GraphicsDevice_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Brick"));
-	GraphicsDevice_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
-	GraphicsDevice_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	GraphicsDevice_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
+	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
+//	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidPS"));
+	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
+	GD_RSSetState(pGD, pRast);
+	GD_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
+	GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Brick"));
+	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
+	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
 
 	vec4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	vec4	solidColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
@@ -145,8 +148,8 @@ int main(void)
 			UpdateTimer_UpdateDone(pUT);
 		}
 
-		GraphicsDevice_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
-		GraphicsDevice_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
+		GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 		CBK_SetWorldMat(pCBK, world);
 
@@ -166,18 +169,18 @@ int main(void)
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
-		GraphicsDevice_OMSetRenderTargets(pGD);
-		GraphicsDevice_OMSetDepthStencilState(pGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
-		GraphicsDevice_ClearDepthStencilView(pGD);
+		GD_OMSetRenderTargets(pGD);
+		GD_OMSetDepthStencilState(pGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
+		GD_ClearDepthStencilView(pGD);
 
-		GraphicsDevice_ClearRenderTargetView(pGD, clearColor);
+		GD_ClearRenderTargetView(pGD, clearColor);
 
-//		GraphicsDevice_Draw(pGD, pCube->mVertCount, 0);
-		GraphicsDevice_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
-		GraphicsDevice_Present(pGD);
+//		GD_Draw(pGD, pCube->mVertCount, 0);
+		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+		GD_Present(pGD);
 	}
 
-	GraphicsDevice_Destroy(&pGD);
+	GD_Destroy(&pGD);
 
 	return	EXIT_SUCCESS;
 }

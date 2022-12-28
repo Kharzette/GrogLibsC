@@ -163,6 +163,12 @@ bool	DictSZ_ContainsKey(const DictSZ *pHead, UT_string *pKey)
 }
 
 
+bool	DictSZ_ContainsKeyccp(const DictSZ *pHead, const char *pKey)
+{
+	return	(DictSZ_GetValueccp(pHead, pKey) != NULL);
+}
+
+
 int	DictSZ_Count(const DictSZ *pHead)
 {
 	return	HASH_COUNT(pHead);

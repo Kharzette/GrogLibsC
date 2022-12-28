@@ -9,7 +9,7 @@ Texture1D<uint>	mScreenContents : register(t0);
 //font texture
 Texture2D		mFont : register(t1);
 
-cbuffer	TextMode : register(b7)
+cbuffer	TextMode : register(b6)
 {
 	uint	mWidth, mHeight;	//dimensions of screen in pixels
 	uint	mCWidth, mCHeight;	//dimensions of screen in character blocks

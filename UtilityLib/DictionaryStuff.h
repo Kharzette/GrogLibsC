@@ -22,6 +22,7 @@ extern void *DictSZ_GetValue(const DictSZ *pHead, const UT_string *pKey);
 extern void *DictSZ_GetValueccp(const DictSZ *pHead, const char *pKey);
 extern void	DictSZ_New(DictSZ **ppHead);
 extern bool	DictSZ_ContainsKey(const DictSZ *pHead, UT_string *pKey);
+extern bool	DictSZ_ContainsKeyccp(const DictSZ *pHead, const char *pKey);
 extern int	DictSZ_Count(const DictSZ *pHead);
 extern void	DictSZ_ForEach(const DictSZ *pHead, DictSZ_ForEachCB pCB, void *pContext);
 

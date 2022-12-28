@@ -6,7 +6,7 @@ Texture1D	mDynLights : register(t3);
 
 #define	NUM_ANI_INTENSITIES	44
 
-cbuffer BSP : register(b5)
+cbuffer BSP : register(b4)
 {
 	bool		mbTextureEnabled;
 	float2		mTexSize;

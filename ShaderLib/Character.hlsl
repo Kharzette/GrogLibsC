@@ -4,7 +4,7 @@
 #include "CommonFunctions.hlsli"
 
 
-cbuffer Character : register(b4)
+cbuffer Character : register(b3)
 {
 	//matrii for skinning
 	float4x4	mBones[MAX_BONES];	

@@ -4,10 +4,30 @@
 #include	<stdint.h>
 #include	<stdbool.h>
 #include	<stdio.h>
+#include	<assert.h>
 #include	<cglm/call.h>
 #include	"../UtilityLib/GraphicsDevice.h"
 
 //hold / handle constant buffer related stuffs
+
+//shaderlib's constant buffer register usage:
+//PerObject		b0
+//PerFrame		b1
+//PerShadow		b2
+//Character		b3
+//BSP			b4
+//Post			b5
+//TextMode		b6
+//TwoD			b7
+#define	PEROBJECT_REG	0
+#define	PERFRAME_REG	1
+#define	PERSHADOW_REG	2
+#define	CHARACTER_REG	3
+#define	BSP_REG			4
+#define	POST_REG		5
+#define	TEXTMODE_REG	6
+#define	TWOD_REG		7
+
 
 //constants that need to match shaders
 #define	MAX_BONES			55
@@ -102,7 +122,7 @@ typedef struct Post_t
 	float	mSharpNess;
 	float	mOpacity;
 
-	//padding
+	//pad
 	uint32_t	mPad0, mPad1;
 
 	//gaussianblur stuff, make sure size matches Post.hlsl
@@ -164,6 +184,9 @@ static ID3D11Buffer	*MakeConstantBuffer(GraphicsDevice *pGD, size_t size)
 {
 	D3D11_BUFFER_DESC	cbDesc;
 
+	//constant buffer sizes must be multiples of 16
+	assert((size % 16) == 0);
+
 	//these are kind of odd, but change any one and it breaks		
 	cbDesc.BindFlags			=D3D11_BIND_CONSTANT_BUFFER;
 	cbDesc.ByteWidth			=size;
@@ -184,12 +207,12 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	//create constant buffers
 	pRet->mpPerObjectBuf	=MakeConstantBuffer(pGD, sizeof(PerObject));
 	pRet->mpPerFrameBuf		=MakeConstantBuffer(pGD, sizeof(PerFrame));
-	pRet->mpTwoDBuf			=MakeConstantBuffer(pGD, sizeof(TwoD));
-	pRet->mpBSPBuf			=MakeConstantBuffer(pGD, sizeof(BSP));
-	pRet->mpCharacterBuf	=MakeConstantBuffer(pGD, sizeof(mat4) * MAX_BONES);
-	pRet->mpPostBuf			=MakeConstantBuffer(pGD, sizeof(Post));
 	pRet->mpPerShadowBuf	=MakeConstantBuffer(pGD, sizeof(PerShadow));
+	pRet->mpCharacterBuf	=MakeConstantBuffer(pGD, sizeof(mat4) * MAX_BONES);
+	pRet->mpBSPBuf			=MakeConstantBuffer(pGD, sizeof(BSP));
+	pRet->mpPostBuf			=MakeConstantBuffer(pGD, sizeof(Post));
 	pRet->mpTextModeBuf		=MakeConstantBuffer(pGD, sizeof(TextMode));
+	pRet->mpTwoDBuf			=MakeConstantBuffer(pGD, sizeof(TwoD));
 
 	//grab resource pointers for each
 	pRet->mpPerObjectBuf->lpVtbl->QueryInterface(pRet->mpPerObjectBuf, &IID_ID3D11Resource, (void **)&pRet->mpPerObjectRes);
@@ -217,50 +240,50 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 void	CBK_SetCommonCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//commonfunctions
-	GD_VSSetConstantBuffer(pGD, 0, pCBK->mpPerObjectBuf);
-	GD_PSSetConstantBuffer(pGD, 0, pCBK->mpPerObjectBuf);
-	GD_VSSetConstantBuffer(pGD, 1, pCBK->mpPerFrameBuf);
-	GD_PSSetConstantBuffer(pGD, 1, pCBK->mpPerFrameBuf);
+	GD_VSSetConstantBuffer(pGD, PEROBJECT_REG, pCBK->mpPerObjectBuf);
+	GD_PSSetConstantBuffer(pGD, PEROBJECT_REG, pCBK->mpPerObjectBuf);
+	GD_VSSetConstantBuffer(pGD, PERFRAME_REG, pCBK->mpPerFrameBuf);
+	GD_PSSetConstantBuffer(pGD, PERFRAME_REG, pCBK->mpPerFrameBuf);
 }
 
 void	CBK_Set2DCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//2d
-	GD_VSSetConstantBuffer(pGD, 3, pCBK->mpTwoDBuf);
-	GD_PSSetConstantBuffer(pGD, 3, pCBK->mpTwoDBuf);
+	GD_VSSetConstantBuffer(pGD, TWOD_REG, pCBK->mpTwoDBuf);
+	GD_PSSetConstantBuffer(pGD, TWOD_REG, pCBK->mpTwoDBuf);
 }
 
 void	CBK_SetCharacterToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//character
-	GD_VSSetConstantBuffer(pGD, 4, pCBK->mpCharacterBuf);
+	GD_VSSetConstantBuffer(pGD, CHARACTER_REG, pCBK->mpCharacterBuf);
 }
 
 void	CBK_SetBSPToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//bsp
-	GD_VSSetConstantBuffer(pGD, 5, pCBK->mpBSPBuf);
-	GD_PSSetConstantBuffer(pGD, 5, pCBK->mpBSPBuf);
+	GD_VSSetConstantBuffer(pGD, BSP_REG, pCBK->mpBSPBuf);
+	GD_PSSetConstantBuffer(pGD, BSP_REG, pCBK->mpBSPBuf);
 }
 
 void	CBK_SetPostToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//post
-	GD_VSSetConstantBuffer(pGD, 0, pCBK->mpPostBuf);
-	GD_PSSetConstantBuffer(pGD, 0, pCBK->mpPostBuf);
+	GD_VSSetConstantBuffer(pGD, POST_REG, pCBK->mpPostBuf);
+	GD_PSSetConstantBuffer(pGD, POST_REG, pCBK->mpPostBuf);
 }
 
 void	CBK_SetPerShadowToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//shadows
-	GD_VSSetConstantBuffer(pGD, 2, pCBK->mpPerShadowBuf);
-	GD_PSSetConstantBuffer(pGD, 2, pCBK->mpPerShadowBuf);
+	GD_VSSetConstantBuffer(pGD, PERSHADOW_REG, pCBK->mpPerShadowBuf);
+	GD_PSSetConstantBuffer(pGD, PERSHADOW_REG, pCBK->mpPerShadowBuf);
 }
 
 void	CBK_SetTextModeToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//textmode
-	GD_PSSetConstantBuffer(pGD, 7, pCBK->mpTextModeBuf);
+	GD_PSSetConstantBuffer(pGD, TEXTMODE_REG, pCBK->mpTextModeBuf);
 }
 
 

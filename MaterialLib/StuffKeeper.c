@@ -753,11 +753,11 @@ static void	CreatePShaderCB(const UT_string *pKey, const void *pValue, void *pCo
 
 	const ShaderBytes	*pSB	=pValue;
 
-	ID3D11VertexShader	*pVS	=GD_CreatePixelShader(
+	ID3D11PixelShader	*pPS	=GD_CreatePixelShader(
 									pCon->mpGD, pSB->mpBytes, pSB->mLen);
-	if(pVS != NULL)
+	if(pPS != NULL)
 	{
-		DictSZ_Add(&pCon->mpSK->mpPShaders, pKey, pVS);
+		DictSZ_Add(&pCon->mpSK->mpPShaders, pKey, pPS);
 	}
 }
 
@@ -767,6 +767,9 @@ static void	CreateSRVCB(const UT_string *pKey, const void *pValue, void *pContex
 
 	const ID3D11Texture2D	*pTex	=pValue;
 
+	D3D11_TEXTURE2D_DESC	desc;
+	pTex->lpVtbl->GetDesc((ID3D11Texture2D *)pTex, &desc);
+
 	ID3D11Resource	*pRes;
 	pTex->lpVtbl->QueryInterface((ID3D11Texture2D *)pTex, &IID_ID3D11Resource, (void **)&pRes);
 	if(pRes == NULL)
@@ -775,7 +778,7 @@ static void	CreateSRVCB(const UT_string *pKey, const void *pValue, void *pContex
 		return;
 	}
 
-	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pCon->mpGD, pRes);
+	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pCon->mpGD, pRes, desc.Format);
 	if(pSRV != NULL)
 	{
 		DictSZ_Add(&pCon->mpSK->mpSRVs, pKey, pSRV);
@@ -790,6 +793,9 @@ static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pCo
 
 	const ID3D11Texture2D	*pTex	=pValue;
 
+	D3D11_TEXTURE2D_DESC	desc;
+	pTex->lpVtbl->GetDesc((ID3D11Texture2D *)pTex, &desc);
+
 	ID3D11Resource	*pRes;
 	pTex->lpVtbl->QueryInterface((ID3D11Texture2D *)pTex, &IID_ID3D11Resource, (void **)&pRes);
 	if(pRes == NULL)
@@ -798,7 +804,7 @@ static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pCo
 		return;
 	}
 
-	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pCon->mpGD, pRes);
+	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pCon->mpGD, pRes, desc.Format);
 	if(pSRV != NULL)
 	{
 		DictSZ_Add(&pCon->mpSK->mpFontSRVs, pKey, pSRV);

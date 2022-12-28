@@ -17,7 +17,7 @@
 #define	KERNEL_SIZE		(RADIUS * 2 + 1)
 
 //post process stuff
-cbuffer Post : register(b0)
+cbuffer Post : register(b5)
 {
 	float2		mInvViewPort;
 
@@ -37,6 +37,9 @@ cbuffer Post : register(b0)
 	float	mBlurFallOff;
 	float	mSharpNess;
 	float	mOpacity;
+
+	//padding
+	uint	mPad0, mPad1;
 	
 	//gaussianblur stuff
 	float	mWeightsX[KERNEL_SIZE], mWeightsY[KERNEL_SIZE];
@@ -44,14 +47,14 @@ cbuffer Post : register(b0)
 }
 
 //this will probably be a KERNEL_SIZE * 4 float array on the C# side
-cbuffer PostBlur : register(b1)
-{
-}
+//cbuffer PostBlur : register(b1)
+//{
+//}
 
 //textures
-Texture2D	mNormalTex;
-Texture2D	mColorTex;
-Texture2D	mBlurTargetTex;
+Texture2D	mNormalTex : register(t0);
+Texture2D	mColorTex : register(t1);
+Texture2D	mBlurTargetTex : register(t2);
 
 #if !defined(SM2)
 #define		OUTLINE_TEX_SIZE	1024	//should match MaxOutlineColours in PostProcess.cs
@@ -125,6 +128,15 @@ VVPos93	SimpleQuad93VS(VPos input)
 	output.VPos.w	=1.0f;
 
 	return	output;
+}
+
+float4	SimpleQuadPS(VVPos input) : SV_Target
+{
+	float2	uv	=input.Position.xy / mScreenSize;
+
+	float4	texColor	=mColorTex.Sample(LinearClamp, uv);
+
+	return	float4(texColor.xyz, 1.0f);
 }
 
 float4	BloomExtractPS(VVPos input) : SV_Target

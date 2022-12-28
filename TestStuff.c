@@ -23,6 +23,28 @@
 #define	ROT_RATE	10.0f
 
 
+static void SpinCube(float dt, mat4 outWorld)
+{
+	static	mat4	ident, yaw, pitch;
+	static	float	cubeYaw		=0.0f;
+	static	float	cubePitch	=0.0f;
+
+	glmc_mat4_identity(ident);
+
+	cubeYaw		+=ROT_RATE * dt;
+	cubePitch	+=0.25f * ROT_RATE * dt;
+
+	//wrap angles
+	cubeYaw		=fmodf(cubeYaw, 360.0f);
+	cubePitch	=fmodf(cubePitch, 360.0f);
+
+	glmc_rotate_y(ident, glm_rad(cubeYaw), yaw);
+	glmc_rotate_x(ident, glm_rad(cubePitch), pitch);
+
+	glmc_mat4_mul(yaw, pitch, outWorld);
+}
+
+
 int main(void)
 {
 	printf("DirectX on looney loonix!\n");
@@ -32,8 +54,6 @@ int main(void)
 	GD_Init(&pGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_1);
 
 	StuffKeeper	*pSK	=StuffKeeper_Create(pGD);
-
-	PostProcess	*pPP	=PP_Create(pGD, pSK);
 
 	D3D11_RASTERIZER_DESC	rastDesc;
 	rastDesc.AntialiasedLineEnable	=false;
@@ -51,12 +71,22 @@ int main(void)
 	PrimObject	*pCube	=PF_CreateCube(5.0f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
+	PostProcess	*pPP	=PP_Create(pGD, pSK, pCBK);
+
+	PP_MakePostTarget(pPP, pGD, "LinearColor", RESX, RESY, DXGI_FORMAT_R8G8B8A8_UNORM);
+	PP_MakePostDepth(pPP, pGD, "LinearDepth", RESX, RESY, DXGI_FORMAT_D32_FLOAT);
+
 	float	aspect	=(float)RESX / (float)RESY;
 
-	mat4	ident, world, view, proj, yaw, pitch;
-	vec3	eyePos	={ 9.0f, 10.0f, 22.0f };
+	mat4	ident, world, view, proj, yaw, pitch, temp;
+	mat4	bump0, bump1;	//translate world a bit
+	vec3	eyePos	={ 9.0f, 10.0f, 29.0f };
 	vec3	targPos	={ 0.0f, 0.0f, 0.0f };
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
+
+	//draw 2 more cubes
+	vec3	bumpVec0	={ 12.0f, -2.0f, 0.0f };
+	vec3	bumpVec1	={ -12.0f, -2.0f, 0.0f };
 
 //	glmc_ortho_default(aspect, proj);
 	glmc_perspective_default(aspect, proj);
@@ -69,6 +99,9 @@ int main(void)
 	CBK_SetWorldMat(pCBK, world);
 	CBK_SetView(pCBK, view, eyePos);
 	CBK_SetProjection(pCBK, proj);
+
+	glmc_translate_make(bump0, bumpVec0);
+	glmc_translate_make(bump1, bumpVec1);
 
 	//good old xna blue
 	float	clearColor[]	={ 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f };
@@ -89,7 +122,7 @@ int main(void)
 	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
 	GD_RSSetState(pGD, pRast);
 	GD_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
-	GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Brick"));
+	GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "RoughStone"), 0);
 	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
@@ -107,7 +140,7 @@ int main(void)
 	CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
 	CBK_SetSolidColour(pCBK, solidColor);
 
-	UpdateTimer	*pUT	=UpdateTimer_Create(true, true);
+	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
 
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
 
@@ -131,26 +164,16 @@ int main(void)
 			//do input here
 			//move camera etc
 
-			cubeYaw		+=ROT_RATE * UpdateTimer_GetUpdateDeltaSeconds(pUT);
-			cubePitch	+=0.25f * ROT_RATE * UpdateTimer_GetUpdateDeltaSeconds(pUT);
-
-			//wrap angles
-			cubeYaw		=fmodf(cubeYaw, 360.0f);
-			cubePitch	=fmodf(cubePitch, 360.0f);
-
-			glmc_rotate_y(ident, glm_rad(cubeYaw), yaw);
-			glmc_rotate_x(ident, glm_rad(cubePitch), pitch);
-
-			glmc_mat4_mul(yaw, pitch, world);
-
-			CBK_SetWorldMat(pCBK, world);
-
 			UpdateTimer_UpdateDone(pUT);
 		}
+
+		//render update
+		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
 		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
 		GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
+		SpinCube(dt, world);
 		CBK_SetWorldMat(pCBK, world);
 
 		//camera update
@@ -166,17 +189,40 @@ int main(void)
 		//set constant buffers to shaders
 		CBK_SetCommonCBToShaders(pCBK, pGD);
 
-		//render update
-		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
-		GD_OMSetRenderTargets(pGD);
+		PP_SetTargets(pPP, pGD, "LinearColor", "LinearDepth");
+
 		GD_OMSetDepthStencilState(pGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
-		GD_ClearDepthStencilView(pGD);
 
-		GD_ClearRenderTargetView(pGD, clearColor);
+		PP_ClearDepth(pPP, pGD, "LinearDepth");
+		PP_ClearTarget(pPP, pGD, "LinearColor");
 
-//		GD_Draw(pGD, pCube->mVertCount, 0);
+		//set input layout for the cube draw
+		GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
+		GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
+		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
+
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+
+		//draw another
+		glmc_mat4_mul(world, bump0, temp);
+		CBK_SetWorldMat(pCBK, temp);
+		CBK_UpdateObject(pCBK, pGD);
+		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+
+		//and another
+		glmc_mat4_mul(world, bump1, temp);
+		CBK_SetWorldMat(pCBK, temp);
+		CBK_UpdateObject(pCBK, pGD);
+		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+
+		PP_ClearDepth(pPP, pGD, "BackDepth");
+		PP_SetTargets(pPP, pGD, "BackColor", "BackDepth");
+
+		PP_SetSRV(pPP, pGD, "LinearColor", 1);	//1 for colortex
+
+		PP_DrawStage(pPP, pGD, pCBK);
+
 		GD_Present(pGD);
 	}
 

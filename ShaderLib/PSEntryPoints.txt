@@ -46,6 +46,7 @@ BSP.hlsl
 	VertexLitShadowPS
 	LightMapAnimShadowPS
 Post.hlsl
+	SimpleQuadPS
 	BloomExtractPS
 	BloomExtract93PS
 	BloomCombinePS

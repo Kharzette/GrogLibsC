@@ -118,7 +118,6 @@ int main(void)
 	GD_RSSetViewPort(pGD, &vp);
 
 	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-//	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidPS"));
 	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
 	GD_RSSetState(pGD, pRast);
 	GD_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
@@ -128,7 +127,9 @@ int main(void)
 	GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
 
 	vec4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	vec4	solidColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
+	vec4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
+	vec4	solidColor1	={	0.5f, 1.0f, 1.0f, 1.0f	};
+	vec4	solidColor2	={	1.0f, 0.5f, 1.0f, 1.0f	};
 	vec3	light0		={	1.0f, 1.0f, 1.0f	};
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
@@ -138,7 +139,7 @@ int main(void)
 
 	CBK_SetSpecular(pCBK, specColor, 6.0f);
 	CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
-	CBK_SetSolidColour(pCBK, solidColor);
+	CBK_SetSolidColour(pCBK, solidColor0);
 
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
 
@@ -175,6 +176,7 @@ int main(void)
 
 		SpinCube(dt, world);
 		CBK_SetWorldMat(pCBK, world);
+		CBK_SetSolidColour(pCBK, solidColor0);
 
 		//camera update
 
@@ -205,12 +207,14 @@ int main(void)
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//draw another
+		CBK_SetSolidColour(pCBK, solidColor1);
 		glmc_mat4_mul(world, bump0, temp);
 		CBK_SetWorldMat(pCBK, temp);
 		CBK_UpdateObject(pCBK, pGD);
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//and another
+		CBK_SetSolidColour(pCBK, solidColor2);
 		glmc_mat4_mul(world, bump1, temp);
 		CBK_SetWorldMat(pCBK, temp);
 		CBK_UpdateObject(pCBK, pGD);

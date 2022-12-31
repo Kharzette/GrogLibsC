@@ -17,13 +17,15 @@
 #include	"UtilityLib/DictionaryStuff.h"
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
+#include	"MeshLib/Mesh.h"
 
-#define	RESX		800
-#define	RESY		600
-#define	ROT_RATE	10.0f
+#define	RESX			800
+#define	RESY			600
+#define	ROT_RATE		10.0f
+#define	UVSCALE_RATE	1.0f
 
 
-static void SpinCube(float dt, mat4 outWorld)
+static void SpinMatYawPitch(float dt, mat4 outWorld)
 {
 	static	mat4	ident, yaw, pitch;
 	static	float	cubeYaw		=0.0f;
@@ -42,6 +44,21 @@ static void SpinCube(float dt, mat4 outWorld)
 	glmc_rotate_x(ident, glm_rad(cubePitch), pitch);
 
 	glmc_mat4_mul(yaw, pitch, outWorld);
+}
+
+static void SpinMatYaw(float dt, mat4 outWorld)
+{
+	static	mat4	ident;
+	static	float	cubeYaw		=0.0f;
+
+	glmc_mat4_identity(ident);
+
+	cubeYaw		+=ROT_RATE * dt;
+
+	//wrap angles
+	cubeYaw		=fmodf(cubeYaw, 360.0f);
+
+	glmc_rotate_y(ident, glm_rad(cubeYaw), outWorld);
 }
 
 
@@ -78,10 +95,10 @@ int main(void)
 
 	float	aspect	=(float)RESX / (float)RESY;
 
-	mat4	ident, world, view, proj, yaw, pitch, temp;
+	mat4	ident, world, view, proj, yaw, pitch, temp, meshMat;
 	mat4	bump0, bump1;	//translate world a bit
-	vec3	eyePos	={ 9.0f, 10.0f, 29.0f };
-	vec3	targPos	={ 0.0f, 0.0f, 0.0f };
+	vec3	eyePos	={ 9.0f, 45.0f, 79.0f };
+	vec3	targPos	={ 0.0f, 30.0f, 0.0f };
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
 
 	//draw 2 more cubes
@@ -120,11 +137,8 @@ int main(void)
 	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
 	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
 	GD_RSSetState(pGD, pRast);
-	GD_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
-	GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "RoughStone"), 0);
 	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
 
 	vec4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	vec4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
@@ -133,7 +147,7 @@ int main(void)
 	vec3	light0		={	1.0f, 1.0f, 1.0f	};
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
-	vec3	lightDir	={	0.3f, -0.7f, 0.2f	};
+	vec3	lightDir	={	0.3f, -0.7f, -0.5f	};
 
 	glmc_vec3_normalize(lightDir);
 
@@ -147,6 +161,21 @@ int main(void)
 
 	float	cubeYaw		=0.0f;
 	float	cubePitch	=0.0f;
+	vec3	dangly		={	700.0f, 0.0f, 0.0f	};
+
+	Mesh	*pMesh	=Mesh_Read(pGD, pSK, "Characters/Body.mesh");
+
+	mat4	*bones	=malloc(sizeof(mat4) * 55);
+
+	for(int i=0;i < 55;i++)
+	{
+		glmc_mat4_identity(bones[i]);
+	}
+
+	CBK_SetBones(pCBK, bones);
+	CBK_UpdateCharacter(pCBK, pGD);
+
+	glmc_rotate_y(ident, CGLM_PI, meshMat);
 
 	bool	bRunning	=true;
 	while(bRunning)
@@ -161,6 +190,17 @@ int main(void)
 				{
 					bRunning	=false;
 				}
+				else if(evt.type == SDL_KEYDOWN)
+				{
+					if(evt.key.keysym.sym == SDLK_LEFT)
+					{
+						dangly[0]	-=UVSCALE_RATE;
+					}
+					else if(evt.key.keysym.sym == SDLK_RIGHT)
+					{
+						dangly[0]	+=UVSCALE_RATE;
+					}
+				}
 			}
 			//do input here
 			//move camera etc
@@ -174,7 +214,11 @@ int main(void)
 		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
 		GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
-		SpinCube(dt, world);
+		//set no blend, I think post processing turns it on maybe
+		GD_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
+		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
+
+		SpinMatYawPitch(dt, world);
 		CBK_SetWorldMat(pCBK, world);
 		CBK_SetSolidColour(pCBK, solidColor0);
 
@@ -203,6 +247,7 @@ int main(void)
 		GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 		GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
 		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
+		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "RoughStone"), 0);
 
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
@@ -219,6 +264,18 @@ int main(void)
 		CBK_SetWorldMat(pCBK, temp);
 		CBK_UpdateObject(pCBK, pGD);
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+
+		//set mesh draw stuff
+		SpinMatYaw(dt, meshMat);
+		CBK_SetWorldMat(pCBK, meshMat);
+		CBK_SetDanglyForce(pCBK, dangly);
+		CBK_SetSolidColour(pCBK, solidColor0);
+		CBK_UpdateObject(pCBK, pGD);
+		CBK_SetCharacterToShaders(pCBK, pGD);
+//		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
+
+		//draw mesh
+		Mesh_Draw(pMesh, pGD, pSK, "SkinWNormWPosTex0VS", "TriTex0SpecPS", "Characters/Docu");
 
 		PP_ClearDepth(pPP, pGD, "BackDepth");
 		PP_SetTargets(pPP, pGD, "BackColor", "BackDepth");

@@ -653,9 +653,9 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 }
 
 
-static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
+static void LoadResourcesDir(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szDir)
 {
-	if(!FileStuff_DirExists("Textures"))
+	if(!FileStuff_DirExists(szDir))
 	{
 		return;
 	}
@@ -664,7 +664,7 @@ static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
 	utstring_new(pTexDir);
 	utstring_new(pFilePath);
 
-	utstring_printf(pTexDir, "%s", "Textures");
+	utstring_printf(pTexDir, "%s", szDir);
 	
 	DIR	*pDir	=opendir(utstring_body(pTexDir));
 	for(;;)
@@ -681,6 +681,25 @@ static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
 			continue;	//probably . or ..
 		}
 
+		utstring_clear(pFilePath);
+		utstring_printf(pFilePath, "%s/%s", utstring_body(pTexDir), pDE->d_name);
+
+		struct stat	fileStuff;
+		int	res	=stat(utstring_body(pFilePath), &fileStuff);
+		if(res)
+		{
+			FileStuff_PrintErrno(res);
+			continue;
+		}
+
+		//check for subdir
+		if(S_ISDIR(fileStuff.st_mode))
+		{
+			//directory recurse
+			LoadResourcesDir(pGD, pSK, utstring_body(pFilePath));
+			continue;
+		}
+
 		UT_string	*pExt	=SZ_GetExtension(pDE->d_name);
 		if(pExt == NULL)
 		{
@@ -695,17 +714,6 @@ static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
 
 		if(upper && lower)
 		{
-			continue;
-		}
-
-		utstring_clear(pFilePath);
-		utstring_printf(pFilePath, "%s/%s", utstring_body(pTexDir), pDE->d_name);
-
-		struct stat	fileStuff;
-		int	res	=stat(utstring_body(pFilePath), &fileStuff);
-		if(res)
-		{
-			FileStuff_PrintErrno(res);
 			continue;
 		}
 
@@ -730,6 +738,12 @@ static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
 
 	utstring_done(pTexDir);
 	utstring_done(pFilePath);
+}
+
+
+static void LoadResources(GraphicsDevice *pGD, StuffKeeper *pSK)
+{
+	LoadResourcesDir(pGD, pSK, "Textures");
 }
 
 
@@ -1101,6 +1115,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	rtbDesc.DestBlendAlpha	=D3D11_BLEND_ONE;
 	rtbDesc.BlendOpAlpha	=D3D11_BLEND_OP_MIN;
 
+	blendDesc.RenderTarget[0]	=rtbDesc;
 	pBS	=GD_CreateBlendState(pGD, &blendDesc);
 	if(pBS == NULL)
 	{
@@ -1113,6 +1128,7 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	rtbDesc.BlendOp			=D3D11_BLEND_OP_REV_SUBTRACT;
 	rtbDesc.BlendOpAlpha	=D3D11_BLEND_OP_ADD;
 
+	blendDesc.RenderTarget[0]	=rtbDesc;
 	pBS	=GD_CreateBlendState(pGD, &blendDesc);
 	if(pBS == NULL)
 	{
@@ -1122,6 +1138,8 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	DictSZ_Addccp(&pSK->mpBlends, "ShadowBlending", pBS);
 
 	rtbDesc.BlendEnable		=false;
+	
+	blendDesc.RenderTarget[0]	=rtbDesc;
 	pBS	=GD_CreateBlendState(pGD, &blendDesc);
 	if(pBS == NULL)
 	{

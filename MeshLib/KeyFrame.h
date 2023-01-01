@@ -13,5 +13,6 @@ typedef struct	KeyFrame_t
 
 
 void	KeyFrame_Read(FILE *f, KeyFrame *pKey);
+void	KeyFrame_GetMatrix(const KeyFrame *pKey, mat4 mat);
 void	KeyFrame_Lerp(const KeyFrame *pKey0, const KeyFrame *pKey1,
 				float percentage, KeyFrame *pKeyResult);

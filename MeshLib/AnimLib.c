@@ -41,7 +41,7 @@ AnimLib	*AnimLib_Read(const char *fileName)
 
 	for(int i=0;i < numAnims;i++)
 	{
-		Anim	*pAnim	=Anim_Read(f);
+		Anim	*pAnim	=Anim_Read(f, pRet->mpSkeleton);
 
 		DictSZ_Add(&pRet->mpAnims, Anim_GetName(pAnim), pAnim);
 	}
@@ -52,7 +52,7 @@ AnimLib	*AnimLib_Read(const char *fileName)
 }
 
 
-void	Animate(AnimLib *pAL, const char *szAnimName, float time)
+void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 {
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnimName))
 	{
@@ -62,4 +62,10 @@ void	Animate(AnimLib *pAL, const char *szAnimName, float time)
 	Anim	*pAnim	=DictSZ_GetValueccp(pAL->mpAnims, szAnimName);
 
 	Anim_Animate(pAnim, time);
+}
+
+
+void	AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones)
+{
+	Skeleton_FillBoneArray(pAL->mpSkeleton, pBones);
 }

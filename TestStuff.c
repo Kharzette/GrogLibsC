@@ -26,6 +26,9 @@
 #define	ROT_RATE		10.0f
 #define	UVSCALE_RATE	1.0f
 
+//should match CommonFunctions.hlsli
+#define	MAX_BONES			55
+
 
 static void SpinMatYawPitch(float dt, mat4 outWorld)
 {
@@ -167,20 +170,13 @@ int main(void)
 
 	Mesh	*pMesh	=Mesh_Read(pGD, pSK, "Characters/Body.mesh");
 
-	mat4	*bones	=malloc(sizeof(mat4) * 55);
-
-	for(int i=0;i < 55;i++)
-	{
-		glmc_mat4_identity(bones[i]);
-	}
-
-	CBK_SetBones(pCBK, bones);
-	CBK_UpdateCharacter(pCBK, pGD);
-
 	glmc_rotate_y(ident, CGLM_PI, meshMat);
 
 	AnimLib	*pALib	=AnimLib_Read("Characters/Documenting.AnimLib");
 
+	mat4	bones[MAX_BONES];
+
+	float	animTime	=0.0f;
 
 	bool	bRunning	=true;
 	while(bRunning)
@@ -215,6 +211,11 @@ int main(void)
 
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
+
+		animTime	+=dt;
+
+		AnimLib_Animate(pALib, "DocumentingBetterBadWalk2", animTime);
+		AnimLib_FillBoneArray(pALib, bones);
 
 		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
 		GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
@@ -254,7 +255,7 @@ int main(void)
 		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
 		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "RoughStone"), 0);
 
-		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+		//GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//draw another
 		CBK_SetSolidColour(pCBK, solidColor1);
@@ -276,8 +277,13 @@ int main(void)
 		CBK_SetDanglyForce(pCBK, dangly);
 		CBK_SetSolidColour(pCBK, solidColor0);
 		CBK_UpdateObject(pCBK, pGD);
+		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
+
+		//bones
+//		CBK_SetBonesWithTranspose(pCBK, bones);
+		CBK_SetBones(pCBK, bones);
+		CBK_UpdateCharacter(pCBK, pGD);
 		CBK_SetCharacterToShaders(pCBK, pGD);
-//		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
 		//draw mesh
 		Mesh_Draw(pMesh, pGD, pSK, "SkinWNormWPosTex0VS", "TriTex0SpecPS", "Characters/Docu");

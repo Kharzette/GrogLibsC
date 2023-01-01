@@ -5,6 +5,7 @@
 #include	<utstring.h>
 #include	"../UtilityLib/StringStuff.h"
 #include	"KeyFrame.h"
+#include	"Skeleton.h"
 
 
 //this is a set of keys and times for a single bone
@@ -23,12 +24,18 @@ typedef struct	SubAnim_t
 }	SubAnim;
 
 
-SubAnim	*SubAnim_Read(FILE *f)
+SubAnim	*SubAnim_Read(FILE *f, const Skeleton *pSkel)
 {
 	SubAnim	*pRet	=malloc(sizeof(SubAnim));
 	memset(pRet, 0, sizeof(SubAnim));
 
 	pRet->szBoneName	=SZ_ReadString(f);
+
+	pRet->mpBone	=Skeleton_GetBoneKey(pSkel, utstring_body(pRet->szBoneName));
+	if(pRet->mpBone == NULL)
+	{
+		printf("Warning: Bone %s not found in skeleton.\n", utstring_body(pRet->szBoneName));
+	}
 
 	int	numTimes;
 	fread(&numTimes, sizeof(int), 1, f);
@@ -52,7 +59,7 @@ SubAnim	*SubAnim_Read(FILE *f)
 }
 
 
-void	SubAnim_Animate(SubAnim *pSA, float time)
+void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping)
 {	
 	if(pSA->mpBone == NULL)
 	{
@@ -60,13 +67,22 @@ void	SubAnim_Animate(SubAnim *pSA, float time)
 	}
 
 	//make sure the time is in range
-	float	animTime	=time;
-	if(time < pSA->mpTimes[0])
+	float	animTime;
+	if(bLooping)
+	{
+		animTime	=fmodf(time, pSA->mTotalTime);
+	}
+	else
+	{
+		animTime	=time;
+	}
+
+	if(animTime < pSA->mpTimes[0])
 	{
 		//bring into range
 		animTime	=pSA->mpTimes[0];
 	}
-	else if(time > pSA->mpTimes[pSA->mNumKeys - 1])
+	else if(animTime > pSA->mpTimes[pSA->mNumKeys - 1])
 	{
 		animTime	=pSA->mpTimes[pSA->mNumKeys - 1];
 	}
@@ -80,7 +96,7 @@ void	SubAnim_Animate(SubAnim *pSA, float time)
 			if(animTime < pSA->mpTimes[startIndex] && animTime >= pSA->mpTimes[startIndex - 1])
 			{
 				//back up one
-				startIndex			=fmaxf(startIndex - 1, 0);
+				startIndex			=GLM_MAX(startIndex - 1, 0);
 				pSA->mLastTimeIndex	=startIndex;
 				break;	//found
 			}
@@ -90,7 +106,7 @@ void	SubAnim_Animate(SubAnim *pSA, float time)
 			if(animTime <= pSA->mpTimes[startIndex])
 			{
 				//back up one
-				startIndex			=fmaxf(startIndex - 1, 0);
+				startIndex			=GLM_MAX(startIndex - 1, 0);
 				pSA->mLastTimeIndex	=startIndex;
 				break;	//found
 			}
@@ -105,7 +121,7 @@ void	SubAnim_Animate(SubAnim *pSA, float time)
 			if(animTime <= pSA->mpTimes[startIndex])
 			{
 				//back up one
-				startIndex			=fmaxf(startIndex - 1, 0);
+				startIndex			=GLM_MAX(startIndex - 1, 0);
 				pSA->mLastTimeIndex	=startIndex;
 				break;	//found
 			}

@@ -4,6 +4,7 @@
 #include	<utstring.h>
 #include	"../UtilityLib/StringStuff.h"
 #include	"SubAnim.h"
+#include	"Skeleton.h"
 
 
 //animation!
@@ -18,7 +19,7 @@ typedef struct	Anim_t
 }	Anim;
 
 
-Anim	*Anim_Read(FILE *f)
+Anim	*Anim_Read(FILE *f, const Skeleton *pSkel)
 {
 	Anim	*pRet	=malloc(sizeof(Anim));
 
@@ -34,7 +35,7 @@ Anim	*Anim_Read(FILE *f)
 
 	for(int i=0;i < numSA;i++)
 	{
-		pRet->mpSubAnims[i]	=SubAnim_Read(f);
+		pRet->mpSubAnims[i]	=SubAnim_Read(f, pSkel);
 	}
 	pRet->mNumSubAnims	=numSA;
 }
@@ -44,7 +45,7 @@ void	Anim_Animate(Anim *pAnim, float time)
 {
 	for(int i=0;i < pAnim->mNumSubAnims;i++)
 	{
-		SubAnim_Animate(pAnim->mpSubAnims[i], time);
+		SubAnim_Animate(pAnim->mpSubAnims[i], time, true);//pAnim->mbLooping);
 	}
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include	<stdint.h>
 #include	<stdbool.h>
+#include	<stdio.h>
 #include	<utstring.h>
 
 
@@ -42,6 +43,8 @@ extern UT_string	*SZ_SubStringStartEnd(const char *pSZ, int startPos, int endPos
 extern UT_string	*SZ_SubStringUTStart(const UT_string *pSZ, int startPos);
 extern UT_string	*SZ_SubStringUTStartEnd(const UT_string *pSZ, int startPos, int endPos);
 
+//file read
+extern UT_string	*SZ_ReadString(FILE *f);
 
 //caller responsible for freeing
 extern wchar_t	*SZ_ConvertToWCHAR(const UT_string *pSZ);

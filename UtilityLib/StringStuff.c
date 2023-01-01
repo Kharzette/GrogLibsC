@@ -1,5 +1,6 @@
 #include	<stdint.h>
 #include	<stdbool.h>
+#include	<stdio.h>
 #include	<ctype.h>
 #include	"utstring.h"
 
@@ -360,4 +361,20 @@ wchar_t	*SZ_ConvertToWCHAR(const UT_string *pSZ)
 	mbstowcs(pBuf, utstring_body(pSZ), len);
 
 	return	pBuf;
+}
+
+UT_string	*SZ_ReadString(FILE *f)
+{
+	uint8_t	len;
+	fread(&len, 1, 1, f);
+
+	UT_string	*pRet	=malloc(sizeof(UT_string));
+	pRet->d	=calloc(len + 1, 1);
+
+	fread(pRet->d, 1, len, f);
+
+	pRet->i	=len;
+	pRet->n	=len + 1;
+
+	return	pRet;
 }

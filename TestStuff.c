@@ -18,6 +18,8 @@
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
 #include	"MeshLib/Mesh.h"
+#include	"MeshLib/AnimLib.h"
+
 
 #define	RESX			800
 #define	RESY			600
@@ -176,6 +178,9 @@ int main(void)
 	CBK_UpdateCharacter(pCBK, pGD);
 
 	glmc_rotate_y(ident, CGLM_PI, meshMat);
+
+	AnimLib	*pALib	=AnimLib_Read("Characters/Documenting.AnimLib");
+
 
 	bool	bRunning	=true;
 	while(bRunning)

@@ -32,46 +32,8 @@ void	KeyFrame_GetMatrix(const KeyFrame *pKey, mat4 mat)
 
 	glmc_translate_make(pos, pKey->mPosition);
  
-//	glmc_mat4_copy(rot, mat);
-//	glmc_mat4_copy(pos, mat);
-//	glmc_mat4_copy(scale, mat);
-
-	
-	
-	
+	//scale * rot * pos the directX way windows side
+	//here it seems to be pos * rot * scale
 	glmc_mat4_mul(pos, rot, mat);
-
 	glmc_mat4_mul(scale, mat, mat);
-
-
-
-
-
-//	glmc_mat4_mul(scale, rot, mat);
-//	glmc_mat4_mul(mat, pos, mat);
-
-
-	//scale * rot * pos the directX way
-//	glmc_mat4_mul(scale, rot, temp);
-//	glmc_mat4_mul(temp, pos, mat);
-
-	//pos * rot * scale
-//	glmc_mul(pos, rot, temp);
-//	glmc_mul(temp, scale, mat);
-
-	//rot * scale * pos
-//	glmc_mul(rot, scale, temp);
-//	glmc_mul(temp, pos, mat);
-
-	//pos * scale * rot
-//	glmc_mul(pos, scale, temp);
-//	glmc_mul(temp, rot, mat);
-
-	//scale * pos * rot
-//	glmc_mul(scale, pos, temp);
-//	glmc_mul(temp, rot, mat);
-
-	//rot * pos * scale
-//	glmc_mul(rot, pos, mat);
-//	glmc_mul(temp, scale, mat);
 }

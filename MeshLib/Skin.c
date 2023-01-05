@@ -80,28 +80,12 @@ void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
 {
 	Skeleton_FillBoneArray(pSkel, pBones);
 
-	mat4	rot90;
-	glmc_mat4_identity(rot90);
-//	glmc_rotate_x(rot90, -GLM_PI, rot90);
-
 	for(int i=0;i < MAX_BONES;i++)
 	{
-//		glmc_mat4_copy(pSkin->mInverseBindPoses[i], pBones[i]);
-//		glmc_mat4_copy(pSkin->mRootTransform, pBones[i]);
-//		glmc_mat4_mul(pBones[i], rot90, pBones[i]);
-
-		//bone	=ibp * bone * rootXForm * scale
-//		glmc_mat4_mul(pBones[i], pSkin->mRootTransform, pBones[i]);
-//		glmc_mat4_mul(pSkin->mInverseBindPoses[i], pBones[i], pBones[i]);
-//		glmc_mat4_mul(pBones[i], pSkin->mScaleMat, pBones[i]);
-
+		//On windows side this is: bone	=ibp * bone * rootXForm * scale
+		//here it seems to be root * bone * ibp * scale
 		glmc_mat4_mul(pSkin->mRootTransform, pBones[i], pBones[i]);
 		glmc_mat4_mul(pBones[i], pSkin->mInverseBindPoses[i], pBones[i]);
-
-//		glmc_mat4_mul(pSkin->mRootTransform, pSkin->mInverseBindPoses[i], rot90);
-//		glmc_mat4_mul(pBones[i], rot90, pBones[i]);
-
-//		glmc_mat4_mul(pSkin->mBindPoses[i], pBones[i], pBones[i]);
-//		glmc_mat4_mul(pBones[i], pSkin->mBindPoses[i], pBones[i]);
+		glmc_mat4_mul(pSkin->mScaleMat, pBones[i], pBones[i]);
 	}
 }

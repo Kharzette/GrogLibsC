@@ -103,8 +103,8 @@ int main(void)
 
 	mat4	ident, world, view, proj, yaw, pitch, temp, meshMat;
 	mat4	bump0, bump1;	//translate world a bit
-	vec3	eyePos	={ 0.0f, 1.0f, 2.5f };
-	vec3	targPos	={ 0.0f, 0.75f, 0.0f };
+	vec3	eyePos	={ 0.0f, 19.0f, 222.5f };
+	vec3	targPos	={ 0.0f, 40.75f, 0.0f };
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
 
 	//draw 2 more cubes
@@ -113,7 +113,7 @@ int main(void)
 
 //	glmc_ortho_default(aspect, proj);
 	glmc_perspective_default(aspect, proj);
-//	glmc_persp_move_far(proj, 10000.0f);
+	glmc_persp_move_far(proj, 2000.0f);
 
 	glm_lookat_rh(eyePos, targPos, upVec, view);
 
@@ -175,7 +175,7 @@ int main(void)
 //	glmc_rotate_y(ident, CGLM_PI, meshMat);
 	glmc_mat4_identity(meshMat);
 
-	Character	*pChar	=Character_Read("Characters/DocuBlender.Character");
+	Character	*pChar	=Character_Read("Characters/DocuBlenderGrogSize.Character");
 
 	AnimLib	*pALib	=AnimLib_Read("Characters/DocuBlender.AnimLib");
 

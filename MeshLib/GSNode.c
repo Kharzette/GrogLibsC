@@ -70,7 +70,6 @@ bool	GSNode_GetMatrixForBoneIndex(const GSNode *pNode, int index, mat4 mat)
 	if(pNode->mIndex == index)
 	{
 		KeyFrame_GetMatrix(&pNode->mKeyValue, mat);
-//		printf("Found %s:", utstring_body(pNode->szName));
 		return	true;
 	}
 
@@ -79,12 +78,10 @@ bool	GSNode_GetMatrixForBoneIndex(const GSNode *pNode, int index, mat4 mat)
 		bool	bFound	=GSNode_GetMatrixForBoneIndex(pNode->mpChildren[i], index, mat);
 		if(bFound)
 		{
-//			printf(" Mul by %s,", utstring_body(pNode->szName));
 			//mul by parent
 			mat4	parent;
 			KeyFrame_GetMatrix(&pNode->mKeyValue, parent);
 
-//			glmc_mat4_mul(mat, parent, mat);
 			glmc_mat4_mul(parent, mat, mat);
 
 			return	true;	//found!

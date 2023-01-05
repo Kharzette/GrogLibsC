@@ -1,0 +1,107 @@
+#include	<stdint.h>
+#include	<stdio.h>
+#include	<string.h>
+#include	<cglm/call.h>
+#include	"Skeleton.h"
+
+
+//should match CommonFunctions.hlsli
+#define	MAX_BONES			55
+
+typedef struct	Skin_t
+{
+	mat4	mInverseBindPoses[MAX_BONES];
+	mat4	mBindPoses[MAX_BONES];
+
+	//malloc'd collision shapes for bones
+	vec3	*mpBoneBoxes;		//double num for min/max
+	vec4	*mpBoneSpheres;		//xyz center, w radius
+	vec2	*mpBoneCapsules;	//x radius, y len
+
+	int	*mpBoneColShapes;	//which shape chosen for each bone in CC
+
+	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
+										//units in meters by default
+
+	mat4	mRootTransform;	//art prog -> grogspace
+}	Skin;
+
+
+Skin	*Skin_Read(FILE *f)
+{
+	Skin	*pRet	=malloc(sizeof(Skin));
+
+	glmc_mat4_identity_array(pRet->mInverseBindPoses, MAX_BONES);
+	glmc_mat4_identity_array(pRet->mBindPoses, MAX_BONES);
+
+	int	numIBP;
+	fread(&numIBP, sizeof(int), 1, f);
+
+	for(int i=0;i < numIBP;i++)
+	{
+		int	idx;
+		fread(&idx, sizeof(int), 1, f);
+
+		fread(pRet->mInverseBindPoses[idx], sizeof(mat4), 1, f);
+
+//		glmc_mat4_inv(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
+
+		glmc_mat4_transpose_to(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
+	}
+
+	int	numBoxen;
+	fread(&numBoxen, sizeof(int), 1, f);
+
+	pRet->mpBoneBoxes		=malloc(sizeof(vec3) * 2 * numBoxen);
+	pRet->mpBoneSpheres		=malloc(sizeof(vec4) * numBoxen);
+	pRet->mpBoneCapsules	=malloc(sizeof(vec2) * numBoxen);
+	pRet->mpBoneColShapes	=malloc(sizeof(int) * numBoxen);
+
+	fread(pRet->mpBoneBoxes, sizeof(vec3), 2 * numBoxen, f);
+	fread(pRet->mpBoneSpheres, sizeof(vec4), numBoxen, f);
+	fread(pRet->mpBoneCapsules, sizeof(vec2), numBoxen, f);
+	fread(pRet->mpBoneColShapes, sizeof(int), numBoxen, f);
+
+	float	scaleFactor;
+	fread(&scaleFactor, sizeof(float), 1, f);
+	vec3	scaleVec	={ scaleFactor, scaleFactor, scaleFactor	};
+	vec3	scaleVecInv	={ 1.0f / scaleFactor, 1.0f / scaleFactor, 1.0f / scaleFactor	};
+
+	glmc_scale_make(pRet->mScaleMat, scaleVec);
+	glmc_scale_make(pRet->mInvScaleMat, scaleVecInv);
+
+	fread(pRet->mRootTransform, sizeof(mat4), 1, f);
+
+	return	pRet;
+}
+
+
+void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
+{
+	Skeleton_FillBoneArray(pSkel, pBones);
+
+	mat4	rot90;
+	glmc_mat4_identity(rot90);
+//	glmc_rotate_x(rot90, -GLM_PI, rot90);
+
+	for(int i=0;i < MAX_BONES;i++)
+	{
+//		glmc_mat4_copy(pSkin->mInverseBindPoses[i], pBones[i]);
+//		glmc_mat4_copy(pSkin->mRootTransform, pBones[i]);
+//		glmc_mat4_mul(pBones[i], rot90, pBones[i]);
+
+		//bone	=ibp * bone * rootXForm * scale
+//		glmc_mat4_mul(pBones[i], pSkin->mRootTransform, pBones[i]);
+//		glmc_mat4_mul(pSkin->mInverseBindPoses[i], pBones[i], pBones[i]);
+//		glmc_mat4_mul(pBones[i], pSkin->mScaleMat, pBones[i]);
+
+		glmc_mat4_mul(pSkin->mRootTransform, pBones[i], pBones[i]);
+		glmc_mat4_mul(pBones[i], pSkin->mInverseBindPoses[i], pBones[i]);
+
+//		glmc_mat4_mul(pSkin->mRootTransform, pSkin->mInverseBindPoses[i], rot90);
+//		glmc_mat4_mul(pBones[i], rot90, pBones[i]);
+
+//		glmc_mat4_mul(pSkin->mBindPoses[i], pBones[i], pBones[i]);
+//		glmc_mat4_mul(pBones[i], pSkin->mBindPoses[i], pBones[i]);
+	}
+}

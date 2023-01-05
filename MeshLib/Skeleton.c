@@ -10,10 +10,6 @@ typedef struct	Skeleton_t
 {
 	GSNode	**mpRoots;
 	int		mNumRoots;
-
-	//indexed keyframes for shaderstuff
-	KeyFrame	*mpKeys[MAX_BONES];
-
 }	Skeleton;
 
 
@@ -25,25 +21,12 @@ Skeleton	*Skeleton_Read(FILE *f)
 
 	pRet->mpRoots	=malloc(sizeof(GSNode *) * pRet->mNumRoots);
 
-	//clear indexed pointers
-	memset(pRet->mpKeys, 0, sizeof(KeyFrame *) * MAX_BONES);
-
 	int	curIndex	=0;
 	for(int i=0;i < pRet->mNumRoots;i++)
 	{
 		pRet->mpRoots[i]	=GSNode_Read(f);
 
 		GSNode_SetBoneIndexes(pRet->mpRoots[i], &curIndex);
-
-		//grab indexed bones
-		for(int j=0;j < MAX_BONES;j++)
-		{
-			if(pRet->mpKeys[j] != NULL)
-			{
-				continue;	//already indexed
-			}
-			pRet->mpKeys[j]	=GSNode_GetKeyByIndex(pRet->mpRoots[i], j);
-		}
 	}
 	return	pRet;
 }
@@ -65,14 +48,24 @@ KeyFrame	*Skeleton_GetBoneKey(const Skeleton *pSkel, const char *szName)
 }
 
 
+static	bool	GetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat)
+{
+	for(int i=0;i < pSkel->mNumRoots;i++)
+	{
+		if(GSNode_GetMatrixForBoneIndex(pSkel->mpRoots[i], idx, mat))
+		{
+//			printf("of index %d\n", idx);
+			return	true;
+		}
+	}
+	return	false;
+}
+
+
 void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones)
 {
 	for(int i=0;i < MAX_BONES;i++)
 	{
-		if(pSkel->mpKeys[i] == NULL)
-		{
-			continue;
-		}
-		KeyFrame_GetMatrix(pSkel->mpKeys[i], pBones[i]);
+		GetMatrixForBoneIndex(pSkel, i, pBones[i]);
 	}
 }

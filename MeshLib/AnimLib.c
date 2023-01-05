@@ -43,7 +43,11 @@ AnimLib	*AnimLib_Read(const char *fileName)
 	{
 		Anim	*pAnim	=Anim_Read(f, pRet->mpSkeleton);
 
-		DictSZ_Add(&pRet->mpAnims, Anim_GetName(pAnim), pAnim);
+		UT_string	*szName	=Anim_GetName(pAnim);
+
+		printf("Anim: %s\n", utstring_body(szName));
+
+		DictSZ_Add(&pRet->mpAnims, szName, pAnim);
 	}
 
 	fclose(f);
@@ -68,4 +72,10 @@ void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 void	AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones)
 {
 	Skeleton_FillBoneArray(pAL->mpSkeleton, pBones);
+}
+
+
+Skeleton	*AnimLib_GetSkeleton(AnimLib *pAL)
+{
+	return	pAL->mpSkeleton;
 }

@@ -19,6 +19,7 @@
 #include	"UtilityLib/PrimFactory.h"
 #include	"MeshLib/Mesh.h"
 #include	"MeshLib/AnimLib.h"
+#include	"MeshLib/Character.h"
 
 
 #define	RESX			800
@@ -102,8 +103,8 @@ int main(void)
 
 	mat4	ident, world, view, proj, yaw, pitch, temp, meshMat;
 	mat4	bump0, bump1;	//translate world a bit
-	vec3	eyePos	={ 9.0f, 45.0f, 79.0f };
-	vec3	targPos	={ 0.0f, 30.0f, 0.0f };
+	vec3	eyePos	={ 0.0f, 1.0f, 2.5f };
+	vec3	targPos	={ 0.0f, 0.75f, 0.0f };
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
 
 	//draw 2 more cubes
@@ -112,6 +113,7 @@ int main(void)
 
 //	glmc_ortho_default(aspect, proj);
 	glmc_perspective_default(aspect, proj);
+//	glmc_persp_move_far(proj, 10000.0f);
 
 	glm_lookat_rh(eyePos, targPos, upVec, view);
 
@@ -170,9 +172,12 @@ int main(void)
 
 	Mesh	*pMesh	=Mesh_Read(pGD, pSK, "Characters/Body.mesh");
 
-	glmc_rotate_y(ident, CGLM_PI, meshMat);
+//	glmc_rotate_y(ident, CGLM_PI, meshMat);
+	glmc_mat4_identity(meshMat);
 
-	AnimLib	*pALib	=AnimLib_Read("Characters/Documenting.AnimLib");
+	Character	*pChar	=Character_Read("Characters/DocuBlender.Character");
+
+	AnimLib	*pALib	=AnimLib_Read("Characters/DocuBlender.AnimLib");
 
 	mat4	bones[MAX_BONES];
 
@@ -213,9 +218,12 @@ int main(void)
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
 		animTime	+=dt;
-
-		AnimLib_Animate(pALib, "DocumentingBetterBadWalk2", animTime);
-		AnimLib_FillBoneArray(pALib, bones);
+//		AnimLib_Animate(pALib, "DocuBaseBlenderCoords", animTime);
+		AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
+//		AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
+		
+//		AnimLib_FillBoneArray(pALib, bones);
+		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
 
 		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
 		GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
@@ -280,8 +288,8 @@ int main(void)
 		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
 		//bones
-//		CBK_SetBonesWithTranspose(pCBK, bones);
-		CBK_SetBones(pCBK, bones);
+		CBK_SetBonesWithTranspose(pCBK, bones);
+//		CBK_SetBones(pCBK, bones);
 		CBK_UpdateCharacter(pCBK, pGD);
 		CBK_SetCharacterToShaders(pCBK, pGD);
 

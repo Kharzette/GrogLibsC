@@ -77,6 +77,12 @@ int main(void)
 	GD_Init(&pGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_1);
 
 	StuffKeeper	*pSK	=StuffKeeper_Create(pGD);
+	if(pSK == NULL)
+	{
+		printf("Couldn't create StuffKeeper!\n");
+		GD_Destroy(&pGD);
+		return	EXIT_FAILURE;
+	}
 
 	D3D11_RASTERIZER_DESC	rastDesc;
 	rastDesc.AntialiasedLineEnable	=false;
@@ -91,7 +97,7 @@ int main(void)
 	rastDesc.SlopeScaledDepthBias	=0;
 	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
-	PrimObject	*pCube	=PF_CreateCube(5.0f, pGD);
+	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
 	PostProcess	*pPP	=PP_Create(pGD, pSK, pCBK);
@@ -103,13 +109,13 @@ int main(void)
 
 	mat4	ident, world, view, proj, yaw, pitch, temp, meshMat;
 	mat4	bump0, bump1;	//translate world a bit
-	vec3	eyePos	={ 0.0f, 19.0f, 222.5f };
-	vec3	targPos	={ 0.0f, 40.75f, 0.0f };
+	vec3	eyePos	={ 0.0f, 0.6f, 4.5f };
+	vec3	targPos	={ 0.0f, 0.75f, 0.0f };
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
 
 	//draw 2 more cubes
-	vec3	bumpVec0	={ 12.0f, -2.0f, 0.0f };
-	vec3	bumpVec1	={ -12.0f, -2.0f, 0.0f };
+	vec3	bumpVec0	={ 2.0f, -2.0f, 0.0f };
+	vec3	bumpVec1	={ -2.0f, -2.0f, 0.0f };
 
 //	glmc_ortho_default(aspect, proj);
 	glmc_perspective_default(aspect, proj);
@@ -175,7 +181,7 @@ int main(void)
 //	glmc_rotate_y(ident, CGLM_PI, meshMat);
 	glmc_mat4_identity(meshMat);
 
-	Character	*pChar	=Character_Read("Characters/DocuBlenderGrogSize.Character");
+	Character	*pChar	=Character_Read("Characters/DocuBlender.Character");
 
 	AnimLib	*pALib	=AnimLib_Read("Characters/DocuBlender.AnimLib");
 

@@ -25,3 +25,6 @@
 [submodule "cglm"]
 	path = cglm
 	url = git@github.com:Kharzette/cglm.git
+[submodule "ShaderLib"]
+	path = ShaderLib
+	url = git@github.com:Kharzette/ShaderLib.git

@@ -1155,6 +1155,11 @@ static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
 	//load EntryLayouts, this maps from a shader entry point
 	//to a layout name (such as VPosNormBone etc...)
 	FILE	*f	=fopen("Shaders/EntryLayouts.txt", "r");
+	if(f == NULL)
+	{
+		printf("Couldn't open entry layouts file!\n");
+		return;
+	}
 	ReadEntryLayouts(f, &pSK->mpEntryLayouts);
 
 	//fill the layouts dictionary
@@ -1164,9 +1169,14 @@ static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
 
 StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 {
-	StuffKeeper	*pRet	=malloc(sizeof(StuffKeeper));
-
 	FILE	*f	=fopen("Shaders/VSEntryPoints.txt", "r");
+	if(f == NULL)
+	{
+		printf("Couldn't open shader entry points file.\n");
+		return	NULL;
+	}
+
+	StuffKeeper	*pRet	=malloc(sizeof(StuffKeeper));
 
 	pRet->mpVSEntryPoints	=ReadEntryPoints(f);
 

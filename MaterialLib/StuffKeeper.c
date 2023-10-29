@@ -1266,42 +1266,42 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 }
 
 
-ID3D11DepthStencilState	*StuffKeeper_GetDepthStencilState(StuffKeeper *pSK, const char *pStateName)
+ID3D11DepthStencilState	*StuffKeeper_GetDepthStencilState(const StuffKeeper *pSK, const char *pStateName)
 {
 	return	DictSZ_GetValueccp(pSK->mpDSSs, pStateName);
 }
 
-ID3D11BlendState	*StuffKeeper_GetBlendState(StuffKeeper *pSK, const char *pStateName)
+ID3D11BlendState	*StuffKeeper_GetBlendState(const StuffKeeper *pSK, const char *pStateName)
 {
 	return	DictSZ_GetValueccp(pSK->mpBlends, pStateName);
 }
 
-ID3D11SamplerState	*StuffKeeper_GetSamplerState(StuffKeeper *pSK, const char *pStateName)
+ID3D11SamplerState	*StuffKeeper_GetSamplerState(const StuffKeeper *pSK, const char *pStateName)
 {
 	return	DictSZ_GetValueccp(pSK->mpSSs, pStateName);
 }
 
-ID3D11Texture2D	*StuffKeeper_GetTexture2D(StuffKeeper *pSK, const char *pName)
+ID3D11Texture2D	*StuffKeeper_GetTexture2D(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpTextures, pName);
 }
 
-ID3D11VertexShader	*StuffKeeper_GetVertexShader(StuffKeeper *pSK, const char *pName)
+ID3D11VertexShader	*StuffKeeper_GetVertexShader(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpVShaders, pName);
 }
 
-ID3D11PixelShader	*StuffKeeper_GetPixelShader(StuffKeeper *pSK, const char *pName)
+ID3D11PixelShader	*StuffKeeper_GetPixelShader(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpPShaders, pName);
 }
 
-ID3D11InputLayout	*StuffKeeper_GetInputLayout(StuffKeeper *pSK, const char *pName)
+ID3D11InputLayout	*StuffKeeper_GetInputLayout(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpLayouts, pName);
 }
 
-ID3D11ShaderResourceView	*StuffKeeper_GetSRV(StuffKeeper *pSK, const char *pName)
+ID3D11ShaderResourceView	*StuffKeeper_GetSRV(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpSRVs, pName);
 }

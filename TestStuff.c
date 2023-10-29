@@ -151,8 +151,20 @@ int main(void)
 
 	GD_RSSetViewPort(pGD, &vp);
 
+	//set constant buffers to shaders, think I just have to do this once
+	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "SkinWNormWPosTex0VS"));
+	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));	
+	CBK_SetCommonCBToShaders(pCBK, pGD);
+
+	//for each set of shaders used?
+	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
+	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));	
+	CBK_SetCommonCBToShaders(pCBK, pGD);
+
 	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
+	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));	
+	CBK_SetCommonCBToShaders(pCBK, pGD);
+
 	GD_RSSetState(pGD, pRast);
 	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -261,10 +273,6 @@ int main(void)
 		//update per object
 		CBK_UpdateObject(pCBK, pGD);
 
-		//set constant buffers to shaders
-		CBK_SetCommonCBToShaders(pCBK, pGD);
-
-
 		PP_SetTargets(pPP, pGD, "LinearColor", "LinearDepth");
 
 		GD_OMSetDepthStencilState(pGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
@@ -297,14 +305,9 @@ int main(void)
 		//set up terrain draw
 		CBK_SetWorldMat(pCBK, ident);
 		CBK_UpdateObject(pCBK, pGD);
-		GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
-		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));
-		GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex04Tex14"));
-		GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-		Terrain_Draw(pTer, pGD);
+		Terrain_Draw(pTer, pGD, pSK);
 
 		//set mesh draw stuff
-		GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		SpinMatYaw(dt, meshMat);
 		CBK_SetWorldMat(pCBK, meshMat);
 		CBK_SetDanglyForce(pCBK, dangly);

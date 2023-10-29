@@ -8,4 +8,4 @@ typedef struct	StuffKeeper_t		StuffKeeper;
 Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	const char *pName, const char *pPath);
 
-void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD);
+void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);

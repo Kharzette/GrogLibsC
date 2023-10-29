@@ -30,6 +30,18 @@ typedef struct	TerrainVert_t
 }	TerrainVert;
 
 
+static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
+{
+	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
+
+	pDesc->BindFlags			=D3D11_BIND_INDEX_BUFFER;
+	pDesc->ByteWidth			=byteSize;
+	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_NONE;
+	pDesc->MiscFlags			=0;
+	pDesc->StructureByteStride	=0;
+	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
+}
+
 static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {
 	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
@@ -59,6 +71,9 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	wm1	=w - 1;
 	hm1	=h - 1;
 
+	int	numQuads	=wm1 * hm1;
+	int	numTris		=numQuads * 2;
+
 	int	bytesPerHeight	=rowPitch / w;
 
 	TerrainVert	*pVerts	=malloc(sizeof(TerrainVert) * w * h);
@@ -77,6 +92,28 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 			//set texture 0 to fully on by default
 			Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor0);
 			Misc_Convert4ToF16(0.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor1);
+		}
+	}
+
+	//indexes
+	uint16_t	*pIndexes	=malloc(2 * numTris * 3);
+
+	int	curIdx	=0;
+	for(int y=0;y < hm1;y++)
+	{
+		for(int x=0;x < wm1;x++)
+		{
+			int	idx		=(y * w) + x;
+
+			//tri 0
+			pIndexes[curIdx++]	=idx + w;
+			pIndexes[curIdx++]	=idx + 1;
+			pIndexes[curIdx++]	=idx;
+
+			//tri1
+			pIndexes[curIdx++]	=idx + w;
+			pIndexes[curIdx++]	=idx + 1 + w;
+			pIndexes[curIdx++]	=idx + 1;
 		}
 	}
 
@@ -133,19 +170,31 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 
 	pRet->mpVerts	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
 
-	pRet->mNumTriangles	=0;	//TODO: fix this when moving beyond points
+	pRet->mNumTriangles	=numTris;
 	pRet->mNumVerts		=w * h;
 	pRet->mVertSize		=sizeof(TerrainVert);
 
+
+	MakeIBDesc(&bufDesc, 2 * numTris * 3);
+
+	pRet->mpIndexs	=GD_CreateBufferWithData(pGD, &bufDesc, pIndexes, 2 * numTris * 3);
+
+	//free data
 	free(pVerts);
+	free(pIndexes);
 
 	return	pRet;
 }
 
 
-void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD)
+void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 {
 	GD_IASetVertexBuffers(pGD, pTer->mpVerts, pTer->mVertSize, 0);
+	GD_IASetIndexBuffers(pGD, pTer->mpIndexs, DXGI_FORMAT_R16_UINT, 0);
+	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex04Tex14"));
 
-	GD_Draw(pGD, pTer->mNumVerts, 0);
+	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
+	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));
+
+	GD_DrawIndexed(pGD, pTer->mNumTriangles * 3, 0, 0);
 }

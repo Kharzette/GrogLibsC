@@ -75,6 +75,15 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		{	"TEXCOORD",	1,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	24,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 
+	//VPosNormTex04Tex14
+	D3D11_INPUT_ELEMENT_DESC	iedVPosNormTex04Tex14[]	=
+	{
+		{	"POSITION",	0,	DXGI_FORMAT_R32G32B32_FLOAT,	0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"NORMAL",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	12,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	20,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"TEXCOORD",	1,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	28,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
+	};
+
 	//VPosNormTex04Tex14Tex24Col04
 	D3D11_INPUT_ELEMENT_DESC	iedVPosNormTex04Tex14Tex24Col04[]	=
 	{
@@ -223,6 +232,16 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		return;
 	}
 	DictSZ_Addccp(ppLayouts, "VPos4Tex04Tex14", pLO);
+
+	//VPosNormTex04Tex14
+	pCode	=DictSZ_GetValueccp(pVSCode, "WNormWPosTexFactVS");
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex04Tex14, 4, pCode->mpBytes, pCode->mLen);
+	if(pLO == NULL)
+	{
+		printf("Error creating layout.\n");
+		return;
+	}
+	DictSZ_Addccp(ppLayouts, "VPosNormTex04Tex14", pLO);
 
 	//VPosNormTex04Tex14Tex24Col04
 	pCode	=DictSZ_GetValueccp(pVSCode, "LightMapAnimVS");

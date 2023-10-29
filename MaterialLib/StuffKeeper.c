@@ -531,9 +531,11 @@ static void	PreMultAndLinearRGBA(uint8_t **pRows, int width, int height)
 }
 
 
-static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
+//returns premultiplied linear bytes
+BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
+							uint32_t *pOutWidth, uint32_t *pOutHeight)
 {
-	FILE	*f	=fopen(utstring_body(pPath), "rb");
+	FILE	*f	=fopen(pPath, "rb");
 	if(f == NULL)
 	{
 		return	NULL;
@@ -559,8 +561,8 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 	png_init_io(pPng, f);
 	png_read_info(pPng, pInfo);
 
-	png_uint_32	width	=png_get_image_width(pPng, pInfo);
-	png_uint_32	height	=png_get_image_height(pPng, pInfo);
+	*pOutWidth	=png_get_image_width(pPng, pInfo);
+	*pOutHeight	=png_get_image_height(pPng, pInfo);
 
 	png_byte	colType		=png_get_color_type(pPng, pInfo);
 	png_byte	bitDepth	=png_get_bit_depth(pPng, pInfo);
@@ -601,12 +603,12 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 		return	NULL;
 	}
 
-	int	rowPitch	=png_get_rowbytes(pPng, pInfo);
+	*pOutRowPitch	=png_get_rowbytes(pPng, pInfo);
 
-	png_bytep	*pRows	=malloc(sizeof(png_bytep) * height);
-	for(int y=0;y < height;y++)
+	png_bytep	*pRows	=malloc(sizeof(png_bytep) * *pOutHeight);
+	for(int y=0;y < *pOutHeight;y++)
 	{
-		pRows[y]	=malloc(rowPitch);
+		pRows[y]	=malloc(*pOutRowPitch);
 	}
 
 	png_read_image(pPng, pRows);
@@ -615,22 +617,22 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 
 	if(colType == PNG_COLOR_TYPE_RGB)
 	{
-		PreMultAndLinearRGB(pRows, width, height);
+		PreMultAndLinearRGB(pRows, *pOutWidth, *pOutHeight);
 	}
 	else if(colType == PNG_COLOR_TYPE_RGBA)
 	{
-		PreMultAndLinearRGBA(pRows, width, height);
+		PreMultAndLinearRGBA(pRows, *pOutWidth, *pOutHeight);
 	}
 	else if(colType == PNG_COLOR_TYPE_PALETTE)
 	{
-		PreMultAndLinearRGB(pRows, width, height);
+		PreMultAndLinearRGB(pRows, *pOutWidth, *pOutHeight);
 	}
 	else
 	{
-		printf("png %s color type %d unsupported!\n", utstring_body(pPath), colType);
+		printf("png %s color type %d unsupported!\n", pPath, colType);
 
 		png_destroy_read_struct(&pPng, &pInfo, NULL);
-		for(int y=0;y < height;y++)
+		for(int y=0;y < *pOutHeight;y++)
 		{
 			free(pRows[y]);
 		}
@@ -640,10 +642,21 @@ static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
 
 	png_destroy_read_struct(&pPng, &pInfo, NULL);
 
-	ID3D11Texture2D	*pTex	=GD_MakeTexture(pGD, pRows, width, height, rowPitch);
+	return	pRows;
+}
+
+
+static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
+{
+	uint32_t	w, h;
+	int			rowPitch;
+
+	BYTE	**pRows	=SK_LoadTextureBytes(utstring_body(pPath), &rowPitch, &w, &h);
+
+	ID3D11Texture2D	*pTex	=GD_MakeTexture(pGD, pRows, w, h, rowPitch);
 
 	//free data
-	for(int y=0;y < height;y++)
+	for(int y=0;y < h;y++)
 	{
 		free(pRows[y]);
 	}

@@ -18,9 +18,9 @@ typedef struct	VPosNormTex0_t
 	uint16_t	TexCoord0[2];	//16 bit float2
 }	VPosNormTex0;
 
-static	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
-static	vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
-static	vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
+static	const vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
+static	const vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
+static	const vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
 
 static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {

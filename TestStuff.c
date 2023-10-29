@@ -14,9 +14,11 @@
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
+#include	"UtilityLib/MiscStuff.h"
 #include	"UtilityLib/DictionaryStuff.h"
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
+#include	"TerrainLib/Terrain.h"
 #include	"MeshLib/Mesh.h"
 #include	"MeshLib/AnimLib.h"
 #include	"MeshLib/Character.h"
@@ -97,6 +99,8 @@ int main(void)
 	rastDesc.SlopeScaledDepthBias	=0;
 	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
+	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png");
+
 	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
@@ -161,12 +165,17 @@ int main(void)
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 	vec3	lightDir	={	0.3f, -0.7f, -0.5f	};
+	vec3	skyGrad0	={	0.7f, 0.2f, 0.1f	};
+	vec3	skyGrad1	={	0.2f, 0.3f, 1.0f	};
 
 	glmc_vec3_normalize(lightDir);
 
 	CBK_SetSpecular(pCBK, specColor, 6.0f);
 	CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
 	CBK_SetSolidColour(pCBK, solidColor0);
+
+	CBK_SetFogVars(pCBK, 500.0f, 1000.0f, true);
+	CBK_SetSky(pCBK, skyGrad0, skyGrad1);
 
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
 
@@ -267,7 +276,7 @@ int main(void)
 		GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 		GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
 		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
-		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "RoughStone"), 0);
+		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor08"), 0);
 
 		//GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
@@ -285,7 +294,17 @@ int main(void)
 		CBK_UpdateObject(pCBK, pGD);
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
+		//set up terrain draw
+		CBK_SetWorldMat(pCBK, ident);
+		CBK_UpdateObject(pCBK, pGD);
+		GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
+		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));
+		GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex04Tex14"));
+		GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+		Terrain_Draw(pTer, pGD);
+
 		//set mesh draw stuff
+		GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		SpinMatYaw(dt, meshMat);
 		CBK_SetWorldMat(pCBK, meshMat);
 		CBK_SetDanglyForce(pCBK, dangly);

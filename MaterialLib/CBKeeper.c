@@ -47,7 +47,8 @@ typedef struct PerFrame_t
 	mat4		mProjection;
 	mat4		mLightViewProj;	//for shadows
 	vec3		mEyePos;
-	uint32_t	mPadding;		//pad to 16 boundary
+	float		mFogStart, mFogEnd, mFogEnabled;
+	vec3		mSkyGradient0, mSkyGradient1;
 }	PerFrame;
 
 //CommonFunctions.hlsli
@@ -336,6 +337,19 @@ void CBK_SetView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
 
 	//negate into viewspace
 	glmc_vec3_flipsign_to(eyePos, pCBK->mpPerFrame->mEyePos);
+}
+
+void	CBK_SetFogVars(CBKeeper *pCBK, float start, float end, bool bOn)
+{
+	pCBK->mpPerFrame->mFogStart		=start;
+	pCBK->mpPerFrame->mFogEnd		=end;
+	pCBK->mpPerFrame->mFogEnabled	=(bOn)?	1.0f : 0.0f;
+}
+
+void	CBK_SetSky(CBKeeper *pCBK, const vec3 grad0, const vec3 grad1)
+{
+	glmc_vec3_copy(grad0, pCBK->mpPerFrame->mSkyGradient0);
+	glmc_vec3_copy(grad1, pCBK->mpPerFrame->mSkyGradient1);
 }
 
 void CBK_SetTransposedView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)

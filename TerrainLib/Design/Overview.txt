@@ -1,0 +1,11 @@
+Goals
+	Basic convex terrain chunks
+	Entity placement
+	Integrate with pathing for generating navmesh data
+	Raycast routines needed
+		Ray
+		RayRadius
+		RayCapsule
+		RayAxialBox
+		RayOrientedBox
+	TextureAtlas based shading

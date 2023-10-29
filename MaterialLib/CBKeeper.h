@@ -32,6 +32,8 @@ void CBK_SetTransposedLightViewProj(CBKeeper *pCBK, const mat4 lvp);
 void CBK_SetLightViewProj(CBKeeper *pCBK, const mat4 lvp);
 void CBK_SetTransposedProjection(CBKeeper *pCBK, const mat4 proj);
 void CBK_SetProjection(CBKeeper *pCBK, const mat4 proj);
+void CBK_SetFogVars(CBKeeper *pCBK, float start, float end, bool bOn);
+void CBK_SetSky(CBKeeper *pCBK, const vec3 grad0, const vec3 grad1);
 
 //per object stuff
 void CBK_SetTrilights(CBKeeper *pCBK, const vec4 L0, const vec4 L1, const vec4 L2, const vec3 lightDir);

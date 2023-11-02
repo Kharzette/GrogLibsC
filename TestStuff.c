@@ -6,6 +6,7 @@
 #include	<unistd.h>
 #include	<x86intrin.h>
 #include	<SDL3/SDL.h>
+#include	<SDL3/SDL_keycode.h>
 #include	<cglm/call.h>
 //#include	"AudioLib/Audio.h"	audio stuff not ready yet
 #include	"MaterialLib/StuffKeeper.h"
@@ -15,6 +16,7 @@
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
 #include	"UtilityLib/MiscStuff.h"
+#include	"UtilityLib/GameCamera.h"
 #include	"UtilityLib/DictionaryStuff.h"
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
@@ -111,7 +113,7 @@ int main(void)
 
 	float	aspect	=(float)RESX / (float)RESY;
 
-	mat4	ident, world, view, proj, yaw, pitch, temp, meshMat;
+	mat4	ident, world, yaw, pitch, temp, meshMat;
 	mat4	bump0, bump1;	//translate world a bit
 	vec3	eyePos	={ 0.0f, 0.6f, 4.5f };
 	vec3	targPos	={ 0.0f, 0.75f, 0.0f };
@@ -121,18 +123,13 @@ int main(void)
 	vec3	bumpVec0	={ 2.0f, -2.0f, 0.0f };
 	vec3	bumpVec1	={ -2.0f, -2.0f, 0.0f };
 
-//	glmc_ortho_default(aspect, proj);
-	glmc_perspective_default(aspect, proj);
-	glmc_persp_move_far(proj, 2000.0f);
-
-	glm_lookat_rh(eyePos, targPos, upVec, view);
+	GameCamera	*pCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
 
 	glmc_mat4_identity(ident);
 	glmc_mat4_identity(world);
 
-	CBK_SetWorldMat(pCBK, world);
-	CBK_SetView(pCBK, view, eyePos);
-	CBK_SetProjection(pCBK, proj);
+	CBK_SetWorldMat(pCBK, &world);
+	CBK_SetProjection(pCBK, GameCam_GetProjection(pCam));
 
 	glmc_translate_make(bump0, bumpVec0);
 	glmc_translate_make(bump1, bumpVec1);
@@ -213,6 +210,10 @@ int main(void)
 	bool	bRunning	=true;
 	while(bRunning)
 	{
+		float	deltaYaw, deltaPitch;
+
+		deltaYaw	=deltaPitch	=0.0f;
+
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
@@ -233,10 +234,24 @@ int main(void)
 					{
 						dangly[0]	+=UVSCALE_RATE;
 					}
+					else if(evt.key.keysym.sym == SDLK_w)
+					{
+					}
+					else if(evt.key.keysym.sym == SDLK_a)
+					{
+						deltaYaw	=0.01f;
+					}
+					else if(evt.key.keysym.sym == SDLK_s)
+					{
+					}
+					else if(evt.key.keysym.sym == SDLK_d)
+					{
+						deltaYaw	=-0.01f;
+					}
 				}
 			}
 			//do input here
-			//move camera etc
+			//move turn etc
 
 			UpdateTimer_UpdateDone(pUT);
 		}
@@ -260,12 +275,24 @@ int main(void)
 		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
 
 		SpinMatYawPitch(dt, world);
-		CBK_SetWorldMat(pCBK, world);
+		CBK_SetWorldMat(pCBK, &world);
 		CBK_SetSolidColour(pCBK, solidColor0);
 
 		//camera update
+		GameCam_Update(pCam, eyePos, deltaPitch, deltaYaw, 0.0f);
+		deltaYaw	=deltaPitch	=0.0f;
 
 		//set CB view
+		{
+			vec3	zeroVec		={	0.0f, 0.0f, 0.0f		};
+			vec4	idntQuat	={	0.0f, 0.0f, 0.0f, 1.0f	};
+			mat4	viewMat;
+			vec4	viewQuat;
+			GameCam_GetViewMatrixThird(pCam, zeroVec, idntQuat, viewMat, eyePos, viewQuat);
+
+			CBK_SetView(pCBK, &viewMat, eyePos);
+		}
+
 
 		//update frame CB
 		CBK_UpdateFrame(pCBK, pGD);
@@ -291,25 +318,25 @@ int main(void)
 		//draw another
 		CBK_SetSolidColour(pCBK, solidColor1);
 		glmc_mat4_mul(world, bump0, temp);
-		CBK_SetWorldMat(pCBK, temp);
+		CBK_SetWorldMat(pCBK, &temp);
 		CBK_UpdateObject(pCBK, pGD);
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//and another
 		CBK_SetSolidColour(pCBK, solidColor2);
 		glmc_mat4_mul(world, bump1, temp);
-		CBK_SetWorldMat(pCBK, temp);
+		CBK_SetWorldMat(pCBK, &temp);
 		CBK_UpdateObject(pCBK, pGD);
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//set up terrain draw
-		CBK_SetWorldMat(pCBK, ident);
+		CBK_SetWorldMat(pCBK, &ident);
 		CBK_UpdateObject(pCBK, pGD);
 		Terrain_Draw(pTer, pGD, pSK);
 
 		//set mesh draw stuff
 		SpinMatYaw(dt, meshMat);
-		CBK_SetWorldMat(pCBK, meshMat);
+		CBK_SetWorldMat(pCBK, &meshMat);
 		CBK_SetDanglyForce(pCBK, dangly);
 		CBK_SetSolidColour(pCBK, solidColor0);
 		CBK_UpdateObject(pCBK, pGD);

@@ -26,12 +26,12 @@ void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD);
 
 //set values in the CPU structs
 //perframe stuff
-void CBK_SetView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos);
-void CBK_SetTransposedView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos);
-void CBK_SetTransposedLightViewProj(CBKeeper *pCBK, const mat4 lvp);
-void CBK_SetLightViewProj(CBKeeper *pCBK, const mat4 lvp);
-void CBK_SetTransposedProjection(CBKeeper *pCBK, const mat4 proj);
-void CBK_SetProjection(CBKeeper *pCBK, const mat4 proj);
+void CBK_SetView(CBKeeper *pCBK, const mat4 *view, const vec3 eyePos);
+void CBK_SetTransposedView(CBKeeper *pCBK, const mat4 *view, const vec3 eyePos);
+void CBK_SetTransposedLightViewProj(CBKeeper *pCBK, const mat4 *lvp);
+void CBK_SetLightViewProj(CBKeeper *pCBK, const mat4 *lvp);
+void CBK_SetTransposedProjection(CBKeeper *pCBK, const mat4 *proj);
+void CBK_SetProjection(CBKeeper *pCBK, const mat4 *proj);
 void CBK_SetFogVars(CBKeeper *pCBK, float start, float end, bool bOn);
 void CBK_SetSky(CBKeeper *pCBK, const vec3 grad0, const vec3 grad1);
 
@@ -41,8 +41,8 @@ void CBK_SetTrilights3(CBKeeper *pCBK, const vec3 L0, const vec3 L1, const vec3 
 void CBK_SetSolidColour(CBKeeper *pCBK, const vec4 sc);
 void CBK_SetSpecular(CBKeeper *pCBK, const vec4 specColour, float specPow);
 void CBK_SetSpecularPower(CBKeeper *pCBK, float specPow);
-void CBK_SetWorldMat(CBKeeper *pCBK, const mat4 world);
-void CBK_SetTransposedWorldMat(CBKeeper *pCBK, const mat4 world);
+void CBK_SetWorldMat(CBKeeper *pCBK, const mat4 *world);
+void CBK_SetTransposedWorldMat(CBKeeper *pCBK, const mat4 *world);
 void CBK_SetMaterialID(CBKeeper *pCBK, int matID);
 void CBK_SetDanglyForce(CBKeeper *pCBK, const vec3 force);
 

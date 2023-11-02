@@ -331,9 +331,9 @@ void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD)
 
 
 //perframe stuff
-void CBK_SetView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
+void CBK_SetView(CBKeeper *pCBK, const mat4 *view, const vec3 eyePos)
 {
-	glmc_mat4_transpose_to(view, pCBK->mpPerFrame->mView);
+	glmc_mat4_transpose_to(*view, pCBK->mpPerFrame->mView);
 
 	//negate into viewspace
 	glmc_vec3_flipsign_to(eyePos, pCBK->mpPerFrame->mEyePos);
@@ -352,32 +352,32 @@ void	CBK_SetSky(CBKeeper *pCBK, const vec3 grad0, const vec3 grad1)
 	glmc_vec3_copy(grad1, pCBK->mpPerFrame->mSkyGradient1);
 }
 
-void CBK_SetTransposedView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
+void CBK_SetTransposedView(CBKeeper *pCBK, const mat4 *view, const vec3 eyePos)
 {
-	glmc_mat4_copy(view, pCBK->mpPerFrame->mView);
+	glmc_mat4_copy(*view, pCBK->mpPerFrame->mView);
 
 	//negate into viewspace
 	glmc_vec3_flipsign_to(eyePos, pCBK->mpPerFrame->mEyePos);
 }
 
-void CBK_SetTransposedLightViewProj(CBKeeper *pCBK, const mat4 lvp)
+void CBK_SetTransposedLightViewProj(CBKeeper *pCBK, const mat4 *lvp)
 {
-	glmc_mat4_copy(lvp, pCBK->mpPerFrame->mLightViewProj);
+	glmc_mat4_copy(*lvp, pCBK->mpPerFrame->mLightViewProj);
 }
 
-void CBK_SetLightViewProj(CBKeeper *pCBK, const mat4 lvp)
+void CBK_SetLightViewProj(CBKeeper *pCBK, const mat4 *lvp)
 {
-	glmc_mat4_transpose_to(lvp, pCBK->mpPerFrame->mLightViewProj);
+	glmc_mat4_transpose_to(*lvp, pCBK->mpPerFrame->mLightViewProj);
 }
 
-void CBK_SetTransposedProjection(CBKeeper *pCBK, const mat4 proj)
+void CBK_SetTransposedProjection(CBKeeper *pCBK, const mat4 *proj)
 {
-	glmc_mat4_copy(proj, pCBK->mpPerFrame->mProjection);
+	glmc_mat4_copy(*proj, pCBK->mpPerFrame->mProjection);
 }
 
-void CBK_SetProjection(CBKeeper *pCBK, const mat4 proj)
+void CBK_SetProjection(CBKeeper *pCBK, const mat4 *proj)
 {
-	glmc_mat4_transpose_to(proj, pCBK->mpPerFrame->mProjection);
+	glmc_mat4_transpose_to(*proj, pCBK->mpPerFrame->mProjection);
 }
 
 
@@ -420,14 +420,14 @@ void CBK_SetSpecularPower(CBKeeper *pCBK, float specPow)
 	pCBK->mpPerObject->mSpecPower	=specPow;
 }
 
-void CBK_SetWorldMat(CBKeeper *pCBK, const mat4 world)
+void CBK_SetWorldMat(CBKeeper *pCBK, const mat4 *world)
 {
-	glmc_mat4_transpose_to(world, pCBK->mpPerObject->mWorld);
+	glmc_mat4_transpose_to(*world, pCBK->mpPerObject->mWorld);
 }
 
-void CBK_SetTransposedWorldMat(CBKeeper *pCBK, const mat4 world)
+void CBK_SetTransposedWorldMat(CBKeeper *pCBK, const mat4 *world)
 {
-	glmc_mat4_copy(world, pCBK->mpPerObject->mWorld);
+	glmc_mat4_copy(*world, pCBK->mpPerObject->mWorld);
 }
 
 void CBK_SetMaterialID(CBKeeper *pCBK, int matID)

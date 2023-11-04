@@ -217,6 +217,11 @@ int main(void)
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
+			vec3	forward, right;
+
+			GameCam_GetForwardVec(pCam, forward);
+			GameCam_GetRightVec(pCam, right);
+
 			SDL_Event	evt;
 			while(SDL_PollEvent(&evt))
 			{
@@ -236,15 +241,25 @@ int main(void)
 					}
 					else if(evt.key.keysym.sym == SDLK_w)
 					{
+						glm_vec3_sub(eyePos, forward, eyePos);
 					}
 					else if(evt.key.keysym.sym == SDLK_a)
 					{
-						deltaYaw	=0.01f;
+						glm_vec3_sub(eyePos, right, eyePos);
 					}
 					else if(evt.key.keysym.sym == SDLK_s)
 					{
+						glm_vec3_add(eyePos, forward, eyePos);
 					}
 					else if(evt.key.keysym.sym == SDLK_d)
+					{
+						glm_vec3_add(eyePos, right, eyePos);
+					}
+					else if(evt.key.keysym.sym == SDLK_q)
+					{
+						deltaYaw	=0.01f;
+					}
+					else if(evt.key.keysym.sym == SDLK_e)
 					{
 						deltaYaw	=-0.01f;
 					}
@@ -288,9 +303,13 @@ int main(void)
 			vec4	idntQuat	={	0.0f, 0.0f, 0.0f, 1.0f	};
 			mat4	viewMat;
 			vec4	viewQuat;
-			GameCam_GetViewMatrixThird(pCam, zeroVec, idntQuat, viewMat, eyePos, viewQuat);
+			vec3	negPos;
 
-			CBK_SetView(pCBK, &viewMat, eyePos);
+			GameCam_GetViewMatrixFly(pCam, viewMat, eyePos, viewQuat);
+
+			glm_vec3_negate_to(eyePos, negPos);
+
+			CBK_SetView(pCBK, &viewMat, negPos);
 		}
 
 

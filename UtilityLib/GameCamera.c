@@ -72,7 +72,7 @@ void	GameCam_Update(GameCamera *pCam, vec3 pos, float deltaPitch, float deltaYaw
 		glm_quat_rotatev(pCam->mView, side, side);
 	}
 
-	glm_quat(rotX, -deltaPitch, side[0], side[1], side[2]);	//Note negation!
+	glm_quat(rotX, deltaPitch, side[0], side[1], side[2]);	//Note negation!
 	glm_quat(rotY, deltaYaw, up[0], up[1], up[2]);
 
 	glm_quat_mul_sse2(rotX, rotY, accum);
@@ -85,6 +85,20 @@ void	GameCam_Update(GameCamera *pCam, vec3 pos, float deltaPitch, float deltaYaw
 const mat4	*GameCam_GetProjection(const GameCamera *pCam)
 {
 	return	&pCam->mProjection;
+}
+
+void	GameCam_GetForwardVec(const GameCamera *pCam, vec3 outForward)
+{
+	vec3	forward	={	0.0f, 0.0f, 1.0f	};
+
+	glm_quat_rotatev(pCam->mView, forward, outForward);
+}
+
+void	GameCam_GetRightVec(const GameCamera *pCam, vec3 outRight)
+{
+	vec3	right	={	1.0f, 0.0f, 0.0f	};
+
+	glm_quat_rotatev(pCam->mView, right, outRight);
 }
 
 //third person cam, rotate with tracked object
@@ -119,4 +133,23 @@ void	GameCam_GetViewMatrixThird(const GameCamera *pCam,
 
 	//position of the viewer
 	eyePos	=translation;
+}
+
+//fly cam, mat is out, cv is out
+void	GameCam_GetViewMatrixFly(const GameCamera *pCam,
+			mat4 mat, const vec3 eyePos, vec4 centeredView)
+{
+	mat4	temp;
+
+	//translate
+	glm_translate_make(temp, eyePos);
+
+	//make cam matrix
+	glm_quat_mat4(pCam->mView, mat);
+
+	//mul together
+	glm_mul_sse2(temp, mat, mat);
+
+	//invert for camera matrix
+	glm_mat4_inv_fast_sse2(mat, mat);
 }

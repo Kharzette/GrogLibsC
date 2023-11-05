@@ -66,16 +66,18 @@ void	GameCam_Update(GameCamera *pCam, vec3 pos, float deltaPitch, float deltaYaw
 	vec3	up		={	0.0f, 1.0f, 0.0f	};
 	vec3	side	={	1.0f, 0.0f, 0.0f	};
 
+	//space has no consistent up
 	if(pCam->mbSpaceMode)
 	{
 		glm_quat_rotatev(pCam->mView, up, up);
-		glm_quat_rotatev(pCam->mView, side, side);
 	}
+	
+	glm_quat_rotatev(pCam->mView, side, side);
 
 	glm_quat(rotX, deltaPitch, side[0], side[1], side[2]);	//Note negation!
 	glm_quat(rotY, deltaYaw, up[0], up[1], up[2]);
 
-	glm_quat_mul_sse2(rotX, rotY, accum);
+	glm_quat_mul_sse2(rotY, rotX, accum);
 	glm_quat_mul_sse2(accum, pCam->mView, accum);
 
 	glm_quat_normalize_to(accum, pCam->mView);
@@ -99,6 +101,13 @@ void	GameCam_GetRightVec(const GameCamera *pCam, vec3 outRight)
 	vec3	right	={	1.0f, 0.0f, 0.0f	};
 
 	glm_quat_rotatev(pCam->mView, right, outRight);
+}
+
+void	GameCam_GetUpVec(const GameCamera *pCam, vec3 outUp)
+{
+	vec3	up	={	0.0f, 1.0f, 0.0f	};
+
+	glm_quat_rotatev(pCam->mView, up, outUp);
 }
 
 //third person cam, rotate with tracked object

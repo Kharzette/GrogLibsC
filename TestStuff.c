@@ -30,6 +30,7 @@
 #define	RESY			600
 #define	ROT_RATE		10.0f
 #define	UVSCALE_RATE	1.0f
+#define	KEYTURN_RATE	0.1f;
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -217,10 +218,11 @@ int main(void)
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
-			vec3	forward, right;
+			vec3	forward, right, up;
 
 			GameCam_GetForwardVec(pCam, forward);
 			GameCam_GetRightVec(pCam, right);
+			GameCam_GetUpVec(pCam, up);
 
 			SDL_Event	evt;
 			while(SDL_PollEvent(&evt))
@@ -255,13 +257,33 @@ int main(void)
 					{
 						glm_vec3_add(eyePos, right, eyePos);
 					}
+					else if(evt.key.keysym.sym == SDLK_z)
+					{
+						glm_vec3_sub(eyePos, up, eyePos);
+					}
+					else if(evt.key.keysym.sym == SDLK_c)
+					{
+						glm_vec3_add(eyePos, up, eyePos);
+					}
 					else if(evt.key.keysym.sym == SDLK_q)
 					{
-						deltaYaw	=0.01f;
+						deltaYaw	=KEYTURN_RATE;
 					}
 					else if(evt.key.keysym.sym == SDLK_e)
 					{
-						deltaYaw	=-0.01f;
+						deltaYaw	=-KEYTURN_RATE;
+					}
+					else if(evt.key.keysym.sym == SDLK_r)
+					{
+						deltaPitch	=KEYTURN_RATE;
+					}
+					else if(evt.key.keysym.sym == SDLK_t)
+					{
+						deltaPitch	=-KEYTURN_RATE;
+					}
+					else if(evt.key.keysym.sym == SDLK_ESCAPE)
+					{
+						bRunning	=false;
 					}
 				}
 			}

@@ -6,6 +6,6 @@ typedef struct	StuffKeeper_t		StuffKeeper;
 
 
 Terrain	*Terrain_Create(GraphicsDevice *pGD,
-	const char *pName, const char *pPath);
+	const char *pName, const char *pPath, int numSmoothPasses);
 
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);

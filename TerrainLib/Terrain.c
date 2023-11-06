@@ -54,18 +54,152 @@ static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
 }
 
+static void	SmoothPass(BYTE **pRows, int w, int h, int rowPitch)
+{
+	int	bytesPerHeight	=rowPitch / w;
+
+	for(int y=0;y < h;y++)
+	{
+		for(int x=0;x < w;x++)
+		{
+			int	ofsX	=(x * bytesPerHeight);
+
+			float	upLeft, up, upRight;
+			float	left, right;
+			float	downLeft, down, downRight;
+
+			if(y > 0)
+			{
+				if(x > 0)
+				{
+					upLeft	=pRows[y - 1][ofsX - bytesPerHeight];
+				}
+				else
+				{
+					upLeft	=pRows[y - 1][ofsX];
+				}
+				if(x < (w - 1))
+				{
+					upRight	=pRows[y - 1][ofsX + bytesPerHeight];
+				}
+				else
+				{
+					upRight	=pRows[y - 1][ofsX];
+				}
+				up	=pRows[y - 1][ofsX];
+			}
+			else
+			{
+				if(x > 0)
+				{
+					upLeft	=pRows[y][ofsX - bytesPerHeight];
+				}
+				else
+				{
+					upLeft	=pRows[y][ofsX];
+				}
+				if(x < (w - 1))
+				{
+					upRight	=pRows[y][ofsX + bytesPerHeight];
+				}
+				else
+				{
+					upRight	=pRows[y][ofsX];
+				}
+				up	=pRows[y][ofsX];
+			}
+
+			if(x > 0)
+			{
+				left	=pRows[y][ofsX - bytesPerHeight];
+			}
+			else
+			{
+				left	=pRows[y][ofsX];
+			}
+
+			if(x < (w - 1))
+			{
+				right	=pRows[y][ofsX + bytesPerHeight];
+			}
+			else
+			{
+				right	=pRows[y][ofsX];
+			}
+
+			if(y < (h - 1))
+			{
+				if(x > 0)
+				{
+					downLeft	=pRows[y + 1][ofsX - bytesPerHeight];
+				}
+				else
+				{
+					downLeft	=pRows[y + 1][ofsX];
+				}
+
+				if(x < (w - 1))
+				{
+					downRight	=pRows[y + 1][ofsX + bytesPerHeight];
+				}
+				else
+				{
+					downRight	=pRows[y + 1][ofsX];
+				}
+
+				down	=pRows[y + 1][ofsX];
+			}
+			else
+			{
+				if(x > 0)
+				{
+					downLeft	=pRows[y][ofsX - bytesPerHeight];
+				}
+				else
+				{
+					downLeft	=pRows[y][ofsX];
+				}
+
+				if(x < (w - 1))
+				{
+					downRight	=pRows[y][ofsX + bytesPerHeight];
+				}
+				else
+				{
+					downRight	=pRows[y][ofsX];
+				}
+
+				down	=pRows[y][ofsX];
+			}
+
+			float	sum	=upLeft + up + upRight + left
+				+ right + downLeft + down + downRight;
+
+			sum	/=8.0f;
+
+			pRows[y][ofsX]	=sum;
+		}
+	}
+}
+
 
 Terrain	*Terrain_Create(GraphicsDevice *pGD,
-	const char *pName, const char *pPath)
+	const char *pName, const char *pPath, int numSmoothPasses)
 {
 	uint32_t	w, h, wm1, hm1;
-	int			rowPitch;
+	int			rowPitch, i;
 
 	Terrain	*pRet	=malloc(sizeof(Terrain));
 
 	memset(pRet, 0, sizeof(Terrain));
 
 	BYTE	**pRows	=SK_LoadTextureBytes(pPath, &rowPitch, &w, &h);
+
+	//smooth a bit
+	for(i=0;i < numSmoothPasses;i++)
+	{
+		SmoothPass(pRows, w, h, rowPitch);
+	}
 
 	//-1 for anding
 	wm1	=w - 1;

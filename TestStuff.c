@@ -102,7 +102,7 @@ int main(void)
 	rastDesc.SlopeScaledDepthBias	=0;
 	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
-	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png");
+	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 2);
 
 	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);

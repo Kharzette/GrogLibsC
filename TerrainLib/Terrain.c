@@ -54,16 +54,12 @@ static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
 }
 
-static void	SmoothPass(BYTE **pRows, int w, int h, int rowPitch)
+static void	SmoothPass(const float *pHeights, float *pOut, int w, int h)
 {
-	int	bytesPerHeight	=rowPitch / w;
-
 	for(int y=0;y < h;y++)
 	{
 		for(int x=0;x < w;x++)
 		{
-			int	ofsX	=(x * bytesPerHeight);
-
 			float	upLeft, up, upRight;
 			float	left, right;
 			float	downLeft, down, downRight;
@@ -72,104 +68,105 @@ static void	SmoothPass(BYTE **pRows, int w, int h, int rowPitch)
 			{
 				if(x > 0)
 				{
-					upLeft	=pRows[y - 1][ofsX - bytesPerHeight];
+					upLeft	=pHeights[((y - 1) * w) + (x - 1)];
 				}
 				else
 				{
-					upLeft	=pRows[y - 1][ofsX];
+					upLeft	=pHeights[((y - 1) * w)];
 				}
+
 				if(x < (w - 1))
 				{
-					upRight	=pRows[y - 1][ofsX + bytesPerHeight];
+					upRight	=pHeights[((y - 1) * w) + (x + 1)];
 				}
 				else
 				{
-					upRight	=pRows[y - 1][ofsX];
+					upRight	=pHeights[((y - 1) * w) + x];
 				}
-				up	=pRows[y - 1][ofsX];
+				up	=pHeights[((y - 1) * w) + x];
 			}
 			else
 			{
 				if(x > 0)
 				{
-					upLeft	=pRows[y][ofsX - bytesPerHeight];
+					upLeft	=pHeights[(y * w) + (x - 1)];
 				}
 				else
 				{
-					upLeft	=pRows[y][ofsX];
+					upLeft	=pHeights[(y * w)];
 				}
 				if(x < (w - 1))
 				{
-					upRight	=pRows[y][ofsX + bytesPerHeight];
+					upRight	=pHeights[(y * w) + (x + 1)];
 				}
 				else
 				{
-					upRight	=pRows[y][ofsX];
+					upRight	=pHeights[(y * w) + x];
 				}
-				up	=pRows[y][ofsX];
+				up	=pHeights[(y * w) + x];
 			}
 
 			if(x > 0)
 			{
-				left	=pRows[y][ofsX - bytesPerHeight];
+				left	=pHeights[(y * w) + (x - 1)];
 			}
 			else
 			{
-				left	=pRows[y][ofsX];
+				left	=pHeights[(y * w)];
 			}
 
 			if(x < (w - 1))
 			{
-				right	=pRows[y][ofsX + bytesPerHeight];
+				right	=pHeights[(y * w) + (x + 1)];
 			}
 			else
 			{
-				right	=pRows[y][ofsX];
+				right	=pHeights[(y * w) + x];
 			}
 
 			if(y < (h - 1))
 			{
 				if(x > 0)
 				{
-					downLeft	=pRows[y + 1][ofsX - bytesPerHeight];
+					downLeft	=pHeights[((y + 1) * w) + (x - 1)];
 				}
 				else
 				{
-					downLeft	=pRows[y + 1][ofsX];
+					downLeft	=pHeights[((y + 1) * w)];
 				}
 
 				if(x < (w - 1))
 				{
-					downRight	=pRows[y + 1][ofsX + bytesPerHeight];
+					downRight	=pHeights[((y + 1) * w) + (x + 1)];
 				}
 				else
 				{
-					downRight	=pRows[y + 1][ofsX];
+					downRight	=pHeights[((y + 1) * w) + x];
 				}
 
-				down	=pRows[y + 1][ofsX];
+				down	=pHeights[((y + 1) * w) + x];
 			}
 			else
 			{
 				if(x > 0)
 				{
-					downLeft	=pRows[y][ofsX - bytesPerHeight];
+					downLeft	=pHeights[(y * w) + (x - 1)];
 				}
 				else
 				{
-					downLeft	=pRows[y][ofsX];
+					downLeft	=pHeights[(y * w)];
 				}
 
 				if(x < (w - 1))
 				{
-					downRight	=pRows[y][ofsX + bytesPerHeight];
+					downRight	=pHeights[(y * w) + (x + 1)];
 				}
 				else
 				{
-					downRight	=pRows[y][ofsX];
+					downRight	=pHeights[(y * w) + x];
 				}
 
-				down	=pRows[y][ofsX];
+				down	=pHeights[(y * w) + x];
 			}
 
 			float	sum	=upLeft + up + upRight + left
@@ -177,14 +174,15 @@ static void	SmoothPass(BYTE **pRows, int w, int h, int rowPitch)
 
 			sum	/=8.0f;
 
-			pRows[y][ofsX]	=sum;
+			pOut[(y * w) + x]	=sum;
 		}
 	}
 }
 
 
 Terrain	*Terrain_Create(GraphicsDevice *pGD,
-	const char *pName, const char *pPath, int numSmoothPasses)
+	const char *pName, const char *pPath,
+	int numSmoothPasses, float heightScalar)
 {
 	uint32_t	w, h, wm1, hm1;
 	int			rowPitch, i;
@@ -194,12 +192,6 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	memset(pRet, 0, sizeof(Terrain));
 
 	BYTE	**pRows	=SK_LoadTextureBytes(pPath, &rowPitch, &w, &h);
-
-	//smooth a bit
-	for(i=0;i < numSmoothPasses;i++)
-	{
-		SmoothPass(pRows, w, h, rowPitch);
-	}
 
 	//-1 for anding
 	wm1	=w - 1;
@@ -212,6 +204,15 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 
 	TerrainVert	*pVerts	=malloc(sizeof(TerrainVert) * w * h);
 
+	float	*pSmooth0, *pSmooth1;
+
+	//allocate some smoothing space if needed
+	if(numSmoothPasses > 0)
+	{
+		pSmooth0	=malloc(sizeof(float) * w * h);
+		pSmooth1	=malloc(sizeof(float) * w * h);
+	}
+
 	for(int y=0;y < h;y++)
 	{
 		for(int x=0;x < w;x++)
@@ -219,14 +220,60 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 			int	ofsX	=(x * bytesPerHeight);
 			int	idx		=(y * w) + x;
 
+			//red is fine
+			float	height	=pRows[y][ofsX] * heightScalar;
+
 			pVerts[idx].mPosition[0]	=x;
-			pVerts[idx].mPosition[1]	=pRows[y][ofsX];	//red is fine
+			pVerts[idx].mPosition[1]	=height;
 			pVerts[idx].mPosition[2]	=y;
 
 			//set texture 0 to fully on by default
 			Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor0);
 			Misc_Convert4ToF16(0.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor1);
+
+			if(numSmoothPasses > 0)
+			{
+				pSmooth0[(y * w) + x]	=height;
+			}
 		}
+	}
+
+	//smooth a bit
+	bool	bToggle	=false;
+	for(i=0;i < numSmoothPasses;i++)
+	{
+		if(bToggle)
+		{
+			SmoothPass(pSmooth1, pSmooth0, w, h);
+		}
+		else
+		{
+			SmoothPass(pSmooth0, pSmooth1, w, h);
+		}
+
+		bToggle	=!bToggle;
+	}
+
+	if(numSmoothPasses > 0)
+	{
+		//copy back into verts
+		float	*pSmoothed;
+		if(bToggle)
+		{
+			pSmoothed	=pSmooth1;
+		}
+		else
+		{
+			pSmoothed	=pSmooth0;
+		}
+
+		for(int i=0;i < (w * h);i++)
+		{
+			pVerts[i].mPosition[1]	=pSmoothed[i];
+		}
+
+		free(pSmooth0);
+		free(pSmooth1);
 	}
 
 	//indexes

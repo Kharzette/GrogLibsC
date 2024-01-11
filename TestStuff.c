@@ -30,7 +30,8 @@
 #define	RESY			600
 #define	ROT_RATE		10.0f
 #define	UVSCALE_RATE	1.0f
-#define	KEYTURN_RATE	0.1f;
+#define	KEYTURN_RATE	0.1f
+#define	HEIGHT_SCALAR	0.5f
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -102,7 +103,7 @@ int main(void)
 	rastDesc.SlopeScaledDepthBias	=0;
 	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
-	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 2);
+	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
 
 	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);

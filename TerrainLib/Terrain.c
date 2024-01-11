@@ -316,11 +316,16 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 
 			int	idx	=(y * w) + x;
 
-			//indexes of the nearby wrapped if needed
-			leftIdx		=(y * w) + ((x - 1) & wm1);
-			upIdx		=( ((y - 1) & hm1) * w) + x;
-			rightIdx	=(y * w) + ((x + 1) & wm1);
-			downIdx		=( ((y + 1) & hm1) * w) + x;
+			int	leftX	=(x > 0)?		x - 1 : x;
+			int	upY		=(y > 0)?		y - 1 : y;
+			int	rightX	=(x < (w - 1))?	x + 1 : x;
+			int	downY	=(y < (h - 1))?	y + 1 : y;
+
+			//indexes of the nearby clamped
+			leftIdx		=(y * w) + leftX;
+			upIdx		=(upY * w) + x;
+			rightIdx	=(y * w) + rightX;
+			downIdx		=(downY * w) + x;
 
 			glmc_vec3_sub(pVerts[leftIdx].mPosition, pVerts[idx].mPosition, edge0);
 			glmc_vec3_sub(pVerts[upIdx].mPosition, pVerts[idx].mPosition, edge1);
@@ -328,11 +333,10 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 			glmc_vec3_sub(pVerts[downIdx].mPosition, pVerts[idx].mPosition, edge3);
 
 			vec3	n0, n1, n2, n3;
-
-			glmc_vec3_cross(edge0, edge1, n0);
-			glmc_vec3_cross(edge1, edge2, n1);
-			glmc_vec3_cross(edge2, edge3, n2);
-			glmc_vec3_cross(edge3, edge0, n3);
+			glmc_vec3_cross(edge1, edge0, n0);
+			glmc_vec3_cross(edge2, edge1, n1);
+			glmc_vec3_cross(edge3, edge2, n2);
+			glmc_vec3_cross(edge0, edge3, n3);
 
 			//accumulate
 			glmc_vec3_add(n0, n1, n0);

@@ -210,6 +210,7 @@ int main(void)
 	float	animTime	=0.0f;
 
 	bool	bRunning	=true;
+	bool	bRotLight	=false;
 	while(bRunning)
 	{
 		float	deltaYaw, deltaPitch;
@@ -224,6 +225,8 @@ int main(void)
 			GameCam_GetForwardVec(pCam, forward);
 			GameCam_GetRightVec(pCam, right);
 			GameCam_GetUpVec(pCam, up);
+
+			bRotLight	=false;
 
 			SDL_Event	evt;
 			while(SDL_PollEvent(&evt))
@@ -286,10 +289,19 @@ int main(void)
 					{
 						bRunning	=false;
 					}
+					else if(evt.key.keysym.sym == SDLK_l)
+					{
+						bRotLight	=true;
+					}
 				}
 			}
 			//do input here
 			//move turn etc
+			if(bRotLight)
+			{
+				glmc_vec3_rotate_m4(world, lightDir, lightDir);
+				CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
+			}
 
 			UpdateTimer_UpdateDone(pUT);
 		}
@@ -353,7 +365,7 @@ int main(void)
 		GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 		GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
 		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
-		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor08"), 0);
+		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
 
 		//GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 

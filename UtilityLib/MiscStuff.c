@@ -1,6 +1,10 @@
 #include	<stdint.h>
 #include	<x86intrin.h>
 #include	<string.h>
+#include	<cglm/call.h>
+
+
+#define		MIN_MAX_BOUNDS	15192.0f
 
 
 static __m128i	Convert4F32ToF16m128i(float f0, float f1, float f2, float f3)
@@ -29,4 +33,30 @@ void	Misc_Convert2ToF16(float f0, float f1, uint16_t *pDest)
 	__m128i	converted	=Convert4F32ToF16m128i(f0, f1, f0, f1);
 
 	memcpy(pDest, &converted, 4);
+}
+
+
+void	ClearBounds(vec3 min, vec3 max)
+{
+	for(int i=0;i < 3;i++)
+	{
+		min[i]	=MIN_MAX_BOUNDS;
+		max[i]	=-MIN_MAX_BOUNDS;
+	}
+}
+
+void	AddPointToBoundingBox(vec3 min, vec3 max, const vec3 pnt)
+{
+	for(int i=0;i < 3;i++)
+	{
+		if(pnt[i] < min[i])
+		{
+			min[i]	=pnt[i];
+		}
+
+		if(pnt[i] > max[i])
+		{
+			max[i]	=pnt[i];
+		}
+	}
 }

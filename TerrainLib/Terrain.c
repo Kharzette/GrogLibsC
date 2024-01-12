@@ -8,6 +8,7 @@
 #include	"../UtilityLib/MiscStuff.h"
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
+#include	"QuadTree.h"
 
 
 typedef struct	Terrain_t
@@ -16,6 +17,8 @@ typedef struct	Terrain_t
 	ID3D11Buffer		*mpVerts, *mpIndexs;
 	ID3D11InputLayout	*mpLayout;
 	int					mNumVerts, mNumTriangles, mVertSize;
+
+	QuadTree	*mpQT;
 }	Terrain;
 
 typedef struct	TerrainVert_t
@@ -363,6 +366,9 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	MakeIBDesc(&bufDesc, 2 * numTris * 3);
 
 	pRet->mpIndexs	=GD_CreateBufferWithData(pGD, &bufDesc, pIndexes, 2 * numTris * 3);
+
+	//build quadtree
+	pRet->mpQT	=QT_Create(pVerts, w, h);
 
 	//free data
 	free(pVerts);

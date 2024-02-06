@@ -30,7 +30,7 @@ static void	BoundVerts(const TerrainVert *pVerts, int numVerts, vec3 mins, vec3 
 }
 
 
-QuadTree	*QT_Create(const TerrainVert *pVerts, int w, int h)
+QuadTree	*QT_Create(TerrainVert *pVerts, int w, int h)
 {
 	QuadTree	*pQT	=malloc(sizeof(QuadTree));
 
@@ -38,5 +38,34 @@ QuadTree	*QT_Create(const TerrainVert *pVerts, int w, int h)
 
 	BoundVerts(pVerts, w * h, pQT->mMins, pQT->mMaxs);
 
-	QN_Build(pVerts, w, h, pQT->mMins, pQT->mMaxs);
+	pQT->mpRoot	=QN_Build(pVerts, w * h, pQT->mMins, pQT->mMaxs);
+
+	QN_FixBoxHeights(pQT->mpRoot);
+
+	return	pQT;
+}
+
+
+//get a list of the bounds of all leafs
+void	QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds)
+{
+	assert(ppMins != NULL);
+	assert(ppMaxs != NULL);
+	assert(pNumBounds != NULL);
+
+	//count bounds
+	QN_CountLeafBounds(pQT->mpRoot, pNumBounds);
+
+	if(*pNumBounds <= 0)
+	{
+		return;
+	}
+
+	//alloc space for the bounds
+	*ppMins	=malloc(sizeof(vec3) * (*pNumBounds));
+	*ppMaxs	=malloc(sizeof(vec3) * (*pNumBounds));
+
+	int	index	=0;
+
+	QN_GatherLeafBounds(pQT->mpRoot, *ppMins, *ppMaxs, &index);
 }

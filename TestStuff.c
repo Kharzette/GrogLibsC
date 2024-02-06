@@ -80,7 +80,7 @@ int main(void)
 
 	GraphicsDevice	*pGD;
 
-	GD_Init(&pGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_1);
+	GD_Init(&pGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_0);
 
 	StuffKeeper	*pSK	=StuffKeeper_Create(pGD);
 	if(pSK == NULL)
@@ -104,6 +104,13 @@ int main(void)
 	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
 	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
+
+	//debugdraw quadtree boxes
+	int		numBounds;
+	vec3	*pMins, *pMaxs;
+	Terrain_GetQuadTreeLeafBoxes(pTer, &pMins, &pMaxs, &numBounds);
+
+	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundList(pMins, pMaxs, numBounds, pGD);
 
 	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);
@@ -382,6 +389,14 @@ int main(void)
 		CBK_SetWorldMat(pCBK, &temp);
 		CBK_UpdateObject(pCBK, pGD);
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+
+		//debug draw quadtree leaf cubes
+		GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
+		GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
+		CBK_SetWorldMat(pCBK, &ident);
+		CBK_UpdateObject(pCBK, pGD);
+		GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
+//		GD_DrawIndexed(pGD, 36 * 4, 0, 0);
 
 		//set up terrain draw
 		CBK_SetWorldMat(pCBK, &ident);

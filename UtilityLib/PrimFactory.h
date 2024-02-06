@@ -13,3 +13,4 @@ typedef struct	PrimObject_t
 
 PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD);
 PrimObject	*PF_CreateCube(float size, GraphicsDevice *pGD);
+PrimObject	*PF_CreateCubesFromBoundList(const vec3 *pMins, const vec3 *pMaxs, int numBounds, GraphicsDevice *pGD);

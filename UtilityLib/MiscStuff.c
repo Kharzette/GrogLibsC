@@ -60,3 +60,19 @@ void	AddPointToBoundingBox(vec3 min, vec3 max, const vec3 pnt)
 		}
 	}
 }
+
+bool	IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt)
+{
+	for(int i=0;i < 3;i++)
+	{
+		if(pnt[i] < min[i])
+		{
+			return	false;
+		}
+		if(pnt[i] > max[i])
+		{
+			return	false;
+		}
+	}
+	return	true;
+}

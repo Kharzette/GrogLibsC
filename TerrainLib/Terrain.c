@@ -9,6 +9,7 @@
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"QuadTree.h"
+#include	"QuadNode.h"	//for testing splits
 
 
 typedef struct	Terrain_t
@@ -182,102 +183,22 @@ static void	SmoothPass(const float *pHeights, float *pOut, int w, int h)
 	}
 }
 
-
-Terrain	*Terrain_Create(GraphicsDevice *pGD,
-	const char *pName, const char *pPath,
-	int numSmoothPasses, float heightScalar)
+static void	VBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts, uint32_t w, uint32_t h,
+						ID3D11Buffer **ppVB, ID3D11Buffer **ppIB)
 {
-	uint32_t	w, h, wm1, hm1;
-	int			rowPitch, i;
+	//make vertex buffer
+	D3D11_BUFFER_DESC	bufDesc;
 
-	Terrain	*pRet	=malloc(sizeof(Terrain));
+	MakeVBDesc(&bufDesc, sizeof(TerrainVert) * w * h);
 
-	memset(pRet, 0, sizeof(Terrain));
-
-	BYTE	**pRows	=SK_LoadTextureBytes(pPath, &rowPitch, &w, &h);
+	*ppVB	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
 
 	//-1 for anding
-	wm1	=w - 1;
-	hm1	=h - 1;
+	uint32_t	wm1	=w - 1;
+	uint32_t	hm1	=h - 1;
 
 	int	numQuads	=wm1 * hm1;
 	int	numTris		=numQuads * 2;
-
-	int	bytesPerHeight	=rowPitch / w;
-
-	TerrainVert	*pVerts	=malloc(sizeof(TerrainVert) * w * h);
-
-	float	*pSmooth0, *pSmooth1;
-
-	//allocate some smoothing space if needed
-	if(numSmoothPasses > 0)
-	{
-		pSmooth0	=malloc(sizeof(float) * w * h);
-		pSmooth1	=malloc(sizeof(float) * w * h);
-	}
-
-	for(int y=0;y < h;y++)
-	{
-		for(int x=0;x < w;x++)
-		{
-			int	ofsX	=(x * bytesPerHeight);
-			int	idx		=(y * w) + x;
-
-			//red is fine
-			float	height	=pRows[y][ofsX] * heightScalar;
-
-			pVerts[idx].mPosition[0]	=x;
-			pVerts[idx].mPosition[1]	=height;
-			pVerts[idx].mPosition[2]	=y;
-
-			//set texture 0 to fully on by default
-			Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor0);
-			Misc_Convert4ToF16(0.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor1);
-
-			if(numSmoothPasses > 0)
-			{
-				pSmooth0[(y * w) + x]	=height;
-			}
-		}
-	}
-
-	//smooth a bit
-	bool	bToggle	=false;
-	for(i=0;i < numSmoothPasses;i++)
-	{
-		if(bToggle)
-		{
-			SmoothPass(pSmooth1, pSmooth0, w, h);
-		}
-		else
-		{
-			SmoothPass(pSmooth0, pSmooth1, w, h);
-		}
-
-		bToggle	=!bToggle;
-	}
-
-	if(numSmoothPasses > 0)
-	{
-		//copy back into verts
-		float	*pSmoothed;
-		if(bToggle)
-		{
-			pSmoothed	=pSmooth1;
-		}
-		else
-		{
-			pSmoothed	=pSmooth0;
-		}
-
-		for(int i=0;i < (w * h);i++)
-		{
-			pVerts[i].mPosition[1]	=pSmoothed[i];
-		}
-
-		free(pSmooth0);
-		free(pSmooth1);
-	}
 
 	//indexes
 	uint16_t	*pIndexes	=malloc(2 * numTris * 3);
@@ -301,6 +222,141 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 		}
 	}
 
+	MakeIBDesc(&bufDesc, 2 * numTris * 3);
+
+	*ppIB	=GD_CreateBufferWithData(pGD, &bufDesc, pIndexes, 2 * numTris * 3);
+
+	//free data
+	free(pIndexes);
+}
+
+
+Terrain	*Terrain_Create(GraphicsDevice *pGD,
+	const char *pName, const char *pPath,
+	int numSmoothPasses, float heightScalar)
+{
+	uint32_t	w, h, wp1, hp1;
+	int			rowPitch, i;
+
+	Terrain	*pRet	=malloc(sizeof(Terrain));
+
+	memset(pRet, 0, sizeof(Terrain));
+
+	BYTE	**pRows	=SK_LoadTextureBytes(pPath, &rowPitch, &w, &h);
+
+	//a note on height texture sizes...
+	//Most textures will be power of two, and thusly will be split evenly
+	//at the midpoint between two heights.  This would need an extra set of
+	//verts at this strange midpoint, which would require splitting the quads
+	//and such.  Instead I think I will copy the last row and column to make
+	//one extra row and column, so like a 64x64 becomes a 65x65.  This would
+	//make the middle point directly on the 32nd row/column
+
+	wp1	=w + 1;
+	hp1	=h + 1;
+
+	int	numQuads	=w * h;
+	int	numTris		=numQuads * 2;
+
+	int	bytesPerHeight	=rowPitch / w;
+
+	TerrainVert	*pVerts	=malloc(sizeof(TerrainVert) * wp1 * hp1);
+
+	float	*pSmooth0, *pSmooth1;
+
+	//allocate some smoothing space if needed
+	if(numSmoothPasses > 0)
+	{
+		pSmooth0	=malloc(sizeof(float) * wp1 * hp1);
+		pSmooth1	=malloc(sizeof(float) * wp1 * hp1);
+	}
+
+	//copy in the height data
+	for(int y=0;y < h;y++)
+	{
+		for(int x=0;x < w;x++)
+		{
+			int	ofsX	=(x * bytesPerHeight);
+			int	idx		=(y * wp1) + x;
+
+			//red is fine
+			float	height	=pRows[y][ofsX] * heightScalar;
+
+			pVerts[idx].mPosition[0]	=x;
+			pVerts[idx].mPosition[1]	=height;
+			pVerts[idx].mPosition[2]	=y;
+
+			//set texture 0 to fully on by default for now
+			Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor0);
+			Misc_Convert4ToF16(0.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor1);
+		}
+	}
+
+	//copy extra column on the far end
+	for(int y=0;y < h;y++)
+	{
+		memcpy(&pVerts[(y * wp1) + w], &pVerts[(y * wp1) + (w - 1)], sizeof(TerrainVert));
+
+		//bump over the x by 1
+		pVerts[(y * wp1) + w].mPosition[0]++;
+	}
+
+	//copy extra row at the bottom
+	memcpy(&pVerts[h * wp1], &pVerts[(h - 1) * wp1], sizeof(TerrainVert) * w);
+
+	//increment Z in that bottom row
+	for(int x=0;x < wp1;x++)
+	{
+		pVerts[(h * wp1) + x].mPosition[2]++;
+	}
+
+	//do copy into smoothing buffer 0 if needed
+	if(numSmoothPasses > 0)
+	{
+		for(int i=0;i < (wp1 * hp1);i++)
+		{
+			pSmooth0[i]	=pVerts[i].mPosition[1];
+		}
+	}
+
+	//smooth a bit
+	bool	bToggle	=false;
+	for(i=0;i < numSmoothPasses;i++)
+	{
+		if(bToggle)
+		{
+			SmoothPass(pSmooth1, pSmooth0, wp1, hp1);
+		}
+		else
+		{
+			SmoothPass(pSmooth0, pSmooth1, wp1, hp1);
+		}
+
+		bToggle	=!bToggle;
+	}
+
+	if(numSmoothPasses > 0)
+	{
+		//copy back into verts
+		float	*pSmoothed;
+		if(bToggle)
+		{
+			pSmoothed	=pSmooth1;
+		}
+		else
+		{
+			pSmoothed	=pSmooth0;
+		}
+
+		for(int i=0;i < (wp1 * hp1);i++)
+		{
+			pVerts[i].mPosition[1]	=pSmoothed[i];
+		}
+
+		free(pSmooth0);
+		free(pSmooth1);
+	}
+
 	//free data
 	for(int y=0;y < h;y++)
 	{
@@ -309,26 +365,26 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	free(pRows);
 
 	//compute normals
-	for(int y=0;y < h;y++)
+	for(int y=0;y < hp1;y++)
 	{
-		for(int x=0;x < w;x++)
+		for(int x=0;x < wp1;x++)
 		{
 			//grab edge vectors connected to this vert
 			vec3	edge0, edge1, edge2, edge3;
 			int		leftIdx, upIdx, rightIdx, downIdx;
 
-			int	idx	=(y * w) + x;
+			int	idx	=(y * wp1) + x;
 
-			int	leftX	=(x > 0)?		x - 1 : x;
-			int	upY		=(y > 0)?		y - 1 : y;
-			int	rightX	=(x < (w - 1))?	x + 1 : x;
-			int	downY	=(y < (h - 1))?	y + 1 : y;
+			int	leftX	=(x > 0)?	x - 1 : x;
+			int	upY		=(y > 0)?	y - 1 : y;
+			int	rightX	=(x < w)?	x + 1 : x;
+			int	downY	=(y < h)?	y + 1 : y;
 
 			//indexes of the nearby clamped
-			leftIdx		=(y * w) + leftX;
-			upIdx		=(upY * w) + x;
-			rightIdx	=(y * w) + rightX;
-			downIdx		=(downY * w) + x;
+			leftIdx		=(y * wp1) + leftX;
+			upIdx		=(upY * wp1) + x;
+			rightIdx	=(y * wp1) + rightX;
+			downIdx		=(downY * wp1) + x;
 
 			glmc_vec3_sub(pVerts[leftIdx].mPosition, pVerts[idx].mPosition, edge0);
 			glmc_vec3_sub(pVerts[upIdx].mPosition, pVerts[idx].mPosition, edge1);
@@ -352,27 +408,17 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 		}
 	}
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(TerrainVert) * w * h);
+	//build quadtree
+	pRet->mpQT	=QT_Create(pVerts, wp1, hp1);
 
-	pRet->mpVerts	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
+	VBAndIndex(pGD, pVerts, wp1, hp1, &pRet->mpVerts, &pRet->mpIndexs);
 
 	pRet->mNumTriangles	=numTris;
-	pRet->mNumVerts		=w * h;
+	pRet->mNumVerts		=wp1 * hp1;
 	pRet->mVertSize		=sizeof(TerrainVert);
-
-
-	MakeIBDesc(&bufDesc, 2 * numTris * 3);
-
-	pRet->mpIndexs	=GD_CreateBufferWithData(pGD, &bufDesc, pIndexes, 2 * numTris * 3);
-
-	//build quadtree
-	pRet->mpQT	=QT_Create(pVerts, w, h);
 
 	//free data
 	free(pVerts);
-	free(pIndexes);
 
 	return	pRet;
 }
@@ -388,4 +434,13 @@ void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));
 
 	GD_DrawIndexed(pGD, pTer->mNumTriangles * 3, 0, 0);
+}
+
+
+void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds)
+{
+	assert(pTer != NULL);
+	assert(pTer->mpQT != NULL);
+
+	QT_GatherLeafBounds(pTer->mpQT, ppMins, ppMaxs, pNumBounds);
 }

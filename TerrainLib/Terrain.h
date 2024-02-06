@@ -22,3 +22,4 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	const char *pName, const char *pPath, int numSmoothPasses, float heightScalar);
 
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);
+void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds);

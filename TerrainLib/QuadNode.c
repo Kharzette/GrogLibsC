@@ -18,21 +18,35 @@ typedef struct	QuadNode_t
 {
 	vec3	mBoxMins, mBoxMaxs;		//bounds
 
-	QuadNode	*mpChildNW;			//northwest
-	QuadNode	*mpChildNE;			//northeast
-	QuadNode	*mpChildSW;			//southwest
-	QuadNode	*mpChildSE;			//southeast
+	//quadrants abcd below
+	QuadNode	*mpChildA;
+	QuadNode	*mpChildB;
+	QuadNode	*mpChildC;
+	QuadNode	*mpChildD;
 
 	TerrainVert	*mpHeights;			//null unless leaf
 
 }	QuadNode;
 
 
+//split mins and maxs evenly through x and z
+//return the resulting 4 bounds
+//    ←X→
+// *   *   *
+//
+//   C   D    
+//↑         ↑
+//Z*   *   *Z
+//↓         ↓
+//   B   A   
+//
+// *   *   *org
+//    ←X→
 static void	SplitBound(const vec3 mins, const vec3 maxs,
-		vec3 nwMins, vec3 nwMaxs,
-		vec3 neMins, vec3 neMaxs,
-		vec3 swMins, vec3 swMaxs,
-		vec3 seMins, vec3 seMaxs)
+		vec3 aMins, vec3 aMaxs,
+		vec3 bMins, vec3 bMaxs,
+		vec3 cMins, vec3 cMaxs,
+		vec3 dMins, vec3 dMaxs)
 {
 	vec3	middle;
 
@@ -42,67 +56,34 @@ static void	SplitBound(const vec3 mins, const vec3 maxs,
 	//copy initial values
 	for(int i=0;i < 3;i++)
 	{
-		nwMins[i]	=mins[i];
-		nwMaxs[i]	=maxs[i];
+		aMins[i]	=mins[i];
+		aMaxs[i]	=maxs[i];
 		
-		neMins[i]	=mins[i];
-		neMaxs[i]	=maxs[i];
+		bMins[i]	=mins[i];
+		bMaxs[i]	=maxs[i];
 		
-		swMins[i]	=mins[i];
-		swMaxs[i]	=maxs[i];
+		dMins[i]	=mins[i];
+		dMaxs[i]	=maxs[i];
 		
-		seMins[i]	=mins[i];
-		seMaxs[i]	=maxs[i];		
+		cMins[i]	=mins[i];
+		cMaxs[i]	=maxs[i];		
 	}
 
-	//northwest max x and z to the midpoint
-	nwMaxs[0]	=middle[0];
-	nwMaxs[2]	=middle[2];
+	//quadrant A max x and z to the midpoint
+	aMaxs[0]	=middle[0];
+	aMaxs[2]	=middle[2];
 
-	//southeast min x and z to the midpoint
-	seMins[0]	=middle[0];
-	seMins[2]	=middle[2];
+	//quadrant C min x and z to the midpoint
+	cMins[0]	=middle[0];
+	cMins[2]	=middle[2];
 
-	//southwest max x and min z to the midpoint
-	swMaxs[0]	=middle[0];
-	swMins[2]	=middle[2];
+	//quadrant D max x and min z to the midpoint
+	dMaxs[0]	=middle[0];
+	dMins[2]	=middle[2];
 
-	//northeast min x and max z to the midpoint
-	neMins[0]	=middle[0];
-	neMaxs[2]	=middle[2];
-}
-
-static void	SplitHeights(const TerrainVert *pVerts, int w, const vec3 mins, const vec3 maxs,
-	TerrainVert **pNW, TerrainVert **pNE, TerrainVert **pSW, TerrainVert **pSE)
-{
-	//see how many heights in each side
-	float	width	=maxs[0] - mins[0] + 1.0f;
-	float	height	=maxs[2] - mins[2] + 1.0f;
-
-	//how many heights go into the split data
-	int	halfW	=roundf(width / 2.0f);
-	int	halfH	=roundf(height / 2.0f);
-
-	//alloc split verts
-	*pNW	=malloc(sizeof(TerrainVert) * (halfW * halfH));
-	*pNE	=malloc(sizeof(TerrainVert) * (halfW * halfH));
-	*pSW	=malloc(sizeof(TerrainVert) * (halfW * halfH));
-	*pSE	=malloc(sizeof(TerrainVert) * (halfW * halfH));
-
-	for(int y=0;y < halfH;y++)
-	{
-		//copy rows
-		memcpy(
-			&((*pNW)[(y * halfW)]),	//tricksy deref, want the address of an array location
-									//from a pointerpointer			
-			&pVerts[(y * w)], sizeof(TerrainVert) * halfW);
-
-		memcpy(&((*pNE)[(y * halfW)]), &pVerts[(y * w) + halfW - 1], sizeof(TerrainVert) * halfW);
-
-		memcpy(&((*pSW)[(y * halfW)]), &pVerts[((y + halfH) * w)], sizeof(TerrainVert) * halfW);
-
-		memcpy(&((*pSE)[(y * halfW)]), &pVerts[((y + halfH) * w) + halfW - 1], sizeof(TerrainVert) * halfW);
-	}
+	//quadrant B min x and max z to the midpoint
+	bMins[0]	=middle[0];
+	bMaxs[2]	=middle[2];
 }
 
 static void	BoundVerts(const TerrainVert *pVerts, int numVerts, vec3 mins, vec3 maxs)
@@ -152,10 +133,10 @@ void	QN_FixBoxHeights(QuadNode *pQN)
 {
 	if(pQN->mpHeights == NULL)
 	{
-		QN_FixBoxHeights(pQN->mpChildNE);
-		QN_FixBoxHeights(pQN->mpChildNW);
-		QN_FixBoxHeights(pQN->mpChildSE);
-		QN_FixBoxHeights(pQN->mpChildSW);
+		QN_FixBoxHeights(pQN->mpChildB);
+		QN_FixBoxHeights(pQN->mpChildA);
+		QN_FixBoxHeights(pQN->mpChildD);
+		QN_FixBoxHeights(pQN->mpChildC);
 		return;
 	}
 
@@ -223,41 +204,39 @@ QuadNode	*QN_Build(TerrainVert *pVerts, int count, const vec3 mins, const vec3 m
 		return	pNode;
 	}
 
-	TerrainVert	*pNW, *pNE, *pSW, *pSE;
-	int			numNW, numNE, numSW, numSE;
+	TerrainVert	*pA, *pB, *pC, *pD;
+	int			numA, numB, numC, numD;
 
-	vec3	nwMins, nwMaxs, neMins, neMaxs, swMins, swMaxs, seMins, seMaxs;
+	vec3	aMins, aMaxs, bMins, bMaxs, cMins, cMaxs, dMins, dMaxs;
 
-	SplitBound(mins, maxs, nwMins, nwMaxs, neMins, neMaxs, swMins, swMaxs, seMins, seMaxs);
+	SplitBound(mins, maxs, aMins, aMaxs, bMins, bMaxs, cMins, cMaxs, dMins, dMaxs);
 
-	GetBoundedHeights(pVerts, count, nwMins, nwMaxs, &pNW, &numNW);
-	GetBoundedHeights(pVerts, count, neMins, neMaxs, &pNE, &numNE);
-	GetBoundedHeights(pVerts, count, swMins, swMaxs, &pSW, &numSW);
-	GetBoundedHeights(pVerts, count, seMins, seMaxs, &pSE, &numSE);
+	GetBoundedHeights(pVerts, count, aMins, aMaxs, &pA, &numA);
+	GetBoundedHeights(pVerts, count, bMins, bMaxs, &pB, &numB);
+	GetBoundedHeights(pVerts, count, cMins, cMaxs, &pC, &numC);
+	GetBoundedHeights(pVerts, count, dMins, dMaxs, &pD, &numD);
 
-//	SplitHeights(pVerts, w, mins, maxs, &pNW, &pNE, &pSW, &pSE);
-
-	pNode->mpChildNW	=QN_Build(pNW, numNW, nwMins, nwMaxs);
-	pNode->mpChildNE	=QN_Build(pNE, numNE, neMins, neMaxs);
-	pNode->mpChildSW	=QN_Build(pSW, numSW, swMins, swMaxs);
-	pNode->mpChildSE	=QN_Build(pSE, numSE, seMins, seMaxs);
+	pNode->mpChildA	=QN_Build(pA, numA, aMins, aMaxs);
+	pNode->mpChildB	=QN_Build(pB, numB, bMins, bMaxs);
+	pNode->mpChildC	=QN_Build(pC, numC, cMins, cMaxs);
+	pNode->mpChildD	=QN_Build(pD, numD, dMins, dMaxs);
 
 	//after returning from recursion, free non leaf vert data
-	if(pNode->mpChildNW->mpHeights == NULL)
+	if(pNode->mpChildA->mpHeights == NULL)
 	{
-		free(pNW);
+		free(pA);
 	}
-	if(pNode->mpChildNE->mpHeights == NULL)
+	if(pNode->mpChildB->mpHeights == NULL)
 	{
-		free(pNE);
+		free(pB);
 	}
-	if(pNode->mpChildSW->mpHeights == NULL)
+	if(pNode->mpChildC->mpHeights == NULL)
 	{
-		free(pSW);
+		free(pC);
 	}
-	if(pNode->mpChildSE->mpHeights == NULL)
+	if(pNode->mpChildD->mpHeights == NULL)
 	{
-		free(pSE);
+		free(pD);
 	}
 
 	return	pNode;
@@ -272,10 +251,10 @@ void	QN_CountLeafBounds(const QuadNode *pQN, int *pNumBounds)
 		return;
 	}
 
-	QN_CountLeafBounds(pQN->mpChildNW, pNumBounds);
-	QN_CountLeafBounds(pQN->mpChildNE, pNumBounds);
-	QN_CountLeafBounds(pQN->mpChildSW, pNumBounds);
-	QN_CountLeafBounds(pQN->mpChildSE, pNumBounds);
+	QN_CountLeafBounds(pQN->mpChildA, pNumBounds);
+	QN_CountLeafBounds(pQN->mpChildB, pNumBounds);
+	QN_CountLeafBounds(pQN->mpChildC, pNumBounds);
+	QN_CountLeafBounds(pQN->mpChildD, pNumBounds);
 }
 
 
@@ -289,8 +268,8 @@ void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIn
 		return;
 	}
 
-	QN_GatherLeafBounds(pQN->mpChildNW, pMins, pMaxs, pIndex);
-	QN_GatherLeafBounds(pQN->mpChildNE, pMins, pMaxs, pIndex);
-	QN_GatherLeafBounds(pQN->mpChildSW, pMins, pMaxs, pIndex);
-	QN_GatherLeafBounds(pQN->mpChildSE, pMins, pMaxs, pIndex);
+	QN_GatherLeafBounds(pQN->mpChildA, pMins, pMaxs, pIndex);
+	QN_GatherLeafBounds(pQN->mpChildB, pMins, pMaxs, pIndex);
+	QN_GatherLeafBounds(pQN->mpChildC, pMins, pMaxs, pIndex);
+	QN_GatherLeafBounds(pQN->mpChildD, pMins, pMaxs, pIndex);
 }

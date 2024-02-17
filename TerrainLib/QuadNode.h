@@ -10,3 +10,5 @@ QuadNode	*QN_Build(TerrainVert *pVerts, int count, const vec3 mins, const vec3 m
 void		QN_CountLeafBounds(const QuadNode *pQN, int *pNumBounds);
 void		QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIndex);
 void		QN_FixBoxHeights(QuadNode *pQN);
+int			QN_LineIntersect(const QuadNode *pQT, const vec3 start, const vec3 end,
+							vec3 intersection, vec3 hitNorm);

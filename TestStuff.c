@@ -16,6 +16,7 @@
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
 #include	"UtilityLib/MiscStuff.h"
+#include	"UtilityLib/ConvexVolume.h"
 #include	"UtilityLib/GameCamera.h"
 #include	"UtilityLib/DictionaryStuff.h"
 #include	"UtilityLib/UpdateTimer.h"
@@ -32,6 +33,7 @@
 #define	UVSCALE_RATE	1.0f
 #define	KEYTURN_RATE	0.1f
 #define	HEIGHT_SCALAR	0.5f
+#define	RAY_LEN			100.0f
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -127,6 +129,10 @@ int main(void)
 	vec3	eyePos	={ 0.0f, 0.6f, 4.5f };
 	vec3	targPos	={ 0.0f, 0.75f, 0.0f };
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
+
+	//collision debuggery
+	vec3	hitPos, hitNorm;
+	bool	bHit;
 
 	//draw 2 more cubes
 	vec3	bumpVec0	={ 2.0f, -2.0f, 0.0f };
@@ -300,6 +306,46 @@ int main(void)
 					{
 						bRotLight	=true;
 					}
+					else if(evt.key.keysym.sym == SDLK_i)
+					{
+						vec3	testMin		={-10, -10, -10};
+						vec3	testMax		={-5, -5, -5};
+						vec4	testPlane	={1, 0, 0, 10};
+						vec3	endRay;
+
+						vec4	testVol[6];
+						MakeConvexVolumeFromBound(testMin, testMax, testVol);
+
+						glm_vec3_scale(forward, -RAY_LEN, endRay);
+						glm_vec3_add(eyePos, endRay, endRay);
+
+						int	hitRes	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitNorm);
+//						int	hitRes	=LineIntersectBounds(testMin, testMax, eyePos, endRay, hitPos, hitNorm);
+//						int	hitRes	=LineIntersectPlane(testPlane, eyePos, endRay, hitPos);
+//						int	hitRes	=LineIntersectVolume(testVol, 6, eyePos, endRay, hitPos, hitNorm);
+						if(hitRes == VOL_MISS)
+						{
+							solidColor0[0]	=solidColor0[1]	=solidColor0[2]	=1.0f;
+						}
+						else if(hitRes == VOL_INSIDE)
+						{
+							glm_translate_make(world, hitPos);
+							solidColor0[0]	=solidColor0[2]	=1.0f;
+							solidColor0[1]	=0.0f;
+						}
+						else if(hitRes == VOL_HIT)
+						{
+							glm_translate_make(world, hitPos);
+							solidColor0[0]	=solidColor0[1]	=1.0f;
+							solidColor0[2]	=0.0f;
+						}
+						else if(hitRes == VOL_HIT_INSIDE)
+						{
+							glm_translate_make(world, hitPos);
+							solidColor0[1]	=solidColor0[2]	=1.0f;
+							solidColor0[0]	=0.0f;
+						}
+					}
 				}
 			}
 			//do input here
@@ -331,7 +377,7 @@ int main(void)
 		GD_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
 		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
 
-		SpinMatYawPitch(dt, world);
+//		SpinMatYawPitch(dt, world);
 		CBK_SetWorldMat(pCBK, &world);
 		CBK_SetSolidColour(pCBK, solidColor0);
 
@@ -374,7 +420,9 @@ int main(void)
 		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
 		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
 
-		//GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+		CBK_SetWorldMat(pCBK, &world);
+		CBK_UpdateObject(pCBK, pGD);
+		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//draw another
 		CBK_SetSolidColour(pCBK, solidColor1);

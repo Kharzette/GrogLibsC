@@ -53,6 +53,8 @@ void	QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int 
 	assert(ppMaxs != NULL);
 	assert(pNumBounds != NULL);
 
+	*pNumBounds	=0;
+
 	//count bounds
 	QN_CountLeafBounds(pQT->mpRoot, pNumBounds);
 
@@ -68,4 +70,20 @@ void	QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int 
 	int	index	=0;
 
 	QN_GatherLeafBounds(pQT->mpRoot, *ppMins, *ppMaxs, &index);
+}
+
+
+int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
+					vec3 intersection, vec3 hitNorm)
+{
+	int	res	=LineIntersectBounds(pQT->mMins, pQT->mMaxs, start, end, intersection, hitNorm);
+	if(res == MISS)
+	{
+		return	res;
+	}
+
+	//reset intersection
+	intersection[0]	=intersection[1]	=intersection[2]	=FLT_MAX;
+
+	return	QN_LineIntersect(pQT->mpRoot, start, end, intersection, hitNorm);
 }

@@ -16,7 +16,7 @@ typedef struct	QuadNode_t	QuadNode;
 
 typedef struct	QuadNode_t
 {
-	vec3	mBoxMins, mBoxMaxs;		//bounds
+	vec3	mMins, mMaxs;		//bounds
 
 	//quadrants abcd below
 	QuadNode	*mpChildA;
@@ -141,12 +141,12 @@ void	QN_FixBoxHeights(QuadNode *pQN)
 	}
 
 	//recompute height of bounds
-	pQN->mBoxMins[1]	=FLT_MAX;
-	pQN->mBoxMaxs[1]	=-FLT_MAX;
+	pQN->mMins[1]	=FLT_MAX;
+	pQN->mMaxs[1]	=-FLT_MAX;
 
 	//see how many heights in each side
-	float	xSide	=pQN->mBoxMaxs[0] - pQN->mBoxMins[0] + 1.0f;
-	float	zSide	=pQN->mBoxMaxs[2] - pQN->mBoxMins[2] + 1.0f;
+	float	xSide	=pQN->mMaxs[0] - pQN->mMins[0] + 1.0f;
+	float	zSide	=pQN->mMaxs[2] - pQN->mMins[2] + 1.0f;
 
 	int	ixLen	=(int)xSide;
 	int	izLen	=(int)zSide;
@@ -157,19 +157,19 @@ void	QN_FixBoxHeights(QuadNode *pQN)
 		{
 			float	height	=pQN->mpHeights[(z * izLen) + x].mPosition[1];
 
-			if(height < pQN->mBoxMins[1])
+			if(height < pQN->mMins[1])
 			{
-				pQN->mBoxMins[1]	=height;
+				pQN->mMins[1]	=height;
 			}
-			if(height > pQN->mBoxMaxs[1])
+			if(height > pQN->mMaxs[1])
 			{
-				pQN->mBoxMaxs[1]	=height;
+				pQN->mMaxs[1]	=height;
 			}
 		}
 	}
 
 	//check for superflat boxes, those are problematic
-	float	yDim	=pQN->mBoxMaxs[1] - pQN->mBoxMins[1];
+	float	yDim	=pQN->mMaxs[1] - pQN->mMins[1];
 	if(yDim < TOO_THIN)
 	{
 		float	amount	=TOO_THIN - yDim;
@@ -177,8 +177,8 @@ void	QN_FixBoxHeights(QuadNode *pQN)
 		amount	*=0.5f;
 
 		//inflate the box a little bit
-		pQN->mBoxMaxs[1]	+=amount;
-		pQN->mBoxMins[1]	-=amount;
+		pQN->mMaxs[1]	+=amount;
+		pQN->mMins[1]	-=amount;
 	}
 }
 
@@ -192,8 +192,8 @@ QuadNode	*QN_Build(TerrainVert *pVerts, int count, const vec3 mins, const vec3 m
 	//copy bounds
 	for(int i=0;i < 3;i++)
 	{
-		pNode->mBoxMins[i]	=mins[i];
-		pNode->mBoxMaxs[i]	=maxs[i];
+		pNode->mMins[i]	=mins[i];
+		pNode->mMaxs[i]	=maxs[i];
 	}
 
 	if(count <= 62)
@@ -262,8 +262,8 @@ void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIn
 {
 	if(pQN->mpHeights != NULL)
 	{
-		glmc_vec3_copy(pQN->mBoxMins, pMins[*pIndex]);
-		glmc_vec3_copy(pQN->mBoxMaxs, pMaxs[*pIndex]);
+		glmc_vec3_copy(pQN->mMins, pMins[*pIndex]);
+		glmc_vec3_copy(pQN->mMaxs, pMaxs[*pIndex]);
 		(*pIndex)++;
 		return;
 	}
@@ -272,4 +272,47 @@ void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIn
 	QN_GatherLeafBounds(pQN->mpChildB, pMins, pMaxs, pIndex);
 	QN_GatherLeafBounds(pQN->mpChildC, pMins, pMaxs, pIndex);
 	QN_GatherLeafBounds(pQN->mpChildD, pMins, pMaxs, pIndex);
+}
+
+
+int	QN_LineIntersect(const QuadNode *pQN, const vec3 start, const vec3 end,
+					vec3 intersection, vec3 hitNorm)
+{
+	if(pQN->mpHeights != NULL)
+	{
+		vec3	hit, hitN;
+		int	res	=LineIntersectBounds(pQN->mMins, pQN->mMaxs, start, end, hit, hitN);
+		if(res == MISS)
+		{
+			return	res;
+		}
+
+		float	hitNormLen	=glm_vec3_norm(hitNorm);
+		if(hitNormLen > 1.001 || hitNormLen < 0.999)
+		{
+			//no hits yet
+			glm_vec3_copy(hit, intersection);
+			glm_vec3_copy(hitN, hitNorm);
+			return	res;
+		}
+
+		float	curDist	=glm_vec3_distance(start, intersection);
+		float	newDist	=glm_vec3_distance(start, hit);
+
+		//new hit nearer than previous hits?
+		if(newDist < curDist)
+		{
+			glm_vec3_copy(hit, intersection);
+			glm_vec3_copy(hitN, hitNorm);
+			return	res;
+		}		
+		return	MISS;
+	}
+
+	int	ret	=QN_LineIntersect(pQN->mpChildA, start, end, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildB, start, end, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildC, start, end, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildD, start, end, intersection, hitNorm);
+
+	return	ret;
 }

@@ -19,4 +19,4 @@ bool	PointInVolume(const vec4 *pPlanes, int numPlanes, const vec3 point);
 int		LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, vec3 intersection);
 int		ClipLineSegmentToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end);
 int		LineIntersectVolume(const vec4 *pPlanes, int numPlanes, const vec3 start, const vec3 end,
-							vec3 intersection);
+							vec3 intersection, vec3 hitNorm);

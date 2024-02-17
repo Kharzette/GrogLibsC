@@ -152,7 +152,7 @@ int	ClipLineSegmentToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end)
 
 
 int	LineIntersectVolume(const vec4 *pPlanes, int numPlanes, const vec3 start, const vec3 end,
-						vec3 intersection)
+						vec3 intersection, vec3 hitNorm)
 {
 	vec3	backStart, backEnd;
 
@@ -186,17 +186,44 @@ int	LineIntersectVolume(const vec4 *pPlanes, int numPlanes, const vec3 start, co
 		bAllInside	=false;
 	}
 
-	glm_vec3_copy(backStart, intersection);
+	if(bStartInside)
+	{
+		//I'm guessing if starting inside, user would
+		//want the point where the ray leaves the volume?
+		glm_vec3_copy(backEnd, intersection);
+	}
+	else
+	{
+		glm_vec3_copy(backStart, intersection);
+	}
 
 	if(bAllInside)
 	{
 		return	VOL_INSIDE;
 	}
-	else if(bStartInside)
+
+	//see which plane was hit
+	int		hitPlane	=-1;
+	float	nearest		=FLT_MAX;
+	for(int i=0;i < numPlanes;i++)
 	{
-		//I'm guessing if starting inside, user would
-		//want the point where the ray leaves the volume?
-		glm_vec3_copy(backEnd, intersection);
+		float	hitDist	=glm_vec3_dot(pPlanes[i], intersection) - pPlanes[i][3];
+
+		hitDist	=fabs(hitDist);
+
+		if(hitDist < nearest)
+		{
+			hitPlane	=i;
+			nearest		=hitDist;
+		}
+	}
+
+	assert(hitPlane != -1);
+
+	glm_vec3_copy(pPlanes[hitPlane], hitNorm);
+
+	if(bStartInside)
+	{
 		return	VOL_HIT_INSIDE;
 	}
 	return	VOL_HIT;

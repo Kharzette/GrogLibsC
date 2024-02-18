@@ -278,26 +278,20 @@ void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIn
 int	QN_LineIntersect(const QuadNode *pQN, const vec3 start, const vec3 end,
 					vec3 intersection, vec3 hitNorm)
 {
-	if(pQN->mpHeights != NULL)
+	//test node bounds
+	vec3	hit, hitN;
+	int	res	=LineIntersectBounds(pQN->mMins, pQN->mMaxs, start, end, hit, hitN);
+	if(res == MISS)
 	{
-		vec3	hit, hitN;
-		int	res	=LineIntersectBounds(pQN->mMins, pQN->mMaxs, start, end, hit, hitN);
-		if(res == MISS)
-		{
-			return	res;
-		}
+		//if a miss, can safely assume all child nodes are a miss
+		return	res;
+	}
 
-		float	hitNormLen	=glm_vec3_norm(hitNorm);
-		if(hitNormLen > 1.001 || hitNormLen < 0.999)
-		{
-			//no hits yet
-			glm_vec3_copy(hit, intersection);
-			glm_vec3_copy(hitN, hitNorm);
-			return	res;
-		}
-
-		float	curDist	=glm_vec3_distance(start, intersection);
-		float	newDist	=glm_vec3_distance(start, hit);
+	if(pQN->mpHeights != NULL)	//leaf?
+	{
+		//can check squared distance for comparison
+		float	curDist	=glm_vec3_distance2(start, intersection);
+		float	newDist	=glm_vec3_distance2(start, hit);
 
 		//new hit nearer than previous hits?
 		if(newDist < curDist)

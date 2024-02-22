@@ -275,23 +275,43 @@ void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIn
 }
 
 
-int	QN_LineIntersect(const QuadNode *pQN, const vec3 start, const vec3 end,
+//invDir should be 1 divided by the direction vector
+int	QN_LineIntersect(const QuadNode *pQN,
+					const vec3 rayStart, const vec3 invDir, const float rayLen,
 					vec3 intersection, vec3 hitNorm)
 {
-	//test node bounds
-	vec3	hit, hitN;
-	int	res	=LineIntersectBounds(pQN->mMins, pQN->mMaxs, start, end, hit, hitN);
-	if(res == MISS)
+	vec3	bounds[2];
+	glm_vec3_copy(pQN->mMins, bounds[0]);
+	glm_vec3_copy(pQN->mMaxs, bounds[1]);
+
+	int	res	=MISS;
+
+	//fast intersect check for nodes
+	//don't need plane hit or point returned, just a yes or no
+	if(!RayIntersectBounds(rayStart, invDir, rayLen, bounds))
 	{
-		//if a miss, can safely assume all child nodes are a miss
 		return	res;
 	}
 
 	if(pQN->mpHeights != NULL)	//leaf?
 	{
+		vec3	end;
+		SSE_ReciprocalVec3(invDir, end);
+
+		glm_vec3_scale(end, rayLen, end);
+		glm_vec3_add(end, rayStart, end);
+
+		vec3	hit, hitN;
+		res	=LineIntersectBounds(pQN->mMins, pQN->mMaxs, rayStart, end, hit, hitN);
+		if(res == MISS)
+		{
+			//if a miss, can safely assume all child nodes are a miss
+			return	res;
+		}
+
 		//can check squared distance for comparison
-		float	curDist	=glm_vec3_distance2(start, intersection);
-		float	newDist	=glm_vec3_distance2(start, hit);
+		float	curDist	=glm_vec3_distance2(rayStart, intersection);
+		float	newDist	=glm_vec3_distance2(rayStart, hit);
 
 		//new hit nearer than previous hits?
 		if(newDist < curDist)
@@ -303,10 +323,10 @@ int	QN_LineIntersect(const QuadNode *pQN, const vec3 start, const vec3 end,
 		return	MISS;
 	}
 
-	int	ret	=QN_LineIntersect(pQN->mpChildA, start, end, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildB, start, end, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildC, start, end, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildD, start, end, intersection, hitNorm);
+	int	ret	=QN_LineIntersect(pQN->mpChildA, rayStart, invDir, rayLen, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildB, rayStart, invDir, rayLen, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildC, rayStart, invDir, rayLen, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildD, rayStart, invDir, rayLen, intersection, hitNorm);
 
 	return	ret;
 }

@@ -47,6 +47,7 @@ QuadTree	*QT_Create(TerrainVert *pVerts, int w, int h)
 
 
 //get a list of the bounds of all leafs
+//This is only used for debug draw
 void	QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds)
 {
 	assert(ppMins != NULL);
@@ -73,17 +74,34 @@ void	QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int 
 }
 
 
+//Note that a previous intersection might be passed in here.
+//Only a new intersection closer to the start point would result
+//in a hit.  This could be used to mix collision with statics or
+//mobiles or bsps or whatever
 int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 					vec3 intersection, vec3 hitNorm)
 {
-	int	res	=LineIntersectBounds(pQT->mMins, pQT->mMaxs, start, end, intersection, hitNorm);
-	if(res == MISS)
+	//convert to a ray format
+	vec3	rayDir;
+
+	glm_vec3_sub(end, start, rayDir);
+
+	float	rayLen	=glm_vec3_norm(rayDir);
+
+	glm_vec3_scale(rayDir, 1.0f / rayLen, rayDir);
+
+	vec3	invDir;
+	SSE_ReciprocalVec3(rayDir, invDir);
+
+	vec3	bounds[2];
+	glm_vec3_copy(pQT->mMins, bounds[0]);
+	glm_vec3_copy(pQT->mMaxs, bounds[1]);
+
+	//check against bounds encompassing entire tree
+	if(!RayIntersectBounds(start, invDir, rayLen, bounds))
 	{
-		return	res;
-	}
+		return	MISS;
+	}	
 
-	//reset intersection
-	intersection[0]	=intersection[1]	=intersection[2]	=FLT_MAX;
-
-	return	QN_LineIntersect(pQT->mpRoot, start, end, intersection, hitNorm);
+	return	QN_LineIntersect(pQT->mpRoot, start, invDir, rayLen, intersection, hitNorm);
 }

@@ -319,6 +319,9 @@ int main(void)
 						glm_vec3_scale(forward, -RAY_LEN, endRay);
 						glm_vec3_add(eyePos, endRay, endRay);
 
+						//invalidate impact point
+						hitPos[0]	=hitPos[1]	=hitPos[2]	=FLT_MAX;
+
 						int	hitRes	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitNorm);
 //						int	hitRes	=LineIntersectBounds(testMin, testMax, eyePos, endRay, hitPos, hitNorm);
 //						int	hitRes	=LineIntersectPlane(testPlane, eyePos, endRay, hitPos);

@@ -23,34 +23,6 @@ static const	vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
 static const	vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
 static const	vec3	One		={	1.0f, 1.0f, 1.0f	};
 
-static void	MulAddDest(const vec3 a, const vec3 b, const vec3 c, vec3 dest)
-{
-	dest[0]	=c[0] + (a[0] * b[0]);
-	dest[1]	=c[1] + (a[1] * b[1]);
-	dest[2]	=c[2] + (a[2] * b[2]);
-}
-
-static void	MulAddDestS(const vec3 a, const float b, const vec3 c, vec3 dest)
-{
-	dest[0]	=c[0] + (a[0] * b);
-	dest[1]	=c[1] + (a[1] * b);
-	dest[2]	=c[2] + (a[2] * b);
-}
-
-static void	MulSubDest(const vec3 a, const vec3 b, const vec3 c, vec3 dest)
-{
-	dest[0]	=(a[0] * b[0]) - c[0];
-	dest[1]	=(a[1] * b[1]) - c[1];
-	dest[2]	=(a[2] * b[2]) - c[2];
-}
-
-static void	MulSubDestS(const vec3 a, const float b, const vec3 c, vec3 dest)
-{
-	dest[0]	=(a[0] * b) - c[0];
-	dest[1]	=(a[1] * b) - c[1];
-	dest[2]	=(a[2] * b) - c[2];
-}
-
 static void	MulAdd2DestS(const vec2 a, const float b, const vec2 c, vec2 dest)
 {
 	dest[0]	=c[0] + (a[0] * b);
@@ -706,6 +678,175 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	//make index buffer
 	MakeIBDesc(&bufDesc, 12 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
+
+	return	pObj;
+}
+
+PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
+{
+	int	theta, phi;
+
+	//density
+	int	dtheta	=10;
+	int	dphi	=10;
+
+	//get a vert count
+	int	vertCount	=0;
+	int	indCount	=0;
+	for(theta=-90;theta <= 0-dtheta;theta += dtheta)
+	{
+		for(phi=0;phi <= 360-dphi;phi += dphi)
+		{
+			vertCount	+=3;
+
+			if(theta > -90 && theta < 0)
+			{
+				vertCount++;
+				indCount	+=6;
+			}
+			else
+			{
+				indCount	+=3;
+			}
+		}
+	}
+
+	//double for full sphere
+	vertCount	*=2;
+
+	//alloc some points
+	vec3	*pPoints	=malloc(sizeof(vec3) * vertCount);
+
+	//alloc indexes
+	uint16_t	*pInds	=malloc(2 * indCount * 2);
+
+	//build and index a hemisphere
+	uint16_t	curIdx	=0;
+	int			pIdx	=0;
+	int			iIdx	=0;
+	for(theta=-90;theta <= 0-dtheta;theta += dtheta)
+	{
+		for(phi=0;phi <= 360-dphi;phi += dphi)
+		{
+			vec3	pos;
+
+			glm_vec3_zero(pos);
+
+			float	rtheta	=glm_rad(theta);
+			float	rdtheta	=glm_rad(dtheta);
+			float	rphi	=glm_rad(phi);
+			float	rdphi	=glm_rad(dphi);
+
+			pos[0]	=cosf(rtheta) * cosf(rphi);
+			pos[1]	=cosf(rtheta) * sinf(rphi);
+			pos[2]	=sinf(rtheta);
+
+			glm_vec3_copy(pos, pPoints[pIdx++]);
+
+			pos[0]	=cosf(rtheta + rdtheta) * cosf(rphi);
+			pos[1]	=cosf(rtheta + rdtheta) * sinf(rphi);
+			pos[2]	=sinf(rtheta + rdtheta);
+
+			glm_vec3_copy(pos, pPoints[pIdx++]);
+
+			pos[0]	=cosf(rtheta + rdtheta) * cosf(rphi + rdphi);
+			pos[1]	=cosf(rtheta + rdtheta) * sinf(rphi + rdphi);
+			pos[2]	=sinf(rtheta + rdtheta);
+
+			glm_vec3_copy(pos, pPoints[pIdx++]);
+
+			if(theta > -90 && theta < 0)
+			{
+				pos[0]	=cosf(rtheta) * cosf(rphi + rdphi);
+				pos[1]	=cosf(rtheta) * sinf(rphi + rdphi);
+				pos[2]	=sinf(rtheta);
+
+				glm_vec3_copy(pos, pPoints[pIdx++]);
+
+				pInds[iIdx++]	=curIdx;
+				pInds[iIdx++]	=curIdx + 2;
+				pInds[iIdx++]	=curIdx + 1;
+				pInds[iIdx++]	=curIdx;
+				pInds[iIdx++]	=curIdx + 3;
+				pInds[iIdx++]	=curIdx + 2;
+
+				curIdx	+=4;
+			}
+			else
+			{
+				pInds[iIdx++]	=curIdx;
+				pInds[iIdx++]	=curIdx + 2;
+				pInds[iIdx++]	=curIdx + 1;
+
+				curIdx	+=3;
+			}
+		}
+	}
+
+	//alloc verts
+	VPosNormTex0	*vpnt	=malloc(sizeof(VPosNormTex0) * vertCount * 2);
+
+	//copy in hemisphere
+	for(int i=0;i < vertCount;i++)
+	{
+		vec3	norm;
+
+		glm_vec3_normalize_to(pPoints[i], norm);
+
+		glm_vec3_copy(center, vpnt[i].Position);
+		glm_vec3_muladds(norm, radius, vpnt[i].Position);
+
+		//not tackling this yet
+		Misc_Convert2ToF16(0.0f, 0.0f, vpnt[i].TexCoord0);
+
+		Misc_ConvertVec3ToF16(norm, vpnt[i].Normal);
+	}
+
+	//dupe for other half
+	int	ofs	=vertCount;
+	for(int i=ofs;i < vertCount + ofs;i++)
+	{
+		vec3	norm;
+
+		glm_vec3_normalize_to(pPoints[i - ofs], norm);
+
+		glm_vec3_copy(center, vpnt[i].Position);
+		glm_vec3_muladds(norm, -radius, vpnt[i].Position);
+
+		//not tackling this yet
+		Misc_Convert2ToF16(0.0f, 0.0f, vpnt[i].TexCoord0);
+
+		Misc_Convert4ToF16(-norm[0], -norm[1], -norm[2], 1.0f, vpnt[i].Normal);
+	}
+
+	//index other half, flip winding
+	for(int i=indCount;i < (indCount * 2);i+=3)
+	{
+		pInds[i]		=vertCount + pInds[i - indCount];
+		pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
+		pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
+	}
+
+	size_t	vpntSize	=sizeof(VPosNormTex0);
+
+	//return object
+	PrimObject	*pObj	=malloc(sizeof(PrimObject));
+
+	pObj->mVertCount	=vertCount;
+	pObj->mIndexCount	=indCount * 2;
+
+	//make vertex buffer
+	D3D11_BUFFER_DESC	bufDesc;
+	MakeVBDesc(&bufDesc, sizeof(VPosNormTex0) * vertCount * 2);
+	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
+
+	//make index buffer
+	MakeIBDesc(&bufDesc, indCount * 2 * 2);
+	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);
+
+	//free temp buffers
+	free(pPoints);
+	free(pInds);
 
 	return	pObj;
 }

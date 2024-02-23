@@ -687,8 +687,8 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 	int	theta, phi;
 
 	//density
-	int	dtheta	=10;
-	int	dphi	=10;
+	int	dtheta	=15;
+	int	dphi	=15;
 
 	//get a vert count
 	int	vertCount	=0;
@@ -710,9 +710,6 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 			}
 		}
 	}
-
-	//double for full sphere
-	vertCount	*=2;
 
 	//alloc some points
 	vec3	*pPoints	=malloc(sizeof(vec3) * vertCount);
@@ -847,6 +844,292 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 	//free temp buffers
 	free(pPoints);
 	free(pInds);
+	free(vpnt);
+
+	return	pObj;
+}
+
+PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
+{
+	int	theta, phi;
+
+	//density
+	int	dtheta	=20;
+	int	dphi	=20;
+
+	//get a vert count
+	int	vertCount	=0;
+	for(theta=-90;theta <= 0-dtheta;theta += dtheta)
+	{
+		for(phi=0;phi <= 360-dphi;phi += dphi)
+		{
+			if(vertCount == 0)
+			{
+				vertCount++;
+			}
+			vertCount++;
+		}
+	}
+
+	//alloc some points
+	vec3	*pPoints	=malloc(sizeof(vec3) * vertCount * 2);
+
+	//build and index a hemisphere
+	int	pIdx	=0;
+	for(theta=-90;theta <= 0-dtheta;theta += dtheta)
+	{
+		for(phi=0;phi <= 360-dphi;phi += dphi)
+		{
+			vec3	pos;
+
+			glm_vec3_zero(pos);
+
+			float	rtheta	=glm_rad(theta);
+			float	rdtheta	=glm_rad(dtheta);
+			float	rphi	=glm_rad(phi);
+			float	rdphi	=glm_rad(dphi);
+
+			if(pIdx == 0)
+			{
+				pos[0]	=cosf(rtheta) * cosf(rphi);
+				pos[2]	=cosf(rtheta) * sinf(rphi);
+				pos[1]	=sinf(rtheta);
+
+				glm_vec3_copy(pos, pPoints[pIdx++]);
+			}
+
+			pos[0]	=cosf(rtheta + rdtheta) * cosf(rphi);
+			pos[2]	=cosf(rtheta + rdtheta) * sinf(rphi);
+			pos[1]	=sinf(rtheta + rdtheta);
+
+			glm_vec3_copy(pos, pPoints[pIdx++]);
+		}
+	}
+
+	//count indexes
+	int	indCount	=0;
+	for(uint16_t i=1;i < 18;i++)
+	{
+		indCount	+=3;
+	}
+	indCount	+=3;
+	for(uint16_t i=19;i < 36;i++)
+	{
+		indCount	+=6;
+	}
+	indCount	+=6;
+	for(uint16_t i=37;i < 54;i++)
+	{
+		indCount	+=6;
+	}
+	indCount	+=6;
+	for(uint16_t i=55;i < 72;i++)
+	{
+		indCount	+=6;
+	}
+	indCount	+=6;
+	int	ringOfs	=128 - 55 + 9;
+	for(int i=55;i < 63;i++)
+	{
+		indCount	+=6;
+	}
+	indCount	+=3;
+	ringOfs		=128 - 63;
+	for(int i=63;i < 72;i++)
+	{
+		indCount	+=6;
+	}
+	indCount	+=3;
+
+	//alloc indexes
+	uint16_t	*pInds	=malloc(2 * indCount * 2);
+
+	int	curIdx	=0;
+	for(uint16_t i=1;i < 18;i++)
+	{
+		//base ring
+		pInds[curIdx++]	=0;
+		pInds[curIdx++]	=i;
+		pInds[curIdx++]	=i + 1;
+	}
+
+	//final tri
+	pInds[curIdx++]	=0;
+	pInds[curIdx++]	=18;
+	pInds[curIdx++]	=1;		//wrap
+
+	//next ring
+	for(uint16_t i=19;i < 36;i++)
+	{
+		pInds[curIdx++]	=(i - 18);
+		pInds[curIdx++]	=i;
+		pInds[curIdx++]	=i + 1;
+
+		pInds[curIdx++]	=(i - 18);
+		pInds[curIdx++]	=i + 1;
+		pInds[curIdx++]	=i - 17;
+	}
+
+	//finish quad for this ring
+	pInds[curIdx++]	=18;
+	pInds[curIdx++]	=36;
+	pInds[curIdx++]	=19;
+
+	pInds[curIdx++]	=18;
+	pInds[curIdx++]	=19;
+	pInds[curIdx++]	=1;		//wrap
+
+	//next ring
+	for(uint16_t i=37;i < 54;i++)
+	{
+		pInds[curIdx++]	=(i - 18);
+		pInds[curIdx++]	=i;
+		pInds[curIdx++]	=i + 1;
+
+		pInds[curIdx++]	=(i - 18);
+		pInds[curIdx++]	=i + 1;
+		pInds[curIdx++]	=i - 17;
+	}
+
+	//finish quad
+	pInds[curIdx++]	=36;
+	pInds[curIdx++]	=54;
+	pInds[curIdx++]	=37;
+
+	pInds[curIdx++]	=37;
+	pInds[curIdx++]	=19;
+	pInds[curIdx++]	=36;	//wrap
+
+	//next ring
+	for(uint16_t i=55;i < 72;i++)
+	{
+		pInds[curIdx++]	=(i - 18);
+		pInds[curIdx++]	=i;
+		pInds[curIdx++]	=i + 1;
+
+		pInds[curIdx++]	=(i - 18);
+		pInds[curIdx++]	=i + 1;
+		pInds[curIdx++]	=i - 17;
+	}
+
+	//finish quad
+	pInds[curIdx++]	=54;
+	pInds[curIdx++]	=72;
+	pInds[curIdx++]	=55;
+
+	pInds[curIdx++]	=54;
+	pInds[curIdx++]	=55;
+	pInds[curIdx++]	=37;	//wrap
+
+	//rings from renderdoc
+	//55 to 72 for the lower index ring
+	//128 to 145 for the higher index ring
+	//9 is added because the verts are on opposite sides
+	ringOfs	=128 - 55 + 9;
+
+	//connect the 2 hemispheres
+	//half ring
+	for(int i=55;i < 63;i++)
+	{
+		pInds[curIdx++]	=i;
+		pInds[curIdx++]	=i + ringOfs;
+		pInds[curIdx++]	=i + ringOfs + 1;
+
+		pInds[curIdx++]	=i;
+		pInds[curIdx++]	=i + ringOfs + 1;
+		pInds[curIdx++]	=i + 1;
+	}
+
+	pInds[curIdx++]	=63;
+	pInds[curIdx++]	=145;
+	pInds[curIdx++]	=128;	//wrap
+
+	//correct back to opposite side
+	ringOfs	=128 - 63;
+
+	//other half
+	for(int i=63;i < 72;i++)
+	{
+		pInds[curIdx++]	=i;
+		pInds[curIdx++]	=i + ringOfs;
+		pInds[curIdx++]	=i + ringOfs + 1;
+
+		pInds[curIdx++]	=i;
+		pInds[curIdx++]	=i + ringOfs + 1;
+		pInds[curIdx++]	=i + 1;
+	}
+
+	pInds[curIdx++]	=72;
+	pInds[curIdx++]	=137;
+	pInds[curIdx++]	=55;	//wrap
+
+	//alloc verts
+	VPosNormTex0	*vpnt	=malloc(sizeof(VPosNormTex0) * vertCount * 2);
+
+	//copy in hemisphere
+	for(int i=0;i < vertCount;i++)
+	{
+		vec3	norm;
+
+		glm_vec3_normalize_to(pPoints[i], norm);
+
+		glm_vec3_zero(vpnt[i].Position);
+		glm_vec3_muladds(norm, radius, vpnt[i].Position);
+
+		//not tackling this yet
+		Misc_Convert2ToF16(0.0f, 0.0f, vpnt[i].TexCoord0);
+
+		Misc_ConvertVec3ToF16(norm, vpnt[i].Normal);
+	}
+
+	//dupe for other half
+	int	ofs	=vertCount;
+	for(int i=ofs;i < vertCount + ofs;i++)
+	{
+		vec3	norm;
+
+		glm_vec3_normalize_to(pPoints[i - ofs], norm);
+
+		glm_vec3_zero(vpnt[i].Position);
+		glm_vec3_muladds(norm, -radius, vpnt[i].Position);
+		glm_vec3_muladds(UnitY, len, vpnt[i].Position);
+
+		//not tackling this yet
+		Misc_Convert2ToF16(0.0f, 0.0f, vpnt[i].TexCoord0);
+
+		Misc_Convert4ToF16(-norm[0], -norm[1], -norm[2], 1.0f, vpnt[i].Normal);
+	}
+
+	//index other half, flip winding
+	for(int i=indCount;i < (indCount * 2);i+=3)
+	{
+		pInds[i]		=vertCount + pInds[i - indCount];
+		pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
+		pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
+	}
+
+	size_t	vpntSize	=sizeof(VPosNormTex0);
+
+	//return object
+	PrimObject	*pObj	=malloc(sizeof(PrimObject));
+
+	pObj->mVertCount	=vertCount * 2;
+	pObj->mIndexCount	=indCount * 2;
+//	pObj->mIndexCount	=270;
+
+	//make vertex buffer
+	D3D11_BUFFER_DESC	bufDesc;
+	MakeVBDesc(&bufDesc, sizeof(VPosNormTex0) * vertCount * 2);
+	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
+
+	//make index buffer
+	MakeIBDesc(&bufDesc, indCount * 2 * 2);
+	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);
+
+	//free temp buffers
+	free(pPoints);
+	free(pInds);
+	free(vpnt);
 
 	return	pObj;
 }

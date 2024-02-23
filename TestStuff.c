@@ -118,7 +118,8 @@ int main(void)
 	glm_vec3_zero(zeroVec);
 
 //	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
-	PrimObject	*pCube	=PF_CreateSphere(zeroVec, 1.0f, pGD);
+//	PrimObject	*pCube	=PF_CreateSphere(zeroVec, 1.0f, pGD);
+	PrimObject	*pCube	=PF_CreateCapsule(0.5f, 2.0f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
 	PostProcess	*pPP	=PP_Create(pGD, pSK, pCBK);

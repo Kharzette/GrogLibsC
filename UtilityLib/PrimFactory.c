@@ -417,7 +417,7 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 }
 
 
-PrimObject	*PF_CreatePrism(float size, GraphicsDevice *pGD)
+PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD)
 {
 	//positions
 	vec3	topPoint, bottomPoint;
@@ -441,12 +441,20 @@ PrimObject	*PF_CreatePrism(float size, GraphicsDevice *pGD)
 	//verts
 	VPosNormTex0	vpnt[24];
 
-	glm_vec3_scale(UnitY, 2 * size, topPoint);
+	glm_vec3_scale(UnitY, 2 * sizeY, topPoint);
 	glm_vec3_zero(bottomPoint);
-	MulAddDestS(UnitY, size, UnitZ, top);
-	MulSubDestS(UnitY, size, UnitZ, bottom);
-	MulAddDestS(UnitY, size, UnitX, left);
-	MulSubDestS(UnitY, size, UnitX, right);
+	
+	glm_vec3_scale(UnitY, sizeY, top);
+	glm_vec3_muladds(UnitZ, size, top);
+
+	glm_vec3_scale(UnitY, sizeY, bottom);
+	glm_vec3_muladds(UnitZ, -size, bottom);
+
+	glm_vec3_scale(UnitY, sizeY, left);
+	glm_vec3_muladds(UnitX, size, left);
+
+	glm_vec3_scale(UnitY, sizeY, right);
+	glm_vec3_muladds(UnitX, -size, right);
 
 	glm_vec2_scale(One, 0.5f, topPointTex);
 	glm_vec2_scale(One, 0.5f, bottomPointTex);
@@ -577,6 +585,126 @@ PrimObject	*PF_CreatePrism(float size, GraphicsDevice *pGD)
 
 	//make index buffer
 	MakeIBDesc(&bufDesc, 24 * 2);
+	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
+
+	return	pObj;
+}
+
+PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
+{
+	//positions
+	vec3	topPoint;
+	vec3	top, bottom, left, right;
+
+	//texcoords
+	vec2	topPointTex, bottomPointTex;
+	vec2	topTex, bottomTex;
+	vec2	leftTex, rightTex;
+
+	//normals
+	vec3	topUpperLeft	={	1.0f,	1.0f,	1.0f	};
+	vec3	topUpperRight	={	-1.0f,	1.0f,	1.0f	};
+	vec3	topLowerLeft	={	1.0f,	1.0f,	-1.0f	};
+	vec3	topLowerRight	={	-1.0f,	1.0f,	-1.0f	};
+
+	//verts
+	VPosNormTex0	vpnt[24];
+
+	glm_vec3_zero(topPoint);
+
+	glm_vec3_scale(UnitY, sizeY, top);
+	glm_vec3_muladds(UnitZ, size, top);
+
+	glm_vec3_scale(UnitY, sizeY, bottom);
+	glm_vec3_muladds(UnitZ, -size, bottom);
+
+	glm_vec3_scale(UnitY, sizeY, left);
+	glm_vec3_muladds(UnitX, size, left);
+
+	glm_vec3_scale(UnitY, sizeY, right);
+	glm_vec3_muladds(UnitX, -size, right);
+
+	glm_vec2_scale(One, 0.5f, topPointTex);
+	glm_vec2_scale(One, 0.5f, bottomPointTex);
+	glm_vec2_scale(UnitX, 0.5f, topTex);
+	MulAdd2DestS(UnitX, 0.5f, UnitY, bottomTex);
+	glm_vec2_scale(UnitY, 0.5f, leftTex);
+	MulAdd2DestS(UnitY, 0.5f, UnitX, rightTex);
+
+	//need to have a lot of duplicates since each
+	//vertex will contain a copy of the face normal
+	//as we want this to be flat shaded
+	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[0].Normal);
+	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[1].Normal);
+	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[2].Normal);
+
+	Misc_ConvertVec3ToF16(topUpperRight, vpnt[3].Normal);
+	Misc_ConvertVec3ToF16(topUpperRight, vpnt[4].Normal);
+	Misc_ConvertVec3ToF16(topUpperRight, vpnt[5].Normal);
+
+	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[6].Normal);
+	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[7].Normal);
+	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[8].Normal);
+
+	Misc_ConvertVec3ToF16(topLowerRight, vpnt[9].Normal);
+	Misc_ConvertVec3ToF16(topLowerRight, vpnt[10].Normal);
+	Misc_ConvertVec3ToF16(topLowerRight, vpnt[11].Normal);
+
+	//top upper left face
+	glm_vec3_copy(topPoint, vpnt[0].Position);
+	glm_vec3_copy(left, vpnt[1].Position);
+	glm_vec3_copy(top, vpnt[2].Position);
+
+	//top upper right face
+	glm_vec3_copy(topPoint, vpnt[3].Position);
+	glm_vec3_copy(top, vpnt[4].Position);
+	glm_vec3_copy(right, vpnt[5].Position);
+
+	//top lower left face
+	glm_vec3_copy(topPoint, vpnt[6].Position);
+	glm_vec3_copy(bottom, vpnt[7].Position);
+	glm_vec3_copy(left, vpnt[8].Position);
+
+	//top lower right face
+	glm_vec3_copy(topPoint, vpnt[9].Position);
+	glm_vec3_copy(right, vpnt[10].Position);
+	glm_vec3_copy(bottom, vpnt[11].Position);
+
+	Misc_ConvertVec2ToF16(topPointTex, vpnt[0].TexCoord0);
+	Misc_ConvertVec2ToF16(leftTex, vpnt[1].TexCoord0);
+	Misc_ConvertVec2ToF16(topTex, vpnt[2].TexCoord0);
+	Misc_ConvertVec2ToF16(topPointTex, vpnt[3].TexCoord0);
+	Misc_ConvertVec2ToF16(topTex, vpnt[4].TexCoord0);
+	Misc_ConvertVec2ToF16(rightTex, vpnt[5].TexCoord0);
+	Misc_ConvertVec2ToF16(topPointTex, vpnt[6].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomTex, vpnt[7].TexCoord0);
+	Misc_ConvertVec2ToF16(leftTex, vpnt[8].TexCoord0);
+	Misc_ConvertVec2ToF16(topPointTex, vpnt[9].TexCoord0);
+	Misc_ConvertVec2ToF16(rightTex, vpnt[10].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomTex, vpnt[11].TexCoord0);
+
+	//just reference in order, no verts shared
+	uint16_t	idx, indexes[12];
+	for(int i=idx=0;i < 12;i++)
+	{
+		indexes[i]	=idx++;
+	}
+
+	size_t	vpntSize	=sizeof(VPosNormTex0);
+
+	//return object
+	PrimObject	*pObj	=malloc(sizeof(PrimObject));
+
+	pObj->mVertCount	=12;
+	pObj->mIndexCount	=12;
+
+	//make vertex buffer
+	D3D11_BUFFER_DESC	bufDesc;
+	MakeVBDesc(&bufDesc, sizeof(VPosNormTex0) * 12);
+	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
+
+	//make index buffer
+	MakeIBDesc(&bufDesc, 12 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
 
 	return	pObj;

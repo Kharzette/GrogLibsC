@@ -115,7 +115,7 @@ int main(void)
 	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pGD);
 
 //	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
-	PrimObject	*pCube	=PF_CreatePrism(0.5f, pGD);
+	PrimObject	*pCube	=PF_CreatePrism(0.5f, 1.0f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
 	PostProcess	*pPP	=PP_Create(pGD, pSK, pCBK);

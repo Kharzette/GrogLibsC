@@ -112,9 +112,10 @@ int main(void)
 	vec3	*pMins, *pMaxs;
 	Terrain_GetQuadTreeLeafBoxes(pTer, &pMins, &pMaxs, &numBounds);
 
-	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundList(pMins, pMaxs, numBounds, pGD);
+	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pGD);
 
-	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
+//	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
+	PrimObject	*pCube	=PF_CreatePrism(0.5f, pGD);
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
 	PostProcess	*pPP	=PP_Create(pGD, pSK, pCBK);

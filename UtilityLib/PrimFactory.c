@@ -18,9 +18,44 @@ typedef struct	VPosNormTex0_t
 	uint16_t	TexCoord0[2];	//16 bit float2
 }	VPosNormTex0;
 
-static	const vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
-static	const vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
-static	const vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
+static const	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
+static const	vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
+static const	vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
+static const	vec3	One		={	1.0f, 1.0f, 1.0f	};
+
+static void	MulAddDest(const vec3 a, const vec3 b, const vec3 c, vec3 dest)
+{
+	dest[0]	=c[0] + (a[0] * b[0]);
+	dest[1]	=c[1] + (a[1] * b[1]);
+	dest[2]	=c[2] + (a[2] * b[2]);
+}
+
+static void	MulAddDestS(const vec3 a, const float b, const vec3 c, vec3 dest)
+{
+	dest[0]	=c[0] + (a[0] * b);
+	dest[1]	=c[1] + (a[1] * b);
+	dest[2]	=c[2] + (a[2] * b);
+}
+
+static void	MulSubDest(const vec3 a, const vec3 b, const vec3 c, vec3 dest)
+{
+	dest[0]	=(a[0] * b[0]) - c[0];
+	dest[1]	=(a[1] * b[1]) - c[1];
+	dest[2]	=(a[2] * b[2]) - c[2];
+}
+
+static void	MulSubDestS(const vec3 a, const float b, const vec3 c, vec3 dest)
+{
+	dest[0]	=(a[0] * b) - c[0];
+	dest[1]	=(a[1] * b) - c[1];
+	dest[2]	=(a[2] * b) - c[2];
+}
+
+static void	MulAdd2DestS(const vec2 a, const float b, const vec2 c, vec2 dest)
+{
+	dest[0]	=c[0] + (a[0] * b);
+	dest[1]	=c[1] + (a[1] * b);
+}
 
 static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {
@@ -205,7 +240,7 @@ PrimObject	*PF_CreateCube(float size, GraphicsDevice *pGD)
 	return	PF_CreateCubeFromCorners(corners, pGD);
 }
 
-PrimObject	*PF_CreateCubesFromBoundList(const vec3 *pMins, const vec3 *pMaxs, int numBounds, GraphicsDevice *pGD)
+PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, int numBounds, GraphicsDevice *pGD)
 {
 	VPosNormTex0	*vpnt	=malloc(sizeof(VPosNormTex0) * 24 * numBounds);
 	uint32_t		*inds	=malloc(sizeof(uint32_t) * 36 * numBounds);
@@ -377,6 +412,172 @@ PrimObject	*PF_CreateCubesFromBoundList(const vec3 *pMins, const vec3 *pMaxs, in
 
 	free(vpnt);
 	free(inds);
+
+	return	pObj;
+}
+
+
+PrimObject	*PF_CreatePrism(float size, GraphicsDevice *pGD)
+{
+	//positions
+	vec3	topPoint, bottomPoint;
+	vec3	top, bottom, left, right;
+
+	//texcoords
+	vec2	topPointTex, bottomPointTex;
+	vec2	topTex, bottomTex;
+	vec2	leftTex, rightTex;
+
+	//normals
+	vec3	topUpperLeft	={	1.0f,	1.0f,	1.0f	};
+	vec3	topUpperRight	={	-1.0f,	1.0f,	1.0f	};
+	vec3	topLowerLeft	={	1.0f,	1.0f,	-1.0f	};
+	vec3	topLowerRight	={	-1.0f,	1.0f,	-1.0f	};
+	vec3	botUpperLeft	={	1.0f,	-1.0f,	1.0f	};
+	vec3	botUpperRight	={	-1.0f,	-1.0f,	1.0f	};
+	vec3	botLowerLeft	={	1.0f,	-1.0f,	-1.0f	};
+	vec3	botLowerRight	={	-1.0f,	-1.0f,	-1.0f	};
+
+	//verts
+	VPosNormTex0	vpnt[24];
+
+	glm_vec3_scale(UnitY, 2 * size, topPoint);
+	glm_vec3_zero(bottomPoint);
+	MulAddDestS(UnitY, size, UnitZ, top);
+	MulSubDestS(UnitY, size, UnitZ, bottom);
+	MulAddDestS(UnitY, size, UnitX, left);
+	MulSubDestS(UnitY, size, UnitX, right);
+
+	glm_vec2_scale(One, 0.5f, topPointTex);
+	glm_vec2_scale(One, 0.5f, bottomPointTex);
+	glm_vec2_scale(UnitX, 0.5f, topTex);
+	MulAdd2DestS(UnitX, 0.5f, UnitY, bottomTex);
+	glm_vec2_scale(UnitY, 0.5f, leftTex);
+	MulAdd2DestS(UnitY, 0.5f, UnitX, rightTex);
+
+	//need to have a lot of duplicates since each
+	//vertex will contain a copy of the face normal
+	//as we want this to be flat shaded
+	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[0].Normal);
+	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[1].Normal);
+	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[2].Normal);
+
+	Misc_ConvertVec3ToF16(topUpperRight, vpnt[3].Normal);
+	Misc_ConvertVec3ToF16(topUpperRight, vpnt[4].Normal);
+	Misc_ConvertVec3ToF16(topUpperRight, vpnt[5].Normal);
+
+	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[6].Normal);
+	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[7].Normal);
+	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[8].Normal);
+
+	Misc_ConvertVec3ToF16(topLowerRight, vpnt[9].Normal);
+	Misc_ConvertVec3ToF16(topLowerRight, vpnt[10].Normal);
+	Misc_ConvertVec3ToF16(topLowerRight, vpnt[11].Normal);
+
+	Misc_ConvertVec3ToF16(botUpperLeft, vpnt[12].Normal);
+	Misc_ConvertVec3ToF16(botUpperLeft, vpnt[13].Normal);
+	Misc_ConvertVec3ToF16(botUpperLeft, vpnt[14].Normal);
+
+	Misc_ConvertVec3ToF16(botUpperRight, vpnt[15].Normal);
+	Misc_ConvertVec3ToF16(botUpperRight, vpnt[16].Normal);
+	Misc_ConvertVec3ToF16(botUpperRight, vpnt[17].Normal);
+
+	Misc_ConvertVec3ToF16(botLowerLeft, vpnt[18].Normal);
+	Misc_ConvertVec3ToF16(botLowerLeft, vpnt[19].Normal);
+	Misc_ConvertVec3ToF16(botLowerLeft, vpnt[20].Normal);
+
+	Misc_ConvertVec3ToF16(botLowerRight, vpnt[21].Normal);
+	Misc_ConvertVec3ToF16(botLowerRight, vpnt[22].Normal);
+	Misc_ConvertVec3ToF16(botLowerRight, vpnt[23].Normal);
+
+	//top upper left face
+	glm_vec3_copy(topPoint, vpnt[0].Position);
+	glm_vec3_copy(left, vpnt[2].Position);
+	glm_vec3_copy(top, vpnt[1].Position);
+
+	//top upper right face
+	glm_vec3_copy(topPoint, vpnt[3].Position);
+	glm_vec3_copy(top, vpnt[5].Position);
+	glm_vec3_copy(right, vpnt[4].Position);
+
+	//top lower left face
+	glm_vec3_copy(topPoint, vpnt[6].Position);
+	glm_vec3_copy(bottom, vpnt[8].Position);
+	glm_vec3_copy(left, vpnt[7].Position);
+
+	//top lower right face
+	glm_vec3_copy(topPoint, vpnt[9].Position);
+	glm_vec3_copy(right, vpnt[11].Position);
+	glm_vec3_copy(bottom, vpnt[10].Position);
+
+	//bottom upper left face
+	glm_vec3_copy(bottomPoint, vpnt[12].Position);
+	glm_vec3_copy(top, vpnt[14].Position);
+	glm_vec3_copy(left, vpnt[13].Position);
+
+	//bottom upper right face
+	glm_vec3_copy(bottomPoint, vpnt[15].Position);
+	glm_vec3_copy(right, vpnt[17].Position);
+	glm_vec3_copy(top, vpnt[16].Position);
+
+	//bottom lower left face
+	glm_vec3_copy(bottomPoint, vpnt[18].Position);
+	glm_vec3_copy(left, vpnt[20].Position);
+	glm_vec3_copy(bottom, vpnt[19].Position);
+
+	//bottom lower right face
+	glm_vec3_copy(bottomPoint, vpnt[21].Position);
+	glm_vec3_copy(bottom, vpnt[23].Position);
+	glm_vec3_copy(right, vpnt[22].Position);
+
+	Misc_ConvertVec2ToF16(topPointTex, vpnt[0].TexCoord0);
+	Misc_ConvertVec2ToF16(leftTex, vpnt[1].TexCoord0);
+	Misc_ConvertVec2ToF16(topTex, vpnt[2].TexCoord0);
+	Misc_ConvertVec2ToF16(topPointTex, vpnt[3].TexCoord0);
+	Misc_ConvertVec2ToF16(topTex, vpnt[4].TexCoord0);
+	Misc_ConvertVec2ToF16(rightTex, vpnt[5].TexCoord0);
+	Misc_ConvertVec2ToF16(topPointTex, vpnt[6].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomTex, vpnt[7].TexCoord0);
+	Misc_ConvertVec2ToF16(leftTex, vpnt[8].TexCoord0);
+	Misc_ConvertVec2ToF16(topPointTex, vpnt[9].TexCoord0);
+	Misc_ConvertVec2ToF16(rightTex, vpnt[10].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomTex, vpnt[11].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomPointTex, vpnt[12].TexCoord0);
+	Misc_ConvertVec2ToF16(leftTex, vpnt[13].TexCoord0);
+	Misc_ConvertVec2ToF16(topTex, vpnt[14].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomPointTex, vpnt[15].TexCoord0);
+	Misc_ConvertVec2ToF16(topTex, vpnt[16].TexCoord0);
+	Misc_ConvertVec2ToF16(rightTex, vpnt[17].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomPointTex, vpnt[18].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomTex, vpnt[19].TexCoord0);
+	Misc_ConvertVec2ToF16(leftTex, vpnt[20].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomPointTex, vpnt[21].TexCoord0);
+	Misc_ConvertVec2ToF16(rightTex, vpnt[22].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomTex, vpnt[23].TexCoord0);
+
+	//just reference in order, no verts shared
+	uint16_t	idx, indexes[24];
+	for(int i=idx=0;i < 24;i++)
+	{
+		indexes[i]	=idx++;
+	}
+
+	size_t	vpntSize	=sizeof(VPosNormTex0);
+
+	//return object
+	PrimObject	*pObj	=malloc(sizeof(PrimObject));
+
+	pObj->mVertCount	=24;
+	pObj->mIndexCount	=24;
+
+	//make vertex buffer
+	D3D11_BUFFER_DESC	bufDesc;
+	MakeVBDesc(&bufDesc, sizeof(VPosNormTex0) * 24);
+	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
+
+	//make index buffer
+	MakeIBDesc(&bufDesc, 24 * 2);
+	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
 
 	return	pObj;
 }

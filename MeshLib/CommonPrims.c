@@ -74,10 +74,11 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD)
 	glm_vec3_zero(pointyPos);
 	glm_vec3_zero(pRet->mPosition);
 
-	pointyPos[2]	=length;
+	pointyPos[2]	=length + (width * 2.0f);
 
-	glm_rotate_x(pRet->mPointyOffset, -GLM_PI_2, pRet->mPointyOffset);
 	glm_translate(pRet->mPointyOffset, pointyPos);
+
+	glm_rotate(pRet->mPointyOffset, -GLM_PI_2, UnitX);
 
 	return	pRet;
 }
@@ -86,7 +87,7 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD)
 void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 						CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	//set VB/IB
+	//set ray VB/IB
 	GD_IASetVertexBuffers(pGD, pRay->mpAxis->mpVB, 24, 0);
 	GD_IASetIndexBuffers(pGD, pRay->mpAxis->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
@@ -128,4 +129,16 @@ void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 	CBK_UpdateObject(pCBK, pGD);
 
 	GD_DrawIndexed(pGD, pRay->mpAxis->mIndexCount, 0, 0);
+
+	//set pointy end VB/IB
+	GD_IASetVertexBuffers(pGD, pRay->mpPointyEnd->mpVB, 24, 0);
+	GD_IASetIndexBuffers(pGD, pRay->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
+
+	mat4	pointy;
+	glm_mat4_mul_sse2(pRay->mWorld, pRay->mPointyOffset, pointy);
+
+	CBK_SetWorldMat(pCBK, pointy);
+	CBK_UpdateObject(pCBK, pGD);
+
+	GD_DrawIndexed(pGD, pRay->mpPointyEnd->mIndexCount, 0, 0);
 }

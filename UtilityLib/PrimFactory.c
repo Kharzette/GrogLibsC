@@ -603,8 +603,19 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	vec3	topLowerLeft	={	1.0f,	1.0f,	-1.0f	};
 	vec3	topLowerRight	={	-1.0f,	1.0f,	-1.0f	};
 
+	glm_vec3_normalize(topUpperLeft);
+	glm_vec3_normalize(topUpperRight);
+	glm_vec3_normalize(topLowerLeft);
+	glm_vec3_normalize(topLowerRight);
+
+	//all normals are backwards for some strange reason I need to look into
+	glm_vec3_inv(topUpperLeft);
+	glm_vec3_inv(topUpperRight);
+	glm_vec3_inv(topLowerLeft);
+	glm_vec3_inv(topLowerRight);
+
 	//verts
-	VPosNormTex0	vpnt[24];
+	VPosNormTex0	vpnt[18];
 
 	glm_vec3_zero(topPoint);
 
@@ -646,6 +657,14 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	Misc_ConvertVec3ToF16(topLowerRight, vpnt[10].Normal);
 	Misc_ConvertVec3ToF16(topLowerRight, vpnt[11].Normal);
 
+	//bottom face
+	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[12].Normal);
+	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[13].Normal);
+	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[14].Normal);
+	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[15].Normal);
+	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[16].Normal);
+	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[17].Normal);
+
 	//top upper left face
 	glm_vec3_copy(topPoint, vpnt[0].Position);
 	glm_vec3_copy(left, vpnt[1].Position);
@@ -666,6 +685,14 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	glm_vec3_copy(right, vpnt[10].Position);
 	glm_vec3_copy(bottom, vpnt[11].Position);
 
+	//bottom face (2 triangles)
+	glm_vec3_copy(top, vpnt[12].Position);
+	glm_vec3_copy(bottom, vpnt[13].Position);
+	glm_vec3_copy(right, vpnt[14].Position);
+	glm_vec3_copy(top, vpnt[15].Position);
+	glm_vec3_copy(left, vpnt[16].Position);
+	glm_vec3_copy(bottom, vpnt[17].Position);
+
 	Misc_ConvertVec2ToF16(topPointTex, vpnt[0].TexCoord0);
 	Misc_ConvertVec2ToF16(leftTex, vpnt[1].TexCoord0);
 	Misc_ConvertVec2ToF16(topTex, vpnt[2].TexCoord0);
@@ -679,9 +706,16 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	Misc_ConvertVec2ToF16(rightTex, vpnt[10].TexCoord0);
 	Misc_ConvertVec2ToF16(bottomTex, vpnt[11].TexCoord0);
 
+	Misc_ConvertVec2ToF16(topTex, vpnt[12].TexCoord0);
+	Misc_ConvertVec2ToF16(rightTex, vpnt[13].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomTex, vpnt[14].TexCoord0);
+	Misc_ConvertVec2ToF16(topTex, vpnt[15].TexCoord0);
+	Misc_ConvertVec2ToF16(bottomTex, vpnt[16].TexCoord0);
+	Misc_ConvertVec2ToF16(leftTex, vpnt[17].TexCoord0);
+
 	//just reference in order, no verts shared
-	uint16_t	idx, indexes[12];
-	for(int i=idx=0;i < 12;i++)
+	uint16_t	idx, indexes[18];
+	for(int i=idx=0;i < 18;i++)
 	{
 		indexes[i]	=idx++;
 	}
@@ -691,16 +725,16 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
 
-	pObj->mVertCount	=12;
-	pObj->mIndexCount	=12;
+	pObj->mVertCount	=18;
+	pObj->mIndexCount	=18;
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNormTex0) * 12);
+	MakeVBDesc(&bufDesc, sizeof(VPosNormTex0) * 18);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
 
 	//make index buffer
-	MakeIBDesc(&bufDesc, 12 * 2);
+	MakeIBDesc(&bufDesc, 18 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
 
 	return	pObj;

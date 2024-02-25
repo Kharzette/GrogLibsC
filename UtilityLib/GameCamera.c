@@ -83,10 +83,10 @@ void	GameCam_Update(GameCamera *pCam, vec3 pos, float deltaPitch, float deltaYaw
 	glm_quat_normalize_to(accum, pCam->mView);
 }
 
-
+//annoying array goblinry
 void	GameCam_GetProjection(const GameCamera *pCam, mat4 outProjection)
 {
-	glm_mat4_copy(pCam->mProjection, outProjection);
+	memcpy(outProjection, pCam->mProjection, sizeof(mat4));
 }
 
 void	GameCam_GetForwardVec(const GameCamera *pCam, vec3 outForward)

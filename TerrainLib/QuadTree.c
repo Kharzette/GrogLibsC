@@ -21,11 +21,11 @@ static void	BoundVerts(const TerrainVert *pVerts, int numVerts, vec3 mins, vec3 
 {
 	assert(numVerts > 0);
 
-	ClearBounds(mins, maxs);
+	Misc_ClearBounds(mins, maxs);
 
 	for(int i=0;i < numVerts;i++)
 	{
-		AddPointToBoundingBox(mins, maxs, pVerts[i].mPosition);
+		Misc_AddPointToBounds(mins, maxs, pVerts[i].mPosition);
 	}
 }
 
@@ -91,14 +91,14 @@ int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 	glm_vec3_scale(rayDir, 1.0f / rayLen, rayDir);
 
 	vec3	invDir;
-	SSE_ReciprocalVec3(rayDir, invDir);
+	Misc_SSE_ReciprocalVec3(rayDir, invDir);
 
 	vec3	bounds[2];
 	glm_vec3_copy(pQT->mMins, bounds[0]);
 	glm_vec3_copy(pQT->mMaxs, bounds[1]);
 
 	//check against bounds encompassing entire tree
-	if(!RayIntersectBounds(start, invDir, rayLen, bounds))
+	if(!Misc_RayIntersectBounds(start, invDir, rayLen, bounds))
 	{
 		return	MISS;
 	}	

@@ -84,9 +84,9 @@ void	GameCam_Update(GameCamera *pCam, vec3 pos, float deltaPitch, float deltaYaw
 }
 
 
-const mat4	*GameCam_GetProjection(const GameCamera *pCam)
+void	GameCam_GetProjection(const GameCamera *pCam, mat4 outProjection)
 {
-	return	&pCam->mProjection;
+	glm_mat4_copy(pCam->mProjection, outProjection);
 }
 
 void	GameCam_GetForwardVec(const GameCamera *pCam, vec3 outForward)

@@ -53,6 +53,30 @@ static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
 }
 
+//make a vec out of stealing xyz from 3 different vectors
+static void	ThreeXYZ(const vec3 x, const vec3 y, const vec3 z, vec3 dest)
+{
+	dest[0]	=x[0];
+	dest[1]	=y[1];
+	dest[2]	=z[2];
+}
+
+
+PrimObject	*PF_CreateCubeFromBounds(const vec3 min, const vec3 max, GraphicsDevice *pGD)
+{
+	vec3	corners[8];
+
+	ThreeXYZ(max, min, max, corners[0]);
+	ThreeXYZ(min, min, max, corners[1]);
+	ThreeXYZ(max, min, min, corners[2]);
+	ThreeXYZ(min, min, min, corners[3]);
+	ThreeXYZ(max, max, max, corners[4]);
+	ThreeXYZ(min, max, max, corners[5]);
+	ThreeXYZ(max, max, min, corners[6]);
+	ThreeXYZ(min, max, min, corners[7]);
+
+	return	PF_CreateCubeFromCorners(corners, pGD);
+}
 
 PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD)
 {

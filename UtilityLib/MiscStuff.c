@@ -53,7 +53,7 @@ void	Misc_ConvertVec3ToF16(const vec3 vec, uint16_t *pDest)
 	memcpy(pDest, &converted, 8);
 }
 
-void	SSE_ReciprocalVec3(const vec3 vector, vec3 recip)
+void	Misc_SSE_ReciprocalVec3(const vec3 vector, vec3 recip)
 {
 	__attribute__((aligned(16)))	float	vec[4]	={ vector[0], vector[1], vector[2], 1.0f };
 
@@ -65,7 +65,7 @@ void	SSE_ReciprocalVec3(const vec3 vector, vec3 recip)
 }
 
 
-void	ClearBounds(vec3 min, vec3 max)
+void	Misc_ClearBounds(vec3 min, vec3 max)
 {
 	for(int i=0;i < 3;i++)
 	{
@@ -74,7 +74,7 @@ void	ClearBounds(vec3 min, vec3 max)
 	}
 }
 
-void	AddPointToBoundingBox(vec3 min, vec3 max, const vec3 pnt)
+void	Misc_AddPointToBounds(vec3 min, vec3 max, const vec3 pnt)
 {
 	for(int i=0;i < 3;i++)
 	{
@@ -90,7 +90,7 @@ void	AddPointToBoundingBox(vec3 min, vec3 max, const vec3 pnt)
 	}
 }
 
-bool	IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt)
+bool	Misc_IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt)
 {
 	for(int i=0;i < 3;i++)
 	{
@@ -106,10 +106,49 @@ bool	IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt)
 	return	true;
 }
 
+void	Misc_MakeBound(float width, float height, float depth, vec3 min, vec3 max)
+{
+	float	halfWidth	=width * 0.5f;
+	float	halfHeight	=height * 0.5f;
+	float	halfDepth	=depth * 0.5f;
+
+	glm_vec3_zero(min);
+	glm_vec3_zero(max);
+
+	min[0]	=-halfWidth;
+	max[0]	=halfWidth;
+	
+	min[1]	=-halfHeight;
+	max[1]	=halfHeight;
+
+	min[2]	=-halfDepth;
+	max[2]	=halfDepth;
+}
+
+//returns a box with the Z base at the origin
+void	Misc_MakeBaseOrgBound(float width, float height, float depth, vec3 min, vec3 max)
+{
+	float	halfWidth	=width * 0.5f;
+	float	halfHeight	=height * 0.5f;
+	float	halfDepth	=depth * 0.5f;
+
+	glm_vec3_zero(min);
+	glm_vec3_zero(max);
+
+	min[0]	=-halfWidth;
+	max[0]	=halfWidth;
+	
+	min[1]	=-halfHeight;
+	max[1]	=halfHeight;
+
+	min[2]	=0;
+	max[2]	=depth;
+}
+
 //based on reading https://tavianator.com/2011/ray_box.html and comments
 //Mine checks distance as I'm usually working with finite distances
 //invDir should be 1 divided by the direction vector
-bool	RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float rayLen, const vec3 bounds[2])
+bool	Misc_RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float rayLen, const vec3 bounds[2])
 {
 	float	tmin, tmax, tymin, tymax, tzmin, tzmax;
 
@@ -163,7 +202,7 @@ bool	RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float rayL
 }
 
 //return one of the above values along with the intersection point and normal
-int	LineIntersectBounds(const vec3 min, const vec3 max, const vec3 start, const vec3 end,
+int	Misc_LineIntersectBounds(const vec3 min, const vec3 max, const vec3 start, const vec3 end,
 						vec3 intersection, vec3 hitNorm)
 {
 	vec4	boundPlanes[6];

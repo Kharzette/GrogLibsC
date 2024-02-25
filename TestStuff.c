@@ -25,6 +25,7 @@
 #include	"MeshLib/Mesh.h"
 #include	"MeshLib/AnimLib.h"
 #include	"MeshLib/Character.h"
+#include	"MeshLib/CommonPrims.h"
 
 
 #define	RESX			800
@@ -117,9 +118,13 @@ int main(void)
 	vec3	zeroVec;
 	glm_vec3_zero(zeroVec);
 
+	//test prims
 //	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
-//	PrimObject	*pCube	=PF_CreateSphere(zeroVec, 1.0f, pGD);
-	PrimObject	*pCube	=PF_CreateCapsule(0.5f, 2.0f, pGD);
+	PrimObject	*pCube	=PF_CreateSphere(zeroVec, 1.0f, pGD);
+//	PrimObject	*pCube	=PF_CreateCapsule(0.5f, 2.0f, pGD);
+
+	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pGD);
+
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
 	PostProcess	*pPP	=PP_Create(pGD, pSK, pCBK);
@@ -139,20 +144,19 @@ int main(void)
 	vec3	hitPos, hitNorm;
 	bool	bHit;
 
-	//draw 2 more cubes
-	vec3	bumpVec0	={ 2.0f, -2.0f, 0.0f };
-	vec3	bumpVec1	={ -2.0f, -2.0f, 0.0f };
-
 	GameCamera	*pCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
 
 	glmc_mat4_identity(ident);
 	glmc_mat4_identity(world);
 
-	CBK_SetWorldMat(pCBK, &world);
-	CBK_SetProjection(pCBK, GameCam_GetProjection(pCam));
+	CBK_SetWorldMat(pCBK, world);
 
-	glmc_translate_make(bump0, bumpVec0);
-	glmc_translate_make(bump1, bumpVec1);
+	//projection won't change in this test program
+	{
+		mat4	proj;
+		GameCam_GetProjection(pCam, proj);
+		CBK_SetProjection(pCBK, proj);
+	}
 
 	//good old xna blue
 	float	clearColor[]	={ 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f };
@@ -190,6 +194,7 @@ int main(void)
 	vec4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	vec4	solidColor1	={	0.5f, 1.0f, 1.0f, 1.0f	};
 	vec4	solidColor2	={	1.0f, 0.5f, 1.0f, 1.0f	};
+	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec3	light0		={	1.0f, 1.0f, 1.0f	};
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
@@ -198,10 +203,6 @@ int main(void)
 	vec3	skyGrad1	={	0.2f, 0.3f, 1.0f	};
 
 	glmc_vec3_normalize(lightDir);
-
-	CBK_SetSpecular(pCBK, specColor, 6.0f);
-	CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
-	CBK_SetSolidColour(pCBK, solidColor0);
 
 	CBK_SetFogVars(pCBK, 500.0f, 1000.0f, true);
 	CBK_SetSky(pCBK, skyGrad0, skyGrad1);
@@ -372,22 +373,15 @@ int main(void)
 
 		animTime	+=dt;
 //		AnimLib_Animate(pALib, "DocuBaseBlenderCoords", animTime);
-		AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
-//		AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
+//		AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
+		AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
 		
 //		AnimLib_FillBoneArray(pALib, bones);
 		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
 
-		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
-		GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
-
 		//set no blend, I think post processing turns it on maybe
 		GD_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
 		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
-
-//		SpinMatYawPitch(dt, world);
-		CBK_SetWorldMat(pCBK, &world);
-		CBK_SetSolidColour(pCBK, solidColor0);
 
 		//camera update
 		GameCam_Update(pCam, eyePos, deltaPitch, deltaYaw, 0.0f);
@@ -405,15 +399,9 @@ int main(void)
 
 			glm_vec3_negate_to(eyePos, negPos);
 
-			CBK_SetView(pCBK, &viewMat, negPos);
+			CBK_SetView(pCBK, viewMat, negPos);
 		}
 
-
-		//update frame CB
-		CBK_UpdateFrame(pCBK, pGD);
-
-		//update per object
-		CBK_UpdateObject(pCBK, pGD);
 
 		PP_SetTargets(pPP, pGD, "LinearColor", "LinearDepth");
 
@@ -422,46 +410,64 @@ int main(void)
 		PP_ClearDepth(pPP, pGD, "LinearDepth");
 		PP_ClearTarget(pPP, pGD, "LinearColor");
 
-		//set input layout for the cube draw
+		//set input layout for the prim draws
 		GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 		GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
-		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
+		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS"));
 
-		CBK_SetWorldMat(pCBK, &world);
+		//update frame CB
+		CBK_UpdateFrame(pCBK, pGD);
+
+		//draw light ray
+		GD_PSSetSRV(pGD, NULL, 0);
+		CP_DrawLightRay(pLR, lightDir, lightRayCol, pCBK, pGD);
+
+		//cube VB/IB etc
+		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
+		GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
+		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
+		CBK_SetSpecular(pCBK, specColor, 6.0f);
+		CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
+		CBK_SetSolidColour(pCBK, solidColor0);
+
+//		SpinMatYawPitch(dt, world);
+		CBK_SetWorldMat(pCBK, world);
+		CBK_SetSolidColour(pCBK, solidColor0);
 		CBK_UpdateObject(pCBK, pGD);
 		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+
 
 		//draw another
-		CBK_SetSolidColour(pCBK, solidColor1);
-		glmc_mat4_mul(world, bump0, temp);
-		CBK_SetWorldMat(pCBK, &temp);
-		CBK_UpdateObject(pCBK, pGD);
-		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+//		CBK_SetSolidColour(pCBK, solidColor1);
+//		glmc_mat4_mul(world, bump0, temp);
+//		CBK_SetWorldMat(pCBK, temp);
+//		CBK_UpdateObject(pCBK, pGD);
+//		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//and another
-		CBK_SetSolidColour(pCBK, solidColor2);
-		glmc_mat4_mul(world, bump1, temp);
-		CBK_SetWorldMat(pCBK, &temp);
-		CBK_UpdateObject(pCBK, pGD);
-		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+//		CBK_SetSolidColour(pCBK, solidColor2);
+//		glmc_mat4_mul(world, bump1, temp);
+//		CBK_SetWorldMat(pCBK, temp);
+//		CBK_UpdateObject(pCBK, pGD);
+//		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//debug draw quadtree leaf cubes
 		GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
 		GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
-		CBK_SetWorldMat(pCBK, &ident);
+		CBK_SetWorldMat(pCBK, ident);
 		CBK_UpdateObject(pCBK, pGD);
 		GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
 //		GD_DrawIndexed(pGD, 36 * 4, 0, 0);
 
 		//set up terrain draw
-		CBK_SetWorldMat(pCBK, &ident);
+		CBK_SetWorldMat(pCBK, ident);
 		CBK_UpdateObject(pCBK, pGD);
 		Terrain_Draw(pTer, pGD, pSK);
 
 		//set mesh draw stuff
 		SpinMatYaw(dt, meshMat);
-		CBK_SetWorldMat(pCBK, &meshMat);
+		CBK_SetWorldMat(pCBK, meshMat);
 		CBK_SetDanglyForce(pCBK, dangly);
 		CBK_SetSolidColour(pCBK, solidColor0);
 		CBK_UpdateObject(pCBK, pGD);
@@ -469,7 +475,6 @@ int main(void)
 
 		//bones
 		CBK_SetBonesWithTranspose(pCBK, bones);
-//		CBK_SetBones(pCBK, bones);
 		CBK_UpdateCharacter(pCBK, pGD);
 		CBK_SetCharacterToShaders(pCBK, pGD);
 

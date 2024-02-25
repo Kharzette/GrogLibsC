@@ -90,11 +90,11 @@ static void	BoundVerts(const TerrainVert *pVerts, int numVerts, vec3 mins, vec3 
 {
 	assert(numVerts > 0);
 
-	ClearBounds(mins, maxs);
+	Misc_ClearBounds(mins, maxs);
 
 	for(int i=0;i < numVerts;i++)
 	{
-		AddPointToBoundingBox(mins, maxs, pVerts[i].mPosition);
+		Misc_AddPointToBounds(mins, maxs, pVerts[i].mPosition);
 	}
 }
 
@@ -106,7 +106,7 @@ static void	GetBoundedHeights(const TerrainVert *pVerts, int numVerts, vec3 mins
 	*numBounded	=0;
 	for(int i=0;i < numVerts;i++)
 	{
-		if(IsPointInBounds(mins, maxs, pVerts[i].mPosition))
+		if(Misc_IsPointInBounds(mins, maxs, pVerts[i].mPosition))
 		{
 			*numBounded	=(*numBounded) + 1;
 		}
@@ -118,7 +118,7 @@ static void	GetBoundedHeights(const TerrainVert *pVerts, int numVerts, vec3 mins
 	int	idx	=0;
 	for(int i=0;i < numVerts;i++)
 	{
-		if(IsPointInBounds(mins, maxs, pVerts[i].mPosition))
+		if(Misc_IsPointInBounds(mins, maxs, pVerts[i].mPosition))
 		{
 			memcpy(&((*ppBounded)[idx]), &pVerts[i], sizeof(TerrainVert));
 			idx++;
@@ -288,7 +288,7 @@ int	QN_LineIntersect(const QuadNode *pQN,
 
 	//fast intersect check for nodes
 	//don't need plane hit or point returned, just a yes or no
-	if(!RayIntersectBounds(rayStart, invDir, rayLen, bounds))
+	if(!Misc_RayIntersectBounds(rayStart, invDir, rayLen, bounds))
 	{
 		return	res;
 	}
@@ -296,13 +296,13 @@ int	QN_LineIntersect(const QuadNode *pQN,
 	if(pQN->mpHeights != NULL)	//leaf?
 	{
 		vec3	end;
-		SSE_ReciprocalVec3(invDir, end);
+		Misc_SSE_ReciprocalVec3(invDir, end);
 
 		glm_vec3_scale(end, rayLen, end);
 		glm_vec3_add(end, rayStart, end);
 
 		vec3	hit, hitN;
-		res	=LineIntersectBounds(pQN->mMins, pQN->mMaxs, rayStart, end, hit, hitN);
+		res	=Misc_LineIntersectBounds(pQN->mMins, pQN->mMaxs, rayStart, end, hit, hitN);
 		if(res == MISS)
 		{
 			//if a miss, can safely assume all child nodes are a miss

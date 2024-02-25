@@ -124,6 +124,7 @@ int main(void)
 //	PrimObject	*pCube	=PF_CreateCapsule(0.5f, 2.0f, pGD);
 
 	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pGD);
+	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pGD);
 
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
@@ -195,6 +196,9 @@ int main(void)
 	vec4	solidColor1	={	0.5f, 1.0f, 1.0f, 1.0f	};
 	vec4	solidColor2	={	1.0f, 0.5f, 1.0f, 1.0f	};
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
+	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
+	vec4	YAxisCol	={	0.0f, 0.0f, 1.0f, 1.0f	};
+	vec4	ZAxisCol	={	0.0f, 1.0f, 0.0f, 1.0f	};
 	vec3	light0		={	1.0f, 1.0f, 1.0f	};
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
@@ -421,6 +425,9 @@ int main(void)
 		//draw light ray
 		GD_PSSetSRV(pGD, NULL, 0);
 		CP_DrawLightRay(pLR, lightDir, lightRayCol, pCBK, pGD);
+
+		//draw xyz axis
+		CP_DrawAxis(pAxis, lightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pGD);
 
 		//cube VB/IB etc
 		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);

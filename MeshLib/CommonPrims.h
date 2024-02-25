@@ -17,3 +17,6 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD);
 //draws
 void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 						CBKeeper *pCBK, GraphicsDevice *pGD);
+void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
+					const vec4 xCol, const vec4 yCol, const vec4 zCol,
+					CBKeeper *pCBK, GraphicsDevice *pGD);

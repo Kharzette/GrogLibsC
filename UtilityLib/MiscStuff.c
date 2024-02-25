@@ -145,6 +145,23 @@ void	Misc_MakeBaseOrgBound(float width, float height, float depth, vec3 min, vec
 	max[2]	=depth;
 }
 
+//make a random point within a bound
+void	Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result)
+{
+	double	scalarX	=(maxs[0] - mins[0]) / RAND_MAX;
+	double	scalarY	=(maxs[1] - mins[1]) / RAND_MAX;
+	double	scalarZ	=(maxs[2] - mins[2]) / RAND_MAX;
+
+	int	x	=rand();
+	int	y	=rand();
+	int	z	=rand();
+
+	result[0]	=scalarX * x;
+	result[1]	=scalarY * y;
+	result[2]	=scalarZ * z;
+}
+
+
 //based on reading https://tavianator.com/2011/ray_box.html and comments
 //Mine checks distance as I'm usually working with finite distances
 //invDir should be 1 divided by the direction vector

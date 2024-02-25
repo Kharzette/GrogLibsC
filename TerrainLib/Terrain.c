@@ -437,6 +437,11 @@ void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 }
 
 
+void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs)
+{
+	QT_GetBounds(pTer->mpQT, mins, maxs);
+}
+
 void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds)
 {
 	assert(pTer != NULL);

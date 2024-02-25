@@ -18,6 +18,7 @@ extern void	Misc_ClearBounds(vec3 min, vec3 max);
 extern void	Misc_AddPointToBounds(vec3 min, vec3 max, const vec3 pnt);
 extern void	Misc_MakeBound(float width, float height, float depth, vec3 min, vec3 max);
 extern void	Misc_MakeBaseOrgBound(float width, float height, float depth, vec3 min, vec3 max);
+extern void	Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result);
 
 extern bool	Misc_IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt);
 extern int	Misc_LineIntersectBounds(const vec3 min, const vec3 max, const vec3 start, const vec3 end,

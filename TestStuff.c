@@ -35,9 +35,21 @@
 #define	KEYTURN_RATE	0.1f
 #define	HEIGHT_SCALAR	0.5f
 #define	RAY_LEN			100.0f
+#define	NUM_RAYS		8000
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
+
+//data to store test rays
+static vec3	rayStarts[NUM_RAYS];
+static vec3	rayEnds[NUM_RAYS];
+static int	rayResults[NUM_RAYS];
+static vec3	rayImpacts[NUM_RAYS];
+static int	numRayImpacts;
+
+//static forward decs
+static void	TestManyRays(const Terrain *pTer);
+static void	PrintRandomPointInTerrain(const Terrain *pTer);
 
 
 static void SpinMatYawPitch(float dt, mat4 outWorld)
@@ -120,7 +132,7 @@ int main(void)
 
 	//test prims
 //	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
-	PrimObject	*pCube	=PF_CreateSphere(zeroVec, 1.0f, pGD);
+	PrimObject	*pCube	=PF_CreateSphere(zeroVec, 0.5f, pGD);
 //	PrimObject	*pCube	=PF_CreateCapsule(0.5f, 2.0f, pGD);
 
 	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pGD);
@@ -359,6 +371,14 @@ int main(void)
 							solidColor0[0]	=0.0f;
 						}
 					}
+					else if(evt.key.keysym.sym == SDLK_p)
+					{
+						PrintRandomPointInTerrain(pTer);
+					}
+					else if(evt.key.keysym.sym == SDLK_u)
+					{
+						TestManyRays(pTer);
+					}
 				}
 			}
 			//do input here
@@ -501,4 +521,46 @@ int main(void)
 	GD_Destroy(&pGD);
 
 	return	EXIT_SUCCESS;
+}
+
+
+//input handlers
+static void	PrintRandomPointInTerrain(const Terrain *pTer)
+{
+	vec3	randPoint, terMins, terMaxs;
+
+	Terrain_GetBounds(pTer, terMins, terMaxs);
+
+	Misc_RandomPointInBound(terMins, terMaxs, randPoint);
+
+	printf("Random Point: %.2f, %.2f, %.2f\n", randPoint[0], randPoint[1], randPoint[2]);
+}
+
+//throw a large amount of rays at the terrain
+static void	TestManyRays(const Terrain *pTer)
+{
+	vec3	terMins, terMaxs;
+
+	Terrain_GetBounds(pTer, terMins, terMaxs);
+
+	__uint128_t	startTime	=__rdtsc();
+
+	for(int i=0;i < NUM_RAYS;i++)
+	{
+		vec3	start, end;
+		vec3	hit, hitNorm;
+
+		Misc_RandomPointInBound(terMins, terMaxs, start);
+		Misc_RandomPointInBound(terMins, terMaxs, end);
+
+		Terrain_LineIntersect(pTer, start, end, hit, hitNorm);
+	}
+
+	__uint128_t	endTime	=__rdtsc();
+
+	uint64_t	delta	=(endTime - startTime);
+
+	int	numRays	=NUM_RAYS;
+
+	printf("Ray test of %d rays took %lu tics\n", numRays, delta);
 }

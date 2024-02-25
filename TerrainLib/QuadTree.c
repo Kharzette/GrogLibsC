@@ -46,6 +46,13 @@ QuadTree	*QT_Create(TerrainVert *pVerts, int w, int h)
 }
 
 
+void	QT_GetBounds(const QuadTree *pQT, vec3 mins, vec3 maxs)
+{
+	memcpy(mins, pQT->mMins, sizeof(vec3));
+	memcpy(maxs, pQT->mMaxs, sizeof(vec3));
+}
+
+
 //get a list of the bounds of all leafs
 //This is only used for debug draw
 void	QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds)
@@ -101,7 +108,9 @@ int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 	if(!Misc_RayIntersectBounds(start, invDir, rayLen, bounds))
 	{
 		return	MISS;
-	}	
+	}
 
-	return	QN_LineIntersect(pQT->mpRoot, start, invDir, rayLen, intersection, hitNorm);
+//	return	QN_LineIntersectCV(pQT->mpRoot, start, end, intersection, hitNorm);
+
+	return	QN_LineIntersect(pQT->mpRoot, start, invDir, end, rayLen, intersection, hitNorm);
 }

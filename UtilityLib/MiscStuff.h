@@ -13,6 +13,7 @@ extern void	Misc_Convert2ToF16(float f0, float f1, uint16_t *pDest);
 extern void	Misc_ConvertVec3ToF16(const vec3 vec, uint16_t *pDest);
 extern void	Misc_ConvertVec2ToF16(const vec2 vec, uint16_t *pDest);
 extern void	Misc_SSE_ReciprocalVec3(const vec3 vector, vec3 recip);
+extern int	Misc_SSE_RoundFToI(float val);
 
 extern void	Misc_ClearBounds(vec3 min, vec3 max);
 extern void	Misc_AddPointToBounds(vec3 min, vec3 max, const vec3 pnt);

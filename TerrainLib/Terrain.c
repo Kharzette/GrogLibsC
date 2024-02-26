@@ -201,7 +201,7 @@ static void	VBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts, uint32_t w, uin
 	int	numTris		=numQuads * 2;
 
 	//indexes
-	uint16_t	*pIndexes	=malloc(2 * numTris * 3);
+	uint32_t	*pIndexes	=malloc(4 * numTris * 3);
 
 	int	curIdx	=0;
 	for(int y=0;y < hm1;y++)
@@ -222,9 +222,9 @@ static void	VBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts, uint32_t w, uin
 		}
 	}
 
-	MakeIBDesc(&bufDesc, 2 * numTris * 3);
+	MakeIBDesc(&bufDesc, 4 * numTris * 3);
 
-	*ppIB	=GD_CreateBufferWithData(pGD, &bufDesc, pIndexes, 2 * numTris * 3);
+	*ppIB	=GD_CreateBufferWithData(pGD, &bufDesc, pIndexes, 4 * numTris * 3);
 
 	//free data
 	free(pIndexes);
@@ -427,7 +427,7 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 {
 	GD_IASetVertexBuffers(pGD, pTer->mpVerts, pTer->mVertSize, 0);
-	GD_IASetIndexBuffers(pGD, pTer->mpIndexs, DXGI_FORMAT_R16_UINT, 0);
+	GD_IASetIndexBuffers(pGD, pTer->mpIndexs, DXGI_FORMAT_R32_UINT, 0);
 	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex04Tex14"));
 
 	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));

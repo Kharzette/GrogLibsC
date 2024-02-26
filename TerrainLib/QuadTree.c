@@ -17,30 +17,46 @@ typedef struct	QuadTree_t
 }	QuadTree;
 
 
-static void	BoundVerts(const TerrainVert *pVerts, int numVerts, vec3 mins, vec3 maxs)
-{
-	assert(numVerts > 0);
-
-	Misc_ClearBounds(mins, maxs);
-
-	for(int i=0;i < numVerts;i++)
-	{
-		Misc_AddPointToBounds(mins, maxs, pVerts[i].mPosition);
-	}
-}
-
-
 QuadTree	*QT_Create(TerrainVert *pVerts, int w, int h)
 {
 	QuadTree	*pQT	=malloc(sizeof(QuadTree));
 
 	memset(pQT, 0, sizeof(QuadTree));
 
-	BoundVerts(pVerts, w * h, pQT->mMins, pQT->mMaxs);
+	//make a simpler grid of heights
+	float	*pHeights	=malloc(sizeof(float) * w * h);
 
-	pQT->mpRoot	=QN_Build(pVerts, w * h, pQT->mMins, pQT->mMaxs);
+	float	minHeight	=FLT_MAX;
+	float	maxHeight	=-FLT_MAX;
+	for(int y=0;y < h;y++)
+	{
+		for(int x=0;x < w;x++)
+		{
+			int	ofs	=(y * w) + x;
 
-	QN_FixBoxHeights(pQT->mpRoot);
+			float	height	=pVerts[ofs].mPosition[1];
+			pHeights[ofs]	=height;
+
+			if(height < minHeight)
+			{
+				minHeight	=height;
+			}
+			if(height > maxHeight)
+			{
+				maxHeight	=height;
+			}
+		}
+	}
+
+	//set up bounds
+	glm_vec3_zero(pQT->mMins);
+	pQT->mMins[1]	=minHeight;
+
+	pQT->mMaxs[0]	=w - 1;
+	pQT->mMaxs[1]	=maxHeight;
+	pQT->mMaxs[2]	=h - 1;
+
+	pQT->mpRoot	=QN_Build(pHeights, w, h, pQT->mMins, pQT->mMaxs);
 
 	return	pQT;
 }
@@ -112,5 +128,5 @@ int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 
 //	return	QN_LineIntersectCV(pQT->mpRoot, start, end, intersection, hitNorm);
 
-	return	QN_LineIntersect(pQT->mpRoot, start, invDir, end, rayLen, intersection, hitNorm);
+	return	QN_LineIntersect(pQT->mpRoot, start, end, invDir, rayLen, intersection, hitNorm);
 }

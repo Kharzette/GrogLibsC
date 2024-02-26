@@ -24,8 +24,8 @@ typedef struct	QuadNode_t
 	QuadNode	*mpChildC;
 	QuadNode	*mpChildD;
 
-	TerrainVert	*mpHeights;			//null unless leaf
-
+	vec3	*mpLVArray;		//leaf vert array
+	uint8_t	*mpLVInds;		//leaf triangles
 }	QuadNode;
 
 
@@ -86,90 +86,75 @@ static void	SplitBound(const vec3 mins, const vec3 maxs,
 	bMaxs[2]	=middle[2];
 }
 
-static void	BoundVerts(const TerrainVert *pVerts, int numVerts, vec3 mins, vec3 maxs)
+static int	LineIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end)
 {
-	assert(numVerts > 0);
+	assert(pQN->mpLVArray);
+	assert(pQN->mpLVInds);
 
-	Misc_ClearBounds(mins, maxs);
-
-	for(int i=0;i < numVerts;i++)
-	{
-		Misc_AddPointToBounds(mins, maxs, pVerts[i].mPosition);
-	}
 }
 
-
-//return the verts within the bounds provided
-static void	GetBoundedHeights(const TerrainVert *pVerts, int numVerts, vec3 mins, vec3 maxs,
-								TerrainVert **ppBounded, int *numBounded)
+static void	MakeLeafTris(QuadNode *pQN, const float *pHeights, int w, int h)
 {
-	*numBounded	=0;
-	for(int i=0;i < numVerts;i++)
+	int	xSize	=Misc_SSE_RoundFToI(pQN->mMaxs[0] - pQN->mMins[0]);
+	int	zSize	=Misc_SSE_RoundFToI(pQN->mMaxs[2] - pQN->mMins[2]);
+
+	int	xStart	=Misc_SSE_RoundFToI(pQN->mMins[0]);
+	int	zStart	=Misc_SSE_RoundFToI(pQN->mMins[2]);
+
+	int	xEnd	=Misc_SSE_RoundFToI(pQN->mMaxs[0]);
+	int	zEnd	=Misc_SSE_RoundFToI(pQN->mMaxs[2]);
+
+	//bounds are right on vert boundaries
+	//so need a +1
+	xSize++;
+	zSize++;
+
+	//these really should be square
+	assert(xSize == zSize);
+
+	int	numQuads	=(xSize - 1) * (zSize - 1);
+	int	numTris		=numQuads * 2;
+
+	//make sure 8 bits is good enough
+	assert((numTris * 3) < 256);
+
+	//alloc
+	pQN->mpLVArray	=malloc(sizeof(vec3) * xSize * zSize);
+	pQN->mpLVInds	=malloc(numTris * 3);
+
+	//watch height values while copying
+	float	minHeight	=FLT_MAX;
+	float	maxHeight	=-FLT_MAX;
+
+	//copy heights
+	int	curDest	=0;
+	for(int z=zStart;z <= zEnd;z++)
 	{
-		if(Misc_IsPointInBounds(mins, maxs, pVerts[i].mPosition))
+		for(int x=xStart;x <= xEnd;x++)
 		{
-			*numBounded	=(*numBounded) + 1;
-		}
-	}
+			int	ofs	=(z * w) + x;
 
-	*ppBounded	=malloc(sizeof(TerrainVert) * (*numBounded));
+			float	height	=pHeights[ofs];
 
-	//lazy
-	int	idx	=0;
-	for(int i=0;i < numVerts;i++)
-	{
-		if(Misc_IsPointInBounds(mins, maxs, pVerts[i].mPosition))
-		{
-			memcpy(&((*ppBounded)[idx]), &pVerts[i], sizeof(TerrainVert));
-			idx++;
-		}
-	}
-}
+			pQN->mpLVArray[curDest][0]	=x;
+			pQN->mpLVArray[curDest][1]	=height;
+			pQN->mpLVArray[curDest][2]	=z;
 
-//quadtrees are essentially 2D, and are assumed convex from a vertical
-//point of view, so during splitting the Y axis is kind of ignored, and
-//needs to be smooshed later.
-void	QN_FixBoxHeights(QuadNode *pQN)
-{
-	if(pQN->mpHeights == NULL)
-	{
-		QN_FixBoxHeights(pQN->mpChildB);
-		QN_FixBoxHeights(pQN->mpChildA);
-		QN_FixBoxHeights(pQN->mpChildD);
-		QN_FixBoxHeights(pQN->mpChildC);
-		return;
-	}
+			curDest++;
 
-	//recompute height of bounds
-	pQN->mMins[1]	=FLT_MAX;
-	pQN->mMaxs[1]	=-FLT_MAX;
-
-	//see how many heights in each side
-	float	xSide	=pQN->mMaxs[0] - pQN->mMins[0] + 1.0f;
-	float	zSide	=pQN->mMaxs[2] - pQN->mMins[2] + 1.0f;
-
-	int	ixLen	=(int)xSide;
-	int	izLen	=(int)zSide;
-
-	for(int z=0;z < izLen;z++)
-	{
-		for(int x=0;x < ixLen;x++)
-		{
-			float	height	=pQN->mpHeights[(z * izLen) + x].mPosition[1];
-
-			if(height < pQN->mMins[1])
+			if(height < minHeight)
 			{
-				pQN->mMins[1]	=height;
+				minHeight	=height;
 			}
-			if(height > pQN->mMaxs[1])
+			if(height > maxHeight)
 			{
-				pQN->mMaxs[1]	=height;
+				maxHeight	=height;
 			}
 		}
 	}
 
-	//check for superflat boxes, those are problematic
-	float	yDim	=pQN->mMaxs[1] - pQN->mMins[1];
+	//check for superflat 
+	float	yDim	=maxHeight - minHeight;
 	if(yDim < TOO_THIN)
 	{
 		float	amount	=TOO_THIN - yDim;
@@ -177,67 +162,59 @@ void	QN_FixBoxHeights(QuadNode *pQN)
 		amount	*=0.5f;
 
 		//inflate the box a little bit
-		pQN->mMaxs[1]	+=amount;
-		pQN->mMins[1]	-=amount;
+		minHeight	-=amount;
+		maxHeight	+=amount;
+	}
+
+	//fix bound heights
+	pQN->mMins[1]	=minHeight;
+	pQN->mMaxs[1]	=maxHeight;
+
+	//index triangles
+	int	curIdx	=0;
+	for(int i=0;i < numQuads;i++)
+	{
+		pQN->mpLVInds[curIdx++]	=i;
+		pQN->mpLVInds[curIdx++]	=i + 1;
+		pQN->mpLVInds[curIdx++]	=i + xSize;
+
+		pQN->mpLVInds[curIdx++]	=i + 1;
+		pQN->mpLVInds[curIdx++]	=i + xSize + 1;
+		pQN->mpLVInds[curIdx++]	=i;
 	}
 }
 
 
-QuadNode	*QN_Build(TerrainVert *pVerts, int count, const vec3 mins, const vec3 maxs)
+QuadNode	*QN_Build(float *pHeights, int w, int h, const vec3 mins, const vec3 maxs)
 {
 	QuadNode	*pNode	=malloc(sizeof(QuadNode));
 
 	memset(pNode, 0, sizeof(QuadNode));
 
 	//copy bounds
-	for(int i=0;i < 3;i++)
-	{
-		pNode->mMins[i]	=mins[i];
-		pNode->mMaxs[i]	=maxs[i];
-	}
+	memcpy(pNode->mMins, mins, sizeof(vec3));
+	memcpy(pNode->mMaxs, maxs, sizeof(vec3));
 
-	if(count <= 62)
+	int	sv3	=sizeof(vec3);
+
+	int	nodeSize	=Misc_SSE_RoundFToI(maxs[0] - mins[0]) + 1.0f;
+
+	if(nodeSize <= 8)
 	{
 		//leaf
-		pNode->mpHeights	=pVerts;
+		MakeLeafTris(pNode, pHeights, w, h);
 
 		return	pNode;
 	}
-
-	TerrainVert	*pA, *pB, *pC, *pD;
-	int			numA, numB, numC, numD;
 
 	vec3	aMins, aMaxs, bMins, bMaxs, cMins, cMaxs, dMins, dMaxs;
 
 	SplitBound(mins, maxs, aMins, aMaxs, bMins, bMaxs, cMins, cMaxs, dMins, dMaxs);
 
-	GetBoundedHeights(pVerts, count, aMins, aMaxs, &pA, &numA);
-	GetBoundedHeights(pVerts, count, bMins, bMaxs, &pB, &numB);
-	GetBoundedHeights(pVerts, count, cMins, cMaxs, &pC, &numC);
-	GetBoundedHeights(pVerts, count, dMins, dMaxs, &pD, &numD);
-
-	pNode->mpChildA	=QN_Build(pA, numA, aMins, aMaxs);
-	pNode->mpChildB	=QN_Build(pB, numB, bMins, bMaxs);
-	pNode->mpChildC	=QN_Build(pC, numC, cMins, cMaxs);
-	pNode->mpChildD	=QN_Build(pD, numD, dMins, dMaxs);
-
-	//after returning from recursion, free non leaf vert data
-	if(pNode->mpChildA->mpHeights == NULL)
-	{
-		free(pA);
-	}
-	if(pNode->mpChildB->mpHeights == NULL)
-	{
-		free(pB);
-	}
-	if(pNode->mpChildC->mpHeights == NULL)
-	{
-		free(pC);
-	}
-	if(pNode->mpChildD->mpHeights == NULL)
-	{
-		free(pD);
-	}
+	pNode->mpChildA	=QN_Build(pHeights, w, h, aMins, aMaxs);
+	pNode->mpChildB	=QN_Build(pHeights, w, h, bMins, bMaxs);
+	pNode->mpChildC	=QN_Build(pHeights, w, h, cMins, cMaxs);
+	pNode->mpChildD	=QN_Build(pHeights, w, h, dMins, dMaxs);
 
 	return	pNode;
 }
@@ -245,7 +222,7 @@ QuadNode	*QN_Build(TerrainVert *pVerts, int count, const vec3 mins, const vec3 m
 
 void	QN_CountLeafBounds(const QuadNode *pQN, int *pNumBounds)
 {
-	if(pQN->mpHeights != NULL)
+	if(pQN->mpLVArray)
 	{
 		(*pNumBounds)++;
 		return;
@@ -260,7 +237,7 @@ void	QN_CountLeafBounds(const QuadNode *pQN, int *pNumBounds)
 
 void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIndex)
 {
-	if(pQN->mpHeights != NULL)
+	if(pQN->mpLVArray)
 	{
 		glmc_vec3_copy(pQN->mMins, pMins[*pIndex]);
 		glmc_vec3_copy(pQN->mMaxs, pMaxs[*pIndex]);
@@ -293,14 +270,8 @@ int	QN_LineIntersect(const QuadNode *pQN,
 		return	res;
 	}
 
-	if(pQN->mpHeights != NULL)	//leaf?
+	if(pQN->mpLVArray)	//leaf?
 	{
-//		vec3	end;
-//		Misc_SSE_ReciprocalVec3(invDir, end);
-
-//		glm_vec3_scale(end, rayLen, end);
-//		glm_vec3_add(end, rayStart, end);
-
 		vec3	hit, hitN;
 		res	=Misc_LineIntersectBounds(pQN->mMins, pQN->mMaxs, rayStart, end, hit, hitN);
 		if(res == MISS)
@@ -323,14 +294,15 @@ int	QN_LineIntersect(const QuadNode *pQN,
 		return	MISS;
 	}
 
-	int	ret	=QN_LineIntersect(pQN->mpChildA, rayStart, invDir, end, rayLen, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildB, rayStart, invDir, end, rayLen, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildC, rayStart, invDir, end, rayLen, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildD, rayStart, invDir, end, rayLen, intersection, hitNorm);
+	int	ret	=QN_LineIntersect(pQN->mpChildA, rayStart, end, invDir, rayLen, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildB, rayStart, end, invDir, rayLen, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildC, rayStart, end, invDir, rayLen, intersection, hitNorm);
+	ret		|=QN_LineIntersect(pQN->mpChildD, rayStart, end, invDir, rayLen, intersection, hitNorm);
 
 	return	ret;
 }
 
+//slower trace with the convex volume routine
 int	QN_LineIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 						vec3 intersection, vec3 hitNorm)
 {
@@ -344,7 +316,7 @@ int	QN_LineIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 		return	res;
 	}
 
-	if(pQN->mpHeights != NULL)	//leaf?
+	if(pQN->mpLVArray)	//leaf?
 	{
 		//can check squared distance for comparison
 		float	curDist	=glm_vec3_distance2(rayStart, intersection);

@@ -64,6 +64,21 @@ void	Misc_SSE_ReciprocalVec3(const vec3 vector, vec3 recip)
 	memcpy(recip, &result, 12);
 }
 
+int	Misc_SSE_RoundFToI(float val)
+{
+	__attribute__((aligned(16)))	float	vec[4]	={ val, val, val, val };
+
+	__m128	arg	=_mm_load_ps(vec);
+
+	__m128i	result	=_mm_cvtps_epi32(arg);
+
+	int	res;
+
+	memcpy(&res, &result, sizeof(int));
+
+	return	res;
+}
+
 
 void	Misc_ClearBounds(vec3 min, vec3 max)
 {

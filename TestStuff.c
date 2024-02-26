@@ -50,43 +50,11 @@ static int	numRayImpacts;
 //static forward decs
 static void	TestManyRays(const Terrain *pTer);
 static void	PrintRandomPointInTerrain(const Terrain *pTer);
-
-
-static void SpinMatYawPitch(float dt, mat4 outWorld)
-{
-	static	mat4	ident, yaw, pitch;
-	static	float	cubeYaw		=0.0f;
-	static	float	cubePitch	=0.0f;
-
-	glmc_mat4_identity(ident);
-
-	cubeYaw		+=ROT_RATE * dt;
-	cubePitch	+=0.25f * ROT_RATE * dt;
-
-	//wrap angles
-	cubeYaw		=fmodf(cubeYaw, 360.0f);
-	cubePitch	=fmodf(cubePitch, 360.0f);
-
-	glmc_rotate_y(ident, glm_rad(cubeYaw), yaw);
-	glmc_rotate_x(ident, glm_rad(cubePitch), pitch);
-
-	glmc_mat4_mul(yaw, pitch, outWorld);
-}
-
-static void SpinMatYaw(float dt, mat4 outWorld)
-{
-	static	mat4	ident;
-	static	float	cubeYaw		=0.0f;
-
-	glmc_mat4_identity(ident);
-
-	cubeYaw		+=ROT_RATE * dt;
-
-	//wrap angles
-	cubeYaw		=fmodf(cubeYaw, 360.0f);
-
-	glmc_rotate_y(ident, glm_rad(cubeYaw), outWorld);
-}
+static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec3 hitNorm);
+static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDeltaPitch);
+static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt);
+static void SpinMatYawPitch(float dt, mat4 outWorld);
+static void SpinMatYaw(float dt, mat4 outWorld);
 
 
 int main(void)
@@ -129,6 +97,13 @@ int main(void)
 
 	vec3	zeroVec;
 	glm_vec3_zero(zeroVec);
+
+	Misc_SSE_RoundFToI(3.66f);
+	Misc_SSE_RoundFToI(-3.66f);
+	Misc_SSE_RoundFToI(3.26f);
+	Misc_SSE_RoundFToI(-3.26f);
+	Misc_SSE_RoundFToI(-0.0f);
+	Misc_SSE_RoundFToI(1.0f);
 
 	//test prims
 //	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
@@ -250,8 +225,6 @@ int main(void)
 	{
 		float	deltaYaw, deltaPitch;
 
-		deltaYaw	=deltaPitch	=0.0f;
-
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
@@ -266,11 +239,11 @@ int main(void)
 			SDL_Event	evt;
 			while(SDL_PollEvent(&evt))
 			{
-				if(evt.type == SDL_QUIT)
-				{
-					bRunning	=false;
-				}
-				else if(evt.type == SDL_KEYDOWN)
+				bRunning	=KeyMovementHandler(pCam, eyePos, &evt);
+
+				KeyTurnHandler(&evt, &deltaYaw, &deltaPitch);
+
+				if(evt.type == SDL_KEYDOWN)
 				{
 					if(evt.key.keysym.sym == SDLK_LEFT)
 					{
@@ -280,74 +253,14 @@ int main(void)
 					{
 						dangly[0]	+=UVSCALE_RATE;
 					}
-					else if(evt.key.keysym.sym == SDLK_w)
-					{
-						glm_vec3_sub(eyePos, forward, eyePos);
-					}
-					else if(evt.key.keysym.sym == SDLK_a)
-					{
-						glm_vec3_sub(eyePos, right, eyePos);
-					}
-					else if(evt.key.keysym.sym == SDLK_s)
-					{
-						glm_vec3_add(eyePos, forward, eyePos);
-					}
-					else if(evt.key.keysym.sym == SDLK_d)
-					{
-						glm_vec3_add(eyePos, right, eyePos);
-					}
-					else if(evt.key.keysym.sym == SDLK_z)
-					{
-						glm_vec3_sub(eyePos, up, eyePos);
-					}
-					else if(evt.key.keysym.sym == SDLK_c)
-					{
-						glm_vec3_add(eyePos, up, eyePos);
-					}
-					else if(evt.key.keysym.sym == SDLK_q)
-					{
-						deltaYaw	=KEYTURN_RATE;
-					}
-					else if(evt.key.keysym.sym == SDLK_e)
-					{
-						deltaYaw	=-KEYTURN_RATE;
-					}
-					else if(evt.key.keysym.sym == SDLK_r)
-					{
-						deltaPitch	=KEYTURN_RATE;
-					}
-					else if(evt.key.keysym.sym == SDLK_t)
-					{
-						deltaPitch	=-KEYTURN_RATE;
-					}
-					else if(evt.key.keysym.sym == SDLK_ESCAPE)
-					{
-						bRunning	=false;
-					}
 					else if(evt.key.keysym.sym == SDLK_l)
 					{
 						bRotLight	=true;
 					}
 					else if(evt.key.keysym.sym == SDLK_i)
 					{
-						vec3	testMin		={-10, -10, -10};
-						vec3	testMax		={-5, -5, -5};
-						vec4	testPlane	={1, 0, 0, 10};
-						vec3	endRay;
+						int	hitRes	=TestOneRay(pTer, pCam, eyePos, hitPos, hitNorm);
 
-						vec4	testVol[6];
-						MakeConvexVolumeFromBound(testMin, testMax, testVol);
-
-						glm_vec3_scale(forward, -RAY_LEN, endRay);
-						glm_vec3_add(eyePos, endRay, endRay);
-
-						//invalidate impact point
-						hitPos[0]	=hitPos[1]	=hitPos[2]	=FLT_MAX;
-
-						int	hitRes	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitNorm);
-//						int	hitRes	=LineIntersectBounds(testMin, testMax, eyePos, endRay, hitPos, hitNorm);
-//						int	hitRes	=LineIntersectPlane(testPlane, eyePos, endRay, hitPos);
-//						int	hitRes	=LineIntersectVolume(testVol, 6, eyePos, endRay, hitPos, hitNorm);
 						if(hitRes == VOL_MISS)
 						{
 							solidColor0[0]	=solidColor0[1]	=solidColor0[2]	=1.0f;
@@ -480,11 +393,11 @@ int main(void)
 //		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//debug draw quadtree leaf cubes
-		GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
-		GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
-		CBK_SetWorldMat(pCBK, ident);
-		CBK_UpdateObject(pCBK, pGD);
-		GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
+//		GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
+//		GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
+//		CBK_SetWorldMat(pCBK, ident);
+//		CBK_UpdateObject(pCBK, pGD);
+//		GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
 //		GD_DrawIndexed(pGD, 36 * 4, 0, 0);
 
 		//set up terrain draw
@@ -563,4 +476,128 @@ static void	TestManyRays(const Terrain *pTer)
 	int	numRays	=NUM_RAYS;
 
 	printf("Ray test of %d rays took %lu tics\n", numRays, delta);
+}
+
+static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec3 hitNorm)
+{
+	vec3	forward, right, up, endRay;
+
+	GameCam_GetForwardVec(pCam, forward);
+	GameCam_GetRightVec(pCam, right);
+	GameCam_GetUpVec(pCam, up);
+
+	glm_vec3_scale(forward, -RAY_LEN, endRay);
+	glm_vec3_add(eyePos, endRay, endRay);
+
+	//invalidate impact point
+	hitPos[0]	=hitPos[1]	=hitPos[2]	=FLT_MAX;
+
+	int	hitRes	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitNorm);
+
+	return	hitRes;
+}
+
+static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt)
+{
+	vec3	forward, right, up;
+
+	GameCam_GetForwardVec(pCam, forward);
+	GameCam_GetRightVec(pCam, right);
+	GameCam_GetUpVec(pCam, up);
+
+	if(pEvt->type == SDL_QUIT)
+	{
+		return	false;
+	}
+	else if(pEvt->type == SDL_KEYDOWN)
+	{
+		if(pEvt->key.keysym.sym == SDLK_w)
+		{
+			glm_vec3_sub(eyePos, forward, eyePos);
+		}
+		else if(pEvt->key.keysym.sym == SDLK_a)
+		{
+			glm_vec3_sub(eyePos, right, eyePos);
+		}
+		else if(pEvt->key.keysym.sym == SDLK_s)
+		{
+			glm_vec3_add(eyePos, forward, eyePos);
+		}
+		else if(pEvt->key.keysym.sym == SDLK_d)
+		{
+			glm_vec3_add(eyePos, right, eyePos);
+		}
+		else if(pEvt->key.keysym.sym == SDLK_z)
+		{
+			glm_vec3_sub(eyePos, up, eyePos);
+		}
+		else if(pEvt->key.keysym.sym == SDLK_c)
+		{
+			glm_vec3_add(eyePos, up, eyePos);
+		}
+		else if(pEvt->key.keysym.sym == SDLK_ESCAPE)
+		{
+			return	false;
+		}
+	}
+	return	true;
+}
+
+static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDeltaPitch)
+{
+	if(pEvt->type == SDL_KEYDOWN)
+	{
+		if(pEvt->key.keysym.sym == SDLK_q)
+		{
+			*pDeltaYaw	=KEYTURN_RATE;
+		}
+		else if(pEvt->key.keysym.sym == SDLK_e)
+		{
+			*pDeltaYaw	=-KEYTURN_RATE;
+		}
+		else if(pEvt->key.keysym.sym == SDLK_r)
+		{
+			*pDeltaPitch	=KEYTURN_RATE;
+		}
+		else if(pEvt->key.keysym.sym == SDLK_t)
+		{
+			*pDeltaPitch	=-KEYTURN_RATE;
+		}
+	}
+}
+
+static void SpinMatYawPitch(float dt, mat4 outWorld)
+{
+	static	mat4	ident, yaw, pitch;
+	static	float	cubeYaw		=0.0f;
+	static	float	cubePitch	=0.0f;
+
+	glmc_mat4_identity(ident);
+
+	cubeYaw		+=ROT_RATE * dt;
+	cubePitch	+=0.25f * ROT_RATE * dt;
+
+	//wrap angles
+	cubeYaw		=fmodf(cubeYaw, 360.0f);
+	cubePitch	=fmodf(cubePitch, 360.0f);
+
+	glmc_rotate_y(ident, glm_rad(cubeYaw), yaw);
+	glmc_rotate_x(ident, glm_rad(cubePitch), pitch);
+
+	glmc_mat4_mul(yaw, pitch, outWorld);
+}
+
+static void SpinMatYaw(float dt, mat4 outWorld)
+{
+	static	mat4	ident;
+	static	float	cubeYaw		=0.0f;
+
+	glmc_mat4_identity(ident);
+
+	cubeYaw		+=ROT_RATE * dt;
+
+	//wrap angles
+	cubeYaw		=fmodf(cubeYaw, 360.0f);
+
+	glmc_rotate_y(ident, glm_rad(cubeYaw), outWorld);
 }

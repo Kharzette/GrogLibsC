@@ -2,10 +2,6 @@
 #include	<cglm/call.h>
 
 
-#define	PLANE_BACK	0
-#define	PLANE_FRONT	1
-#define	PLANE_HIT	2
-
 #define	VOL_MISS		0
 #define	VOL_INSIDE		1	//whole line segment inside
 #define	VOL_HIT			2	//start outside hit

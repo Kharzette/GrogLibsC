@@ -3,6 +3,7 @@
 #include	<assert.h>
 #include	<cglm/call.h>
 #include	"ConvexVolume.h"
+#include	"MiscStuff.h"
 
 
 static vec4	BoxPlanes[6]	=
@@ -41,41 +42,6 @@ void	MakeConvexVolumeFromBound(const vec3 min, const vec3 max, vec4 *pVol)
 	pVol[3][3]	=-min[0];	
 	pVol[4][3]	=-min[1];
 	pVol[5][3]	=-min[2];
-}
-
-
-//intersection of line and plane
-int	LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, vec3 intersection)
-{
-	float	startDist	=glm_vec3_dot(plane, start) - plane[3];
-	float	endDist		=glm_vec3_dot(plane, end) - plane[3];
-
-	if(startDist > 0.0f && endDist > 0.0f)
-	{
-		return	PLANE_FRONT;
-	}
-	else if(startDist < 0.0f && endDist < 0.0f)
-	{
-		return	PLANE_BACK;
-	}
-
-	//get a unit vector of the line segment
-	vec3	segVec;
-	glm_vec3_sub(end, start, segVec);
-
-	//vector length is named strangely in glm
-	float	segLength	=glm_vec3_norm(segVec);
-
-	//normalize
-	glm_vec3_scale(segVec, 1.0f / segLength, segVec);
-
-	float	ratio	=startDist / (startDist - endDist);
-
-	glm_vec3_scale(segVec, ratio * segLength, intersection);
-
-	glm_vec3_add(intersection, start, intersection);
-
-	return	PLANE_HIT;
 }
 
 

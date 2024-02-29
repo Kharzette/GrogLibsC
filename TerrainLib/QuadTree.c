@@ -101,8 +101,8 @@ void	QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int 
 //Only a new intersection closer to the start point would result
 //in a hit.  This could be used to mix collision with statics or
 //mobiles or bsps or whatever
-int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
-					vec3 intersection, vec3 hitNorm)
+bool	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
+						vec3 intersection, vec4 planeHit)
 {
 	//convert to a ray format
 	vec3	rayDir;
@@ -123,10 +123,10 @@ int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 	//check against bounds encompassing entire tree
 	if(!Misc_RayIntersectBounds(start, invDir, rayLen, bounds))
 	{
-		return	MISS;
+		return	false;
 	}
 
 //	return	QN_LineIntersectCV(pQT->mpRoot, start, end, intersection, hitNorm);
 
-	return	QN_LineIntersect(pQT->mpRoot, start, end, invDir, rayLen, intersection, hitNorm);
+	return	QN_LineIntersect(pQT->mpRoot, start, end, invDir, rayLen, intersection, planeHit);
 }

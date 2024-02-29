@@ -50,7 +50,7 @@ static int	numRayImpacts;
 //static forward decs
 static void	TestManyRays(const Terrain *pTer);
 static void	PrintRandomPointInTerrain(const Terrain *pTer);
-static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec3 hitNorm);
+static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
 static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDeltaPitch);
 static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt);
 static void SpinMatYawPitch(float dt, mat4 outWorld);
@@ -129,7 +129,8 @@ int main(void)
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
 
 	//collision debuggery
-	vec3	hitPos, hitNorm;
+	vec3	hitPos;
+	vec4	hitPlane;
 	bool	bHit;
 
 	GameCamera	*pCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
@@ -259,29 +260,17 @@ int main(void)
 					}
 					else if(evt.key.keysym.sym == SDLK_i)
 					{
-						int	hitRes	=TestOneRay(pTer, pCam, eyePos, hitPos, hitNorm);
+						bool	bHit	=TestOneRay(pTer, pCam, eyePos, hitPos, hitPlane);
 
-						if(hitRes == VOL_MISS)
+						if(!bHit)
 						{
 							solidColor0[0]	=solidColor0[1]	=solidColor0[2]	=1.0f;
 						}
-						else if(hitRes == VOL_INSIDE)
-						{
-							glm_translate_make(world, hitPos);
-							solidColor0[0]	=solidColor0[2]	=1.0f;
-							solidColor0[1]	=0.0f;
-						}
-						else if(hitRes == VOL_HIT)
+						else if(bHit)
 						{
 							glm_translate_make(world, hitPos);
 							solidColor0[0]	=solidColor0[1]	=1.0f;
 							solidColor0[2]	=0.0f;
-						}
-						else if(hitRes == VOL_HIT_INSIDE)
-						{
-							glm_translate_make(world, hitPos);
-							solidColor0[1]	=solidColor0[2]	=1.0f;
-							solidColor0[0]	=0.0f;
 						}
 					}
 					else if(evt.key.keysym.sym == SDLK_p)
@@ -461,12 +450,13 @@ static void	TestManyRays(const Terrain *pTer)
 	for(int i=0;i < NUM_RAYS;i++)
 	{
 		vec3	start, end;
-		vec3	hit, hitNorm;
+		vec3	hit;
+		vec4	hitPlane;
 
 		Misc_RandomPointInBound(terMins, terMaxs, start);
 		Misc_RandomPointInBound(terMins, terMaxs, end);
 
-		Terrain_LineIntersect(pTer, start, end, hit, hitNorm);
+		Terrain_LineIntersect(pTer, start, end, hit, hitPlane);
 	}
 
 	__uint128_t	endTime	=__rdtsc();
@@ -478,7 +468,7 @@ static void	TestManyRays(const Terrain *pTer)
 	printf("Ray test of %d rays took %lu tics\n", numRays, delta);
 }
 
-static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec3 hitNorm)
+static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane)
 {
 	vec3	forward, right, up, endRay;
 
@@ -492,9 +482,9 @@ static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 ey
 	//invalidate impact point
 	hitPos[0]	=hitPos[1]	=hitPos[2]	=FLT_MAX;
 
-	int	hitRes	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitNorm);
+	bool	bHit	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
 
-	return	hitRes;
+	return	bHit;
 }
 
 static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt)

@@ -451,7 +451,7 @@ void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, i
 }
 
 int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-							vec3 intersection, vec3 hitNorm)
+							vec3 intersection, vec4 planeHit)
 {
-	return	QT_LineIntersect(pTer->mpQT, start, end, intersection, hitNorm);
+	return	QT_LineIntersect(pTer->mpQT, start, end, intersection, planeHit);
 }

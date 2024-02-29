@@ -86,11 +86,118 @@ static void	SplitBound(const vec3 mins, const vec3 maxs,
 	bMaxs[2]	=middle[2];
 }
 
-static int	LineIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end)
+static bool	LineIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end,
+									vec3 intersection, vec4 planeHit)
 {
 	assert(pQN->mpLVArray);
 	assert(pQN->mpLVInds);
 
+	int	xSize	=Misc_SSE_RoundFToI(pQN->mMaxs[0] - pQN->mMins[0]);
+	int	zSize	=Misc_SSE_RoundFToI(pQN->mMaxs[2] - pQN->mMins[2]);
+
+	//bounds are right on vert boundaries
+	//so need a +1
+	xSize++;
+	zSize++;
+
+	//these really should be square
+	assert(xSize == zSize);
+
+	int	numQuads	=(xSize - 1) * (zSize - 1);
+	int	numTris		=numQuads * 2;
+
+	float	TwoPi	=(GLM_PI * 2.0f) - FLT_EPSILON;
+
+	bool	hitOne	=false;
+	for(int i=0;i < numTris;i++)
+	{
+		int		triOfs	=i * 3;
+		vec3	v0, v1, v2;
+		vec4	triPlane;
+
+		//TODO: fix all this copying stuff
+		glm_vec3_copy(pQN->mpLVArray[pQN->mpLVInds[triOfs]], v0);
+		glm_vec3_copy(pQN->mpLVArray[pQN->mpLVInds[triOfs + 1]], v1);
+		glm_vec3_copy(pQN->mpLVArray[pQN->mpLVInds[triOfs + 2]], v2);
+
+		if(Misc_PlaneFromTri(v0, v1, v2, triPlane))
+		{
+			vec3	hit;
+
+			if(Misc_LineIntersectPlane(triPlane, start, end, hit) == PLANE_HIT)
+			{
+				vec3	tri[3];
+
+				//TODO: fix all this copying stuff
+				glm_vec3_copy(v0, tri[0]);
+				glm_vec3_copy(v1, tri[1]);
+				glm_vec3_copy(v2, tri[2]);
+
+				float	angSum	=Misc_ComputeAngleSum(hit, tri, 3);
+				if(angSum >= TwoPi)
+				{
+					//can check squared distance for comparison
+					float	curDist	=glm_vec3_distance2(start, intersection);
+					float	newDist	=glm_vec3_distance2(start, hit);
+
+					//new hit nearer than previous hits?
+					if(newDist < curDist)
+					{
+						glm_vec3_copy(hit, intersection);
+						glm_vec4_copy(triPlane, planeHit);
+						hitOne	=true;
+					}
+				}
+			}
+		}
+	}
+	return	hitOne;
+}
+
+static bool	LineIntersectLeafNodeGLM(const QuadNode *pQN, const vec3 start, const vec3 end,
+									vec3 intersection, vec4 planeHit)
+{
+	assert(pQN->mpLVArray);
+	assert(pQN->mpLVInds);
+
+	int	xSize	=Misc_SSE_RoundFToI(pQN->mMaxs[0] - pQN->mMins[0]);
+	int	zSize	=Misc_SSE_RoundFToI(pQN->mMaxs[2] - pQN->mMins[2]);
+
+	//bounds are right on vert boundaries
+	//so need a +1
+	xSize++;
+	zSize++;
+
+	//these really should be square
+	assert(xSize == zSize);
+
+	int	numQuads	=(xSize - 1) * (zSize - 1);
+	int	numTris		=numQuads * 2;
+
+	vec3	direction;
+	glm_vec3_sub(end, start, direction);
+	glm_vec3_normalize(direction);
+
+	for(int i=0;i < numTris;i++)
+	{
+		int		triOfs	=i * 3;
+		vec3	v0, v1, v2;
+		float	dist;
+
+		//TODO: fix all this copying stuff
+		glm_vec3_copy(pQN->mpLVArray[pQN->mpLVInds[triOfs]], v0);
+		glm_vec3_copy(pQN->mpLVArray[pQN->mpLVInds[triOfs + 1]], v1);
+		glm_vec3_copy(pQN->mpLVArray[pQN->mpLVInds[triOfs + 2]], v2);
+
+		if(glm_ray_triangle(start, direction, v0, v1, v2, &dist))
+		{
+			glm_vec3_scale(direction, dist, intersection);
+			glm_vec3_add(start, intersection, intersection);
+			Misc_PlaneFromTri(v0, v1, v2, planeHit);
+			return	true;
+		}
+	}
+	return	false;
 }
 
 static void	MakeLeafTris(QuadNode *pQN, const float *pHeights, int w, int h)
@@ -172,15 +279,26 @@ static void	MakeLeafTris(QuadNode *pQN, const float *pHeights, int w, int h)
 
 	//index triangles
 	int	curIdx	=0;
+	int	vIdx	=0;
 	for(int i=0;i < numQuads;i++)
 	{
-		pQN->mpLVInds[curIdx++]	=i;
-		pQN->mpLVInds[curIdx++]	=i + 1;
-		pQN->mpLVInds[curIdx++]	=i + xSize;
+		pQN->mpLVInds[curIdx++]	=vIdx;
+		pQN->mpLVInds[curIdx++]	=vIdx + 1;
+		pQN->mpLVInds[curIdx++]	=vIdx + xSize;
 
-		pQN->mpLVInds[curIdx++]	=i + 1;
-		pQN->mpLVInds[curIdx++]	=i + xSize + 1;
-		pQN->mpLVInds[curIdx++]	=i;
+		pQN->mpLVInds[curIdx++]	=vIdx + 1;
+		pQN->mpLVInds[curIdx++]	=vIdx + xSize + 1;
+		pQN->mpLVInds[curIdx++]	=vIdx + xSize;
+
+		//watch for quad boundary
+		if(vIdx == (xSize - 2))
+		{
+			vIdx	+=2;
+		}
+		else
+		{
+			vIdx++;
+		}
 	}
 }
 
@@ -199,7 +317,7 @@ QuadNode	*QN_Build(float *pHeights, int w, int h, const vec3 mins, const vec3 ma
 
 	int	nodeSize	=Misc_SSE_RoundFToI(maxs[0] - mins[0]) + 1.0f;
 
-	if(nodeSize <= 8)
+	if(nodeSize <= 4)
 	{
 		//leaf
 		MakeLeafTris(pNode, pHeights, w, h);
@@ -253,51 +371,46 @@ void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIn
 
 
 //invDir should be 1 divided by the direction vector
-int	QN_LineIntersect(const QuadNode *pQN,
-					const vec3 rayStart, const vec3 end, const vec3 invDir, const float rayLen,
-					vec3 intersection, vec3 hitNorm)
+bool	QN_LineIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+						const vec3 invDir, const float rayLen,
+						vec3 intersection, vec4 planeHit)
 {
 	vec3	bounds[2];
 	glm_vec3_copy(pQN->mMins, bounds[0]);
 	glm_vec3_copy(pQN->mMaxs, bounds[1]);
 
-	int	res	=MISS;
-
 	//fast intersect check for nodes
 	//don't need plane hit or point returned, just a yes or no
 	if(!Misc_RayIntersectBounds(rayStart, invDir, rayLen, bounds))
 	{
-		return	res;
+		return	false;
 	}
 
 	if(pQN->mpLVArray)	//leaf?
 	{
-		vec3	hit, hitN;
-		res	=Misc_LineIntersectBounds(pQN->mMins, pQN->mMaxs, rayStart, end, hit, hitN);
-		if(res == MISS)
+		vec3	hit;
+		vec4	hitPlane;
+		if(LineIntersectLeafNodeGLM(pQN, rayStart, end, hit, hitPlane))
 		{
-			//if a miss, can safely assume all child nodes are a miss
-			return	res;
+			//can check squared distance for comparison
+			float	curDist	=glm_vec3_distance2(rayStart, intersection);
+			float	newDist	=glm_vec3_distance2(rayStart, hit);
+
+			//new hit nearer than previous hits?
+			if(newDist < curDist)
+			{
+				glm_vec3_copy(hit, intersection);
+				glm_vec4_copy(hitPlane, planeHit);
+				return	true;
+			}
 		}
-
-		//can check squared distance for comparison
-		float	curDist	=glm_vec3_distance2(rayStart, intersection);
-		float	newDist	=glm_vec3_distance2(rayStart, hit);
-
-		//new hit nearer than previous hits?
-		if(newDist < curDist)
-		{
-			glm_vec3_copy(hit, intersection);
-			glm_vec3_copy(hitN, hitNorm);
-			return	res;
-		}		
-		return	MISS;
+		return	false;
 	}
 
-	int	ret	=QN_LineIntersect(pQN->mpChildA, rayStart, end, invDir, rayLen, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildB, rayStart, end, invDir, rayLen, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildC, rayStart, end, invDir, rayLen, intersection, hitNorm);
-	ret		|=QN_LineIntersect(pQN->mpChildD, rayStart, end, invDir, rayLen, intersection, hitNorm);
+	bool	ret	=QN_LineIntersect(pQN->mpChildA, rayStart, end, invDir, rayLen, intersection, planeHit);
+	ret			|=QN_LineIntersect(pQN->mpChildB, rayStart, end, invDir, rayLen, intersection, planeHit);
+	ret			|=QN_LineIntersect(pQN->mpChildC, rayStart, end, invDir, rayLen, intersection, planeHit);
+	ret			|=QN_LineIntersect(pQN->mpChildD, rayStart, end, invDir, rayLen, intersection, planeHit);
 
 	return	ret;
 }

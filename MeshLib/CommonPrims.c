@@ -66,7 +66,7 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD)
 	//create ray bound
 	vec3	min, max;
 
-	Misc_MakeBaseOrgBound(width, width, length, min, max);
+	Misc_MakeBaseZOrgBound(width, width, length, min, max);
 
 	pRet->mpAxis		=PF_CreateCubeFromBounds(min, max, pGD);
 	pRet->mpPointyEnd	=PF_CreateHalfPrism(width * 2.0f, width * 2.0f, pGD);

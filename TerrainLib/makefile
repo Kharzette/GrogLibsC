@@ -14,4 +14,4 @@ TerrainLib: $(SOURCES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libTerrainLib.so $(LIBS) \
 	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_dxgi.so	\
 	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so	\
-	../cglm/build/libcglm.so
+	../cglm/build/libcglm.a

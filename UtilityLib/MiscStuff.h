@@ -24,6 +24,7 @@ extern void	Misc_AddPointToBounds(vec3 min, vec3 max, const vec3 pnt);
 extern void	Misc_MakeBound(float width, float height, float depth, vec3 min, vec3 max);
 extern void	Misc_MakeBaseZOrgBound(float width, float height, float depth, vec3 min, vec3 max);
 extern void	Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result);
+extern void	Misc_RandomDirection(vec3 dir);
 
 extern int	Misc_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, vec3 intersection);
 extern bool	Misc_IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt);

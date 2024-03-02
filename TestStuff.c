@@ -86,6 +86,9 @@ int main(void)
 	rastDesc.SlopeScaledDepthBias	=0;
 	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
+	//toggled hotkey stuff
+	bool	bDrawTerNodes	=false;
+
 	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
 
 	//debugdraw quadtree boxes
@@ -287,7 +290,7 @@ int main(void)
 			//move turn etc
 			if(bRotLight)
 			{
-				glmc_vec3_rotate_m4(world, lightDir, lightDir);
+				Misc_RandomDirection(lightDir);
 				CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
 			}
 
@@ -382,11 +385,11 @@ int main(void)
 //		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
 
 		//debug draw quadtree leaf cubes
-//		GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
-//		GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
-//		CBK_SetWorldMat(pCBK, ident);
-//		CBK_UpdateObject(pCBK, pGD);
-//		GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
+		GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
+		GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
+		CBK_SetWorldMat(pCBK, ident);
+		CBK_UpdateObject(pCBK, pGD);
+		GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
 //		GD_DrawIndexed(pGD, 36 * 4, 0, 0);
 
 		//set up terrain draw

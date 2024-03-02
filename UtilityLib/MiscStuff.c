@@ -175,6 +175,27 @@ void	Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result)
 	result[2]	=scalarZ * z;
 }
 
+//make a random direction (unit vector)
+void	Misc_RandomDirection(vec3 dir)
+{
+	float	len		=0.0f;
+
+	for(;;)
+	{
+		dir[0]	=rand() - (RAND_MAX >> 1);
+		dir[1]	=rand() - (RAND_MAX >> 1);
+		dir[2]	=rand() - (RAND_MAX >> 1);
+
+		len	=glm_vec3_norm(dir);
+		if(len > FLT_EPSILON)
+		{
+			break;
+		}
+	}
+
+	glm_vec3_scale(dir, 1.0f / len, dir);
+}
+
 
 //intersection of line and plane
 int	Misc_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, vec3 intersection)

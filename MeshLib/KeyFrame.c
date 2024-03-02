@@ -7,10 +7,10 @@
 void	KeyFrame_Lerp(const KeyFrame *pKey0, const KeyFrame *pKey1,
 				float percentage, KeyFrame *pKeyResult)
 {
-	glmc_quat_slerp(pKey0->mRotation, pKey1->mRotation, percentage, pKeyResult->mRotation);
+	glm_quat_slerp(pKey0->mRotation, pKey1->mRotation, percentage, pKeyResult->mRotation);
 
-	glmc_vec3_lerp(pKey0->mPosition, pKey1->mPosition, percentage, pKeyResult->mPosition);
-	glmc_vec3_lerp(pKey0->mScale, pKey1->mScale, percentage, pKeyResult->mScale);
+	glm_vec3_lerp(pKey0->mPosition, pKey1->mPosition, percentage, pKeyResult->mPosition);
+	glm_vec3_lerp(pKey0->mScale, pKey1->mScale, percentage, pKeyResult->mScale);
 }
 
 
@@ -26,14 +26,14 @@ void	KeyFrame_GetMatrix(const KeyFrame *pKey, mat4 mat)
 {
 	mat4	scale, rot, pos, temp;
 
-	glmc_scale_make(scale, pKey->mScale);
+	glm_scale_make(scale, pKey->mScale);
 
-	glmc_quat_mat4(pKey->mRotation, rot);
+	glm_quat_mat4(pKey->mRotation, rot);
 
-	glmc_translate_make(pos, pKey->mPosition);
+	glm_translate_make(pos, pKey->mPosition);
  
 	//scale * rot * pos the directX way windows side
 	//here it seems to be pos * rot * scale
-	glmc_mat4_mul(pos, rot, mat);
-	glmc_mat4_mul(scale, mat, mat);
+	glm_mat4_mul(pos, rot, mat);
+	glm_mat4_mul(scale, mat, mat);
 }

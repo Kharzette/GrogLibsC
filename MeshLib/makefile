@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c17 -g -march=x86-64 -fpic -shared	\
+CFLAGS=-std=c17 -g -march=x86-64 -msse2 -mf16c -fpic -shared	\
 	-I../dxvk-native/include/native/directx \
 	-I../dxvk-native/include/native/windows	\
 	-I../uthash/include	\
@@ -11,7 +11,6 @@ SOURCES=$(wildcard *.c)
 all: MeshLib
 
 MeshLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libMeshLib.so $(LIBS) \
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libMeshLib.so -lm $(LIBS) \
 	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_dxgi.so	\
-	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so	\
-	../cglm/build/libcglm.a
+	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so

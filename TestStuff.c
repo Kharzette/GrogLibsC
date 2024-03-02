@@ -38,7 +38,7 @@
 #define	NUM_RAYS		8000
 
 //should match CommonFunctions.hlsli
-#define	MAX_BONES			55
+#define	MAX_BONES		55
 
 //data to store test rays
 static vec3	rayStarts[NUM_RAYS];
@@ -53,8 +53,6 @@ static void	PrintRandomPointInTerrain(const Terrain *pTer);
 static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
 static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDeltaPitch);
 static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt);
-static void SpinMatYawPitch(float dt, mat4 outWorld);
-static void SpinMatYaw(float dt, mat4 outWorld);
 
 
 int main(void)
@@ -86,8 +84,9 @@ int main(void)
 	rastDesc.SlopeScaledDepthBias	=0;
 	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
-	//toggled hotkey stuff
+	//hotkey stuff
 	bool	bDrawTerNodes	=false;
+	bool	bDrawHit		=false;
 
 	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
 
@@ -98,21 +97,8 @@ int main(void)
 
 	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pGD);
 
-	vec3	zeroVec;
-	glm_vec3_zero(zeroVec);
-
-	Misc_SSE_RoundFToI(3.66f);
-	Misc_SSE_RoundFToI(-3.66f);
-	Misc_SSE_RoundFToI(3.26f);
-	Misc_SSE_RoundFToI(-3.26f);
-	Misc_SSE_RoundFToI(-0.0f);
-	Misc_SSE_RoundFToI(1.0f);
-
 	//test prims
-//	PrimObject	*pCube	=PF_CreateCube(0.5f, pGD);
-	PrimObject	*pCube	=PF_CreateSphere(zeroVec, 0.5f, pGD);
-//	PrimObject	*pCube	=PF_CreateCapsule(0.5f, 2.0f, pGD);
-
+	PrimObject	*pCube	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pGD);
 	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pGD);
 	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pGD);
 
@@ -125,8 +111,7 @@ int main(void)
 
 	float	aspect	=(float)RESX / (float)RESY;
 
-	mat4	ident, world, yaw, pitch, temp, meshMat;
-	mat4	bump0, bump1;	//translate world a bit
+	mat4	charMat, hitSphereMat;
 	vec3	eyePos	={ 0.0f, 0.6f, 4.5f };
 	vec3	targPos	={ 0.0f, 0.75f, 0.0f };
 	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
@@ -137,11 +122,6 @@ int main(void)
 	bool	bHit;
 
 	GameCamera	*pCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
-
-	glmc_mat4_identity(ident);
-	glmc_mat4_identity(world);
-
-	CBK_SetWorldMat(pCBK, world);
 
 	//projection won't change in this test program
 	{
@@ -196,8 +176,10 @@ int main(void)
 	vec3	lightDir	={	0.3f, -0.7f, -0.5f	};
 	vec3	skyGrad0	={	0.7f, 0.2f, 0.1f	};
 	vec3	skyGrad1	={	0.2f, 0.3f, 1.0f	};
+	vec3	dangly		={	700.0f, 0.0f, 0.0f	};
 
-	glmc_vec3_normalize(lightDir);
+	glm_vec3_normalize(lightDir);
+	glm_mat4_identity(charMat);
 
 	CBK_SetFogVars(pCBK, 500.0f, 1000.0f, true);
 	CBK_SetSky(pCBK, skyGrad0, skyGrad1);
@@ -206,25 +188,16 @@ int main(void)
 
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
 
-	float	cubeYaw		=0.0f;
-	float	cubePitch	=0.0f;
-	vec3	dangly		={	700.0f, 0.0f, 0.0f	};
-
-	Mesh	*pMesh	=Mesh_Read(pGD, pSK, "Characters/Body.mesh");
-
-//	glmc_rotate_y(ident, CGLM_PI, meshMat);
-	glmc_mat4_identity(meshMat);
-
+	//character
+	Mesh		*pMesh	=Mesh_Read(pGD, pSK, "Characters/Body.mesh");
 	Character	*pChar	=Character_Read("Characters/DocuBlender.Character");
-
-	AnimLib	*pALib	=AnimLib_Read("Characters/DocuBlender.AnimLib");
+	AnimLib		*pALib	=AnimLib_Read("Characters/DocuBlender.AnimLib");
 
 	mat4	bones[MAX_BONES];
 
 	float	animTime	=0.0f;
 
 	bool	bRunning	=true;
-	bool	bRotLight	=false;
 	while(bRunning)
 	{
 		float	deltaYaw, deltaPitch;
@@ -237,8 +210,6 @@ int main(void)
 			GameCam_GetForwardVec(pCam, forward);
 			GameCam_GetRightVec(pCam, right);
 			GameCam_GetUpVec(pCam, up);
-
-			bRotLight	=false;
 
 			SDL_Event	evt;
 			while(SDL_PollEvent(&evt))
@@ -259,21 +230,15 @@ int main(void)
 					}
 					else if(evt.key.keysym.sym == SDLK_l)
 					{
-						bRotLight	=true;
+						Misc_RandomDirection(lightDir);
 					}
 					else if(evt.key.keysym.sym == SDLK_i)
 					{
-						bool	bHit	=TestOneRay(pTer, pCam, eyePos, hitPos, hitPlane);
+						bDrawHit	=TestOneRay(pTer, pCam, eyePos, hitPos, hitPlane);
 
-						if(!bHit)
+						if(bDrawHit)
 						{
-							solidColor0[0]	=solidColor0[1]	=solidColor0[2]	=1.0f;
-						}
-						else if(bHit)
-						{
-							glm_translate_make(world, hitPos);
-							solidColor0[0]	=solidColor0[1]	=1.0f;
-							solidColor0[2]	=0.0f;
+							glm_translate_make(hitSphereMat, hitPos);
 						}
 					}
 					else if(evt.key.keysym.sym == SDLK_p)
@@ -284,15 +249,15 @@ int main(void)
 					{
 						TestManyRays(pTer);
 					}
+					else if(evt.key.keysym.sym == SDLK_n)
+					{
+						bDrawTerNodes	=!bDrawTerNodes;
+					}
 				}
 			}
+
 			//do input here
 			//move turn etc
-			if(bRotLight)
-			{
-				Misc_RandomDirection(lightDir);
-				CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
-			}
 
 			UpdateTimer_UpdateDone(pUT);
 		}
@@ -305,7 +270,6 @@ int main(void)
 //		AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
 		AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
 		
-//		AnimLib_FillBoneArray(pALib, bones);
 		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
 
 		//set no blend, I think post processing turns it on maybe
@@ -354,52 +318,40 @@ int main(void)
 		//draw xyz axis
 		CP_DrawAxis(pAxis, lightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pGD);
 
-		//cube VB/IB etc
-		GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
-		GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
-		GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
-		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
-		CBK_SetSpecular(pCBK, specColor, 6.0f);
-		CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
-		CBK_SetSolidColour(pCBK, solidColor0);
+		//impact sphere VB/IB etc
+		if(bDrawHit)
+		{
+			GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
+			GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+			GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
+			GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
+			CBK_SetSpecular(pCBK, specColor, 6.0f);
+			CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
+			CBK_SetSolidColour(pCBK, solidColor0);
 
-//		SpinMatYawPitch(dt, world);
-		CBK_SetWorldMat(pCBK, world);
-		CBK_SetSolidColour(pCBK, solidColor0);
-		CBK_UpdateObject(pCBK, pGD);
-		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
-
-
-		//draw another
-//		CBK_SetSolidColour(pCBK, solidColor1);
-//		glmc_mat4_mul(world, bump0, temp);
-//		CBK_SetWorldMat(pCBK, temp);
-//		CBK_UpdateObject(pCBK, pGD);
-//		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
-
-		//and another
-//		CBK_SetSolidColour(pCBK, solidColor2);
-//		glmc_mat4_mul(world, bump1, temp);
-//		CBK_SetWorldMat(pCBK, temp);
-//		CBK_UpdateObject(pCBK, pGD);
-//		GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+			CBK_SetWorldMat(pCBK, hitSphereMat);
+			CBK_SetSolidColour(pCBK, solidColor0);
+			CBK_UpdateObject(pCBK, pGD);
+			GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+		}
 
 		//debug draw quadtree leaf cubes
-		GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
-		GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
-		CBK_SetWorldMat(pCBK, ident);
-		CBK_UpdateObject(pCBK, pGD);
-		GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
-//		GD_DrawIndexed(pGD, 36 * 4, 0, 0);
+		if(bDrawTerNodes)
+		{
+			GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
+			GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
+			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
+			CBK_UpdateObject(pCBK, pGD);
+			GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
+		}
 
 		//set up terrain draw
-		CBK_SetWorldMat(pCBK, ident);
+		CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
 		CBK_UpdateObject(pCBK, pGD);
 		Terrain_Draw(pTer, pGD, pSK);
 
 		//set mesh draw stuff
-		SpinMatYaw(dt, meshMat);
-		CBK_SetWorldMat(pCBK, meshMat);
+		CBK_SetWorldMat(pCBK, charMat);
 		CBK_SetDanglyForce(pCBK, dangly);
 		CBK_SetSolidColour(pCBK, solidColor0);
 		CBK_UpdateObject(pCBK, pGD);
@@ -557,40 +509,4 @@ static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDelt
 			*pDeltaPitch	=-KEYTURN_RATE;
 		}
 	}
-}
-
-static void SpinMatYawPitch(float dt, mat4 outWorld)
-{
-	static	mat4	ident, yaw, pitch;
-	static	float	cubeYaw		=0.0f;
-	static	float	cubePitch	=0.0f;
-
-	glmc_mat4_identity(ident);
-
-	cubeYaw		+=ROT_RATE * dt;
-	cubePitch	+=0.25f * ROT_RATE * dt;
-
-	//wrap angles
-	cubeYaw		=fmodf(cubeYaw, 360.0f);
-	cubePitch	=fmodf(cubePitch, 360.0f);
-
-	glmc_rotate_y(ident, glm_rad(cubeYaw), yaw);
-	glmc_rotate_x(ident, glm_rad(cubePitch), pitch);
-
-	glmc_mat4_mul(yaw, pitch, outWorld);
-}
-
-static void SpinMatYaw(float dt, mat4 outWorld)
-{
-	static	mat4	ident;
-	static	float	cubeYaw		=0.0f;
-
-	glmc_mat4_identity(ident);
-
-	cubeYaw		+=ROT_RATE * dt;
-
-	//wrap angles
-	cubeYaw		=fmodf(cubeYaw, 360.0f);
-
-	glmc_rotate_y(ident, glm_rad(cubeYaw), outWorld);
 }

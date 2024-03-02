@@ -82,12 +82,12 @@ bool	GSNode_GetMatrixForBoneIndex(const GSNode *pNode, int index, mat4 mat)
 			mat4	parent;
 			KeyFrame_GetMatrix(&pNode->mKeyValue, parent);
 
-			glmc_mat4_mul(parent, mat, mat);
+			glm_mat4_mul(parent, mat, mat);
 
 			return	true;	//found!
 		}
 	}
-	glmc_mat4_identity(mat);
+	glm_mat4_identity(mat);
 	return	false;
 }
 

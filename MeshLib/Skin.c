@@ -31,8 +31,8 @@ Skin	*Skin_Read(FILE *f)
 {
 	Skin	*pRet	=malloc(sizeof(Skin));
 
-	glmc_mat4_identity_array(pRet->mInverseBindPoses, MAX_BONES);
-	glmc_mat4_identity_array(pRet->mBindPoses, MAX_BONES);
+	glm_mat4_identity_array(pRet->mInverseBindPoses, MAX_BONES);
+	glm_mat4_identity_array(pRet->mBindPoses, MAX_BONES);
 
 	int	numIBP;
 	fread(&numIBP, sizeof(int), 1, f);
@@ -44,9 +44,9 @@ Skin	*Skin_Read(FILE *f)
 
 		fread(pRet->mInverseBindPoses[idx], sizeof(mat4), 1, f);
 
-//		glmc_mat4_inv(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
+//		glm_mat4_inv(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
 
-		glmc_mat4_transpose_to(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
+		glm_mat4_transpose_to(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
 	}
 
 	int	numBoxen;
@@ -67,8 +67,8 @@ Skin	*Skin_Read(FILE *f)
 	vec3	scaleVec	={ scaleFactor, scaleFactor, scaleFactor	};
 	vec3	scaleVecInv	={ 1.0f / scaleFactor, 1.0f / scaleFactor, 1.0f / scaleFactor	};
 
-	glmc_scale_make(pRet->mScaleMat, scaleVec);
-	glmc_scale_make(pRet->mInvScaleMat, scaleVecInv);
+	glm_scale_make(pRet->mScaleMat, scaleVec);
+	glm_scale_make(pRet->mInvScaleMat, scaleVecInv);
 
 	fread(pRet->mRootTransform, sizeof(mat4), 1, f);
 
@@ -84,8 +84,8 @@ void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
 	{
 		//On windows side this is: bone	=ibp * bone * rootXForm * scale
 		//here it seems to be root * bone * ibp * scale
-		glmc_mat4_mul(pSkin->mRootTransform, pBones[i], pBones[i]);
-		glmc_mat4_mul(pBones[i], pSkin->mInverseBindPoses[i], pBones[i]);
-		glmc_mat4_mul(pSkin->mScaleMat, pBones[i], pBones[i]);
+		glm_mat4_mul(pSkin->mRootTransform, pBones[i], pBones[i]);
+		glm_mat4_mul(pBones[i], pSkin->mInverseBindPoses[i], pBones[i]);
+		glm_mat4_mul(pSkin->mScaleMat, pBones[i], pBones[i]);
 	}
 }

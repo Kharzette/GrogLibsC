@@ -50,8 +50,8 @@ static void	SplitBound(const vec3 mins, const vec3 maxs,
 {
 	vec3	middle;
 
-	glmc_vec3_add(mins, maxs, middle);
-	glmc_vec3_scale(middle, 0.5f, middle);
+	glm_vec3_add(mins, maxs, middle);
+	glm_vec3_scale(middle, 0.5f, middle);
 
 	//copy initial values
 	for(int i=0;i < 3;i++)
@@ -357,8 +357,8 @@ void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIn
 {
 	if(pQN->mpLVArray)
 	{
-		glmc_vec3_copy(pQN->mMins, pMins[*pIndex]);
-		glmc_vec3_copy(pQN->mMaxs, pMaxs[*pIndex]);
+		glm_vec3_copy(pQN->mMins, pMins[*pIndex]);
+		glm_vec3_copy(pQN->mMaxs, pMaxs[*pIndex]);
 		(*pIndex)++;
 		return;
 	}

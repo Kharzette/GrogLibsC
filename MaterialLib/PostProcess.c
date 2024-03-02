@@ -319,7 +319,7 @@ void PP_ClearDepth(PostProcess *pPP, GraphicsDevice *pGD, const char *szDepth)
 
 void PP_SetClearColor(PostProcess *pPP, const vec4 col)
 {
-	glmc_vec4_copy(col, pPP->mClearColor);
+	glm_vec4_copy(col, pPP->mClearColor);
 }
 
 void PP_SetSRV(PostProcess *pPP, GraphicsDevice *pGD, const char *szName, int slot)

@@ -386,23 +386,23 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 			rightIdx	=(y * wp1) + rightX;
 			downIdx		=(downY * wp1) + x;
 
-			glmc_vec3_sub(pVerts[leftIdx].mPosition, pVerts[idx].mPosition, edge0);
-			glmc_vec3_sub(pVerts[upIdx].mPosition, pVerts[idx].mPosition, edge1);
-			glmc_vec3_sub(pVerts[rightIdx].mPosition, pVerts[idx].mPosition, edge2);
-			glmc_vec3_sub(pVerts[downIdx].mPosition, pVerts[idx].mPosition, edge3);
+			glm_vec3_sub(pVerts[leftIdx].mPosition, pVerts[idx].mPosition, edge0);
+			glm_vec3_sub(pVerts[upIdx].mPosition, pVerts[idx].mPosition, edge1);
+			glm_vec3_sub(pVerts[rightIdx].mPosition, pVerts[idx].mPosition, edge2);
+			glm_vec3_sub(pVerts[downIdx].mPosition, pVerts[idx].mPosition, edge3);
 
 			vec3	n0, n1, n2, n3;
-			glmc_vec3_cross(edge1, edge0, n0);
-			glmc_vec3_cross(edge2, edge1, n1);
-			glmc_vec3_cross(edge3, edge2, n2);
-			glmc_vec3_cross(edge0, edge3, n3);
+			glm_vec3_cross(edge1, edge0, n0);
+			glm_vec3_cross(edge2, edge1, n1);
+			glm_vec3_cross(edge3, edge2, n2);
+			glm_vec3_cross(edge0, edge3, n3);
 
 			//accumulate
-			glmc_vec3_add(n0, n1, n0);
-			glmc_vec3_add(n0, n2, n0);
-			glmc_vec3_add(n0, n3, n0);
+			glm_vec3_add(n0, n1, n0);
+			glm_vec3_add(n0, n2, n0);
+			glm_vec3_add(n0, n3, n0);
 
-			glmc_vec3_normalize(n0);
+			glm_vec3_normalize(n0);
 
 			Misc_Convert4ToF16(n0[0], n0[1], n0[2], 1.0f, pVerts[idx].mNormal);
 		}

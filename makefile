@@ -14,8 +14,7 @@ LDFLAGS=-LUtilityLib -LMaterialLib -LMeshLib -LTerrainLib# -Ldxvk-native/build/d
 all: TestStuff
 
 TestStuff: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o TestStuff $(LIBS)	\
-	SDL/build/libSDL3.so -lm	\
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o TestStuff -lm $(LIBS)	\
+	SDL/build/libSDL3.so	\
 	dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_dxgi.so	\
-	dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so	\
-	cglm/build/libcglm.a
+	dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so

@@ -46,7 +46,7 @@ GameCamera	*GameCam_Create(bool bSpaceMode, float near, float far,
 	pRet->mMinDist		=minDist;
 	pRet->mMaxDist		=maxDist;
 
-	glmc_perspective(fov, aspect, near, far, pRet->mProjection);
+	glm_perspective(fov, aspect, near, far, pRet->mProjection);
 
 	return	pRet;
 }

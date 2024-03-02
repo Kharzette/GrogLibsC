@@ -10,7 +10,7 @@ typedef struct	AxisXYZ_t
 
 	float	mLength, mWidth;
 
-	mat4	mWorld;
+	__attribute__((aligned(16)))	mat4	mWorld;
 }	AxisXYZ;
 
 typedef struct	LightRay_t
@@ -20,8 +20,8 @@ typedef struct	LightRay_t
 
 	vec3	mPosition;
 
-	mat4	mWorld;
-	mat4	mPointyOffset;
+	__attribute__((aligned(16)))	mat4	mWorld;
+	__attribute__((aligned(16)))	mat4	mPointyOffset;
 }	LightRay;
 
 static const	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};

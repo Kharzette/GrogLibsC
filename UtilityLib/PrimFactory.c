@@ -86,51 +86,51 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD)
 	vec3	lowerTopRight, lowerTopLeft, lowerBotRight, lowerBotLeft;
 	vec3	upperTopRight, upperTopLeft, upperBotRight, upperBotLeft;
 
-	glmc_vec3_copy(pCorners[0], lowerTopRight);
-	glmc_vec3_copy(pCorners[1], lowerTopLeft);
-	glmc_vec3_copy(pCorners[2], lowerBotRight);
-	glmc_vec3_copy(pCorners[3], lowerBotLeft);
-	glmc_vec3_copy(pCorners[4], upperTopRight);
-	glmc_vec3_copy(pCorners[5], upperTopLeft);
-	glmc_vec3_copy(pCorners[6], upperBotRight);
-	glmc_vec3_copy(pCorners[7], upperBotLeft);
+	glm_vec3_copy(pCorners[0], lowerTopRight);
+	glm_vec3_copy(pCorners[1], lowerTopLeft);
+	glm_vec3_copy(pCorners[2], lowerBotRight);
+	glm_vec3_copy(pCorners[3], lowerBotLeft);
+	glm_vec3_copy(pCorners[4], upperTopRight);
+	glm_vec3_copy(pCorners[5], upperTopLeft);
+	glm_vec3_copy(pCorners[6], upperBotRight);
+	glm_vec3_copy(pCorners[7], upperBotLeft);
 
 	//cube sides
 	//top
-	glmc_vec3_copy(upperTopLeft,	vpnt[0].Position);
-	glmc_vec3_copy(upperTopRight,	vpnt[1].Position);
-	glmc_vec3_copy(upperBotRight,	vpnt[2].Position);
-	glmc_vec3_copy(upperBotLeft,	vpnt[3].Position);
+	glm_vec3_copy(upperTopLeft,	vpnt[0].Position);
+	glm_vec3_copy(upperTopRight,	vpnt[1].Position);
+	glm_vec3_copy(upperBotRight,	vpnt[2].Position);
+	glm_vec3_copy(upperBotLeft,	vpnt[3].Position);
 
 	//bottom (note reversal)
-	glmc_vec3_copy(lowerTopLeft,	vpnt[7].Position);
-	glmc_vec3_copy(lowerTopRight,	vpnt[6].Position);
-	glmc_vec3_copy(lowerBotRight,	vpnt[5].Position);
-	glmc_vec3_copy(lowerBotLeft,	vpnt[4].Position);
+	glm_vec3_copy(lowerTopLeft,	vpnt[7].Position);
+	glm_vec3_copy(lowerTopRight,	vpnt[6].Position);
+	glm_vec3_copy(lowerBotRight,	vpnt[5].Position);
+	glm_vec3_copy(lowerBotLeft,	vpnt[4].Position);
 
 	//top z side
-	glmc_vec3_copy(upperTopLeft,	vpnt[11].Position);
-	glmc_vec3_copy(upperTopRight,	vpnt[10].Position);
-	glmc_vec3_copy(lowerTopRight,	vpnt[9].Position);
-	glmc_vec3_copy(lowerTopLeft,	vpnt[8].Position);
+	glm_vec3_copy(upperTopLeft,	vpnt[11].Position);
+	glm_vec3_copy(upperTopRight,	vpnt[10].Position);
+	glm_vec3_copy(lowerTopRight,	vpnt[9].Position);
+	glm_vec3_copy(lowerTopLeft,	vpnt[8].Position);
 
 	//bottom z side
-	glmc_vec3_copy(upperBotLeft,	vpnt[12].Position);
-	glmc_vec3_copy(upperBotRight,	vpnt[13].Position);
-	glmc_vec3_copy(lowerBotRight,	vpnt[14].Position);
-	glmc_vec3_copy(lowerBotLeft,	vpnt[15].Position);
+	glm_vec3_copy(upperBotLeft,	vpnt[12].Position);
+	glm_vec3_copy(upperBotRight,	vpnt[13].Position);
+	glm_vec3_copy(lowerBotRight,	vpnt[14].Position);
+	glm_vec3_copy(lowerBotLeft,	vpnt[15].Position);
 
 	//-x side
-	glmc_vec3_copy(upperTopLeft,	vpnt[16].Position);
-	glmc_vec3_copy(upperBotLeft,	vpnt[17].Position);
-	glmc_vec3_copy(lowerBotLeft,	vpnt[18].Position);
-	glmc_vec3_copy(lowerTopLeft,	vpnt[19].Position);
+	glm_vec3_copy(upperTopLeft,	vpnt[16].Position);
+	glm_vec3_copy(upperBotLeft,	vpnt[17].Position);
+	glm_vec3_copy(lowerBotLeft,	vpnt[18].Position);
+	glm_vec3_copy(lowerTopLeft,	vpnt[19].Position);
 
 	//+x side
-	glmc_vec3_copy(upperTopRight,	vpnt[23].Position);
-	glmc_vec3_copy(upperBotRight,	vpnt[22].Position);
-	glmc_vec3_copy(lowerBotRight,	vpnt[21].Position);
-	glmc_vec3_copy(lowerTopRight,	vpnt[20].Position);
+	glm_vec3_copy(upperTopRight,	vpnt[23].Position);
+	glm_vec3_copy(upperBotRight,	vpnt[22].Position);
+	glm_vec3_copy(lowerBotRight,	vpnt[21].Position);
+	glm_vec3_copy(lowerTopRight,	vpnt[20].Position);
 
 	//normals
 	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[0].Normal);
@@ -211,13 +211,13 @@ PrimObject	*PF_CreateCube(float size, GraphicsDevice *pGD)
 	vec3	xScaled, yScaled, zScaled;
 	vec3	xNeg, yNeg, zNeg;
 
-	glmc_vec3_scale(UnitX, size, xScaled);
-	glmc_vec3_scale(UnitY, size, yScaled);
-	glmc_vec3_scale(UnitZ, size, zScaled);
+	glm_vec3_scale(UnitX, size, xScaled);
+	glm_vec3_scale(UnitY, size, yScaled);
+	glm_vec3_scale(UnitZ, size, zScaled);
 
-	glmc_vec3_flipsign_to(xScaled, xNeg);
-	glmc_vec3_flipsign_to(yScaled, yNeg);
-	glmc_vec3_flipsign_to(zScaled, zNeg);
+	glm_vec3_flipsign_to(xScaled, xNeg);
+	glm_vec3_flipsign_to(yScaled, yNeg);
+	glm_vec3_flipsign_to(zScaled, zNeg);
 
 	vec3	corners[8];
 
@@ -246,91 +246,91 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 		int		ofs	=i * 24;
 		vec3	mins, maxs;
 
-		glmc_vec3_copy(pMins[i], mins);
-		glmc_vec3_copy(pMaxs[i], maxs);
+		glm_vec3_copy(pMins[i], mins);
+		glm_vec3_copy(pMaxs[i], maxs);
 
 		//cube corners
 		vec3	lowerTopRight, lowerTopLeft, lowerBotRight, lowerBotLeft;
 		vec3	upperTopRight, upperTopLeft, upperBotRight, upperBotLeft;
 
-		glmc_vec3_zero(lowerTopRight);
-		glmc_vec3_zero(lowerTopLeft);
-		glmc_vec3_zero(lowerBotRight);
-		glmc_vec3_zero(lowerBotLeft);
-		glmc_vec3_zero(upperTopRight);
-		glmc_vec3_zero(upperTopLeft);
-		glmc_vec3_zero(upperBotRight);
-		glmc_vec3_zero(upperBotLeft);
+		glm_vec3_zero(lowerTopRight);
+		glm_vec3_zero(lowerTopLeft);
+		glm_vec3_zero(lowerBotRight);
+		glm_vec3_zero(lowerBotLeft);
+		glm_vec3_zero(upperTopRight);
+		glm_vec3_zero(upperTopLeft);
+		glm_vec3_zero(upperBotRight);
+		glm_vec3_zero(upperBotLeft);
 
 		//generate corners from min/max
-		glmc_vec3_muladd(UnitX, maxs, lowerTopRight);
-		glmc_vec3_muladd(UnitY, mins, lowerTopRight);
-		glmc_vec3_muladd(UnitZ, maxs, lowerTopRight);
+		glm_vec3_muladd(UnitX, maxs, lowerTopRight);
+		glm_vec3_muladd(UnitY, mins, lowerTopRight);
+		glm_vec3_muladd(UnitZ, maxs, lowerTopRight);
 
-		glmc_vec3_muladd(UnitX, mins, lowerTopLeft);
-		glmc_vec3_muladd(UnitY, mins, lowerTopLeft);
-		glmc_vec3_muladd(UnitZ, maxs, lowerTopLeft);
+		glm_vec3_muladd(UnitX, mins, lowerTopLeft);
+		glm_vec3_muladd(UnitY, mins, lowerTopLeft);
+		glm_vec3_muladd(UnitZ, maxs, lowerTopLeft);
 
-		glmc_vec3_muladd(UnitX, maxs, lowerBotRight);
-		glmc_vec3_muladd(UnitY, mins, lowerBotRight);
-		glmc_vec3_muladd(UnitZ, mins, lowerBotRight);
+		glm_vec3_muladd(UnitX, maxs, lowerBotRight);
+		glm_vec3_muladd(UnitY, mins, lowerBotRight);
+		glm_vec3_muladd(UnitZ, mins, lowerBotRight);
 
-		glmc_vec3_muladd(UnitX, mins, lowerBotLeft);
-		glmc_vec3_muladd(UnitY, mins, lowerBotLeft);
-		glmc_vec3_muladd(UnitZ, mins, lowerBotLeft);
+		glm_vec3_muladd(UnitX, mins, lowerBotLeft);
+		glm_vec3_muladd(UnitY, mins, lowerBotLeft);
+		glm_vec3_muladd(UnitZ, mins, lowerBotLeft);
 
-		glmc_vec3_muladd(UnitX, maxs, upperTopRight);
-		glmc_vec3_muladd(UnitY, maxs, upperTopRight);
-		glmc_vec3_muladd(UnitZ, maxs, upperTopRight);
+		glm_vec3_muladd(UnitX, maxs, upperTopRight);
+		glm_vec3_muladd(UnitY, maxs, upperTopRight);
+		glm_vec3_muladd(UnitZ, maxs, upperTopRight);
 
-		glmc_vec3_muladd(UnitX, mins, upperTopLeft);
-		glmc_vec3_muladd(UnitY, maxs, upperTopLeft);
-		glmc_vec3_muladd(UnitZ, maxs, upperTopLeft);
+		glm_vec3_muladd(UnitX, mins, upperTopLeft);
+		glm_vec3_muladd(UnitY, maxs, upperTopLeft);
+		glm_vec3_muladd(UnitZ, maxs, upperTopLeft);
 
-		glmc_vec3_muladd(UnitX, maxs, upperBotRight);
-		glmc_vec3_muladd(UnitY, maxs, upperBotRight);
-		glmc_vec3_muladd(UnitZ, mins, upperBotRight);
+		glm_vec3_muladd(UnitX, maxs, upperBotRight);
+		glm_vec3_muladd(UnitY, maxs, upperBotRight);
+		glm_vec3_muladd(UnitZ, mins, upperBotRight);
 
-		glmc_vec3_muladd(UnitX, mins, upperBotLeft);
-		glmc_vec3_muladd(UnitY, maxs, upperBotLeft);
-		glmc_vec3_muladd(UnitZ, mins, upperBotLeft);
+		glm_vec3_muladd(UnitX, mins, upperBotLeft);
+		glm_vec3_muladd(UnitY, maxs, upperBotLeft);
+		glm_vec3_muladd(UnitZ, mins, upperBotLeft);
 
 		//cube sides
 		//top
-		glmc_vec3_copy(upperTopLeft,	vpnt[ofs + 0].Position);
-		glmc_vec3_copy(upperTopRight,	vpnt[ofs + 1].Position);
-		glmc_vec3_copy(upperBotRight,	vpnt[ofs + 2].Position);
-		glmc_vec3_copy(upperBotLeft,	vpnt[ofs + 3].Position);
+		glm_vec3_copy(upperTopLeft,	vpnt[ofs + 0].Position);
+		glm_vec3_copy(upperTopRight,	vpnt[ofs + 1].Position);
+		glm_vec3_copy(upperBotRight,	vpnt[ofs + 2].Position);
+		glm_vec3_copy(upperBotLeft,	vpnt[ofs + 3].Position);
 
 		//bottom (note reversal)
-		glmc_vec3_copy(lowerTopLeft,	vpnt[ofs + 7].Position);
-		glmc_vec3_copy(lowerTopRight,	vpnt[ofs + 6].Position);
-		glmc_vec3_copy(lowerBotRight,	vpnt[ofs + 5].Position);
-		glmc_vec3_copy(lowerBotLeft,	vpnt[ofs + 4].Position);
+		glm_vec3_copy(lowerTopLeft,	vpnt[ofs + 7].Position);
+		glm_vec3_copy(lowerTopRight,	vpnt[ofs + 6].Position);
+		glm_vec3_copy(lowerBotRight,	vpnt[ofs + 5].Position);
+		glm_vec3_copy(lowerBotLeft,	vpnt[ofs + 4].Position);
 
 		//top z side
-		glmc_vec3_copy(upperTopLeft,	vpnt[ofs + 11].Position);
-		glmc_vec3_copy(upperTopRight,	vpnt[ofs + 10].Position);
-		glmc_vec3_copy(lowerTopRight,	vpnt[ofs + 9].Position);
-		glmc_vec3_copy(lowerTopLeft,	vpnt[ofs + 8].Position);
+		glm_vec3_copy(upperTopLeft,	vpnt[ofs + 11].Position);
+		glm_vec3_copy(upperTopRight,	vpnt[ofs + 10].Position);
+		glm_vec3_copy(lowerTopRight,	vpnt[ofs + 9].Position);
+		glm_vec3_copy(lowerTopLeft,	vpnt[ofs + 8].Position);
 
 		//bottom z side
-		glmc_vec3_copy(upperBotLeft,	vpnt[ofs + 12].Position);
-		glmc_vec3_copy(upperBotRight,	vpnt[ofs + 13].Position);
-		glmc_vec3_copy(lowerBotRight,	vpnt[ofs + 14].Position);
-		glmc_vec3_copy(lowerBotLeft,	vpnt[ofs + 15].Position);
+		glm_vec3_copy(upperBotLeft,	vpnt[ofs + 12].Position);
+		glm_vec3_copy(upperBotRight,	vpnt[ofs + 13].Position);
+		glm_vec3_copy(lowerBotRight,	vpnt[ofs + 14].Position);
+		glm_vec3_copy(lowerBotLeft,	vpnt[ofs + 15].Position);
 
 		//-x side
-		glmc_vec3_copy(upperTopLeft,	vpnt[ofs + 16].Position);
-		glmc_vec3_copy(upperBotLeft,	vpnt[ofs + 17].Position);
-		glmc_vec3_copy(lowerBotLeft,	vpnt[ofs + 18].Position);
-		glmc_vec3_copy(lowerTopLeft,	vpnt[ofs + 19].Position);
+		glm_vec3_copy(upperTopLeft,	vpnt[ofs + 16].Position);
+		glm_vec3_copy(upperBotLeft,	vpnt[ofs + 17].Position);
+		glm_vec3_copy(lowerBotLeft,	vpnt[ofs + 18].Position);
+		glm_vec3_copy(lowerTopLeft,	vpnt[ofs + 19].Position);
 
 		//+x side
-		glmc_vec3_copy(upperTopRight,	vpnt[ofs + 23].Position);
-		glmc_vec3_copy(upperBotRight,	vpnt[ofs + 22].Position);
-		glmc_vec3_copy(lowerBotRight,	vpnt[ofs + 21].Position);
-		glmc_vec3_copy(lowerTopRight,	vpnt[ofs + 20].Position);
+		glm_vec3_copy(upperTopRight,	vpnt[ofs + 23].Position);
+		glm_vec3_copy(upperBotRight,	vpnt[ofs + 22].Position);
+		glm_vec3_copy(lowerBotRight,	vpnt[ofs + 21].Position);
+		glm_vec3_copy(lowerTopRight,	vpnt[ofs + 20].Position);
 		
 		//normals
 		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnt[ofs + 0].Normal);

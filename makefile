@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse2 -mf16c	\
+CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c	\
 	-ISDL/include	\
 	-Iuthash/include	\
 	-Idxvk-native/include/native/windows	\

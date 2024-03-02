@@ -1,6 +1,7 @@
 #include	<d3d11_1.h>
 #include	<stdint.h>
 #include	<stdbool.h>
+#include	<assert.h>
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<unistd.h>
@@ -59,6 +60,19 @@ static void	ThreeXYZ(const vec3 x, const vec3 y, const vec3 z, vec3 dest)
 	dest[0]	=x[0];
 	dest[1]	=y[1];
 	dest[2]	=z[2];
+}
+
+
+void	PF_DestroyPO(PrimObject **ppObj)
+{
+	//release buffers
+	(*ppObj)->mpIB->lpVtbl->Release((*ppObj)->mpIB);
+	(*ppObj)->mpVB->lpVtbl->Release((*ppObj)->mpVB);
+
+	//free mem
+	free(*ppObj);
+
+	*ppObj	=NULL;
 }
 
 
@@ -404,6 +418,216 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 
 	//make index buffer
 	MakeIBDesc(&bufDesc, 36 * 4 * numBounds);
+	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, inds, bufDesc.ByteWidth);
+
+	free(vpnt);
+	free(inds);
+
+	return	pObj;
+}
+
+PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec3 *pHits,
+								int numRays, float rayWidth, GraphicsDevice *pGD)
+{
+	VPosNormTex0	*vpnt	=malloc(sizeof(VPosNormTex0) * 24 * numRays);
+	uint32_t		*inds	=malloc(sizeof(uint32_t) * 36 * numRays);
+
+	//these will be the full extent, passing
+	//through the colliding object
+	for(int i=0;i < numRays;i++)
+	{
+		int		ofs	=i * 24;
+		vec3	start, end;
+
+		glm_vec3_copy(pStarts[i], start);
+		glm_vec3_copy(pEnds[i], end);
+
+		//Make some basis vectors to build a box around the ray
+		vec3	rayX, rayY, rayZ;
+
+		//z for the ray direction
+		glm_vec3_sub(end, start, rayZ);
+		glm_vec3_normalize(rayZ);
+
+		//generate a good side vector
+		glm_vec3_cross(UnitY, rayZ, rayX);
+		if(glm_vec3_eq_eps(rayX, 0.0f))
+		{
+			//first cross failed
+			glm_vec3_cross(UnitX, rayZ, rayX);
+		}
+
+		//up vec
+		glm_vec3_cross(rayZ, rayX, rayY);
+
+		assert(!glm_vec3_eq_eps(rayX, 0.0f));
+		assert(!glm_vec3_eq_eps(rayY, 0.0f));
+
+		glm_vec3_normalize(rayX);
+		glm_vec3_normalize(rayY);
+
+		glm_vec3_scale(rayX, rayWidth, rayX);
+		glm_vec3_scale(rayY, rayWidth, rayY);
+
+		//make negatives for doing normals below
+		vec3	rayNegX, rayNegY, rayNegZ;
+		glm_vec3_negate_to(rayX, rayNegX);
+		glm_vec3_negate_to(rayY, rayNegY);
+		glm_vec3_negate_to(rayZ, rayNegZ);
+
+		//cube corners
+		vec3	lowerTopRight, lowerTopLeft, lowerBotRight, lowerBotLeft;
+		vec3	upperTopRight, upperTopLeft, upperBotRight, upperBotLeft;
+
+		glm_vec3_zero(lowerTopRight);
+		glm_vec3_zero(lowerTopLeft);
+		glm_vec3_zero(lowerBotRight);
+		glm_vec3_zero(lowerBotLeft);
+		glm_vec3_zero(upperTopRight);
+		glm_vec3_zero(upperTopLeft);
+		glm_vec3_zero(upperBotRight);
+		glm_vec3_zero(upperBotLeft);
+
+		//generate corners from min/max
+		glm_vec3_add(start, rayX, lowerTopRight);
+		glm_vec3_add(lowerTopRight, rayY, lowerTopRight);
+
+		glm_vec3_add(start, rayY, lowerTopLeft);
+		glm_vec3_sub(lowerTopLeft, rayX, lowerTopLeft);
+
+		glm_vec3_add(start, rayX, lowerBotRight);
+		glm_vec3_sub(lowerBotRight, rayY, lowerBotRight);
+
+		glm_vec3_sub(start, rayY, lowerBotLeft);
+		glm_vec3_sub(lowerBotLeft, rayX, lowerBotLeft);
+
+		glm_vec3_add(end, rayX, upperTopRight);
+		glm_vec3_add(upperTopRight, rayY, upperTopRight);
+
+		glm_vec3_add(end, rayY, upperTopLeft);
+		glm_vec3_sub(upperTopLeft, rayX, upperTopLeft);
+
+		glm_vec3_add(end, rayX, upperBotRight);
+		glm_vec3_sub(upperBotRight, rayY, upperBotRight);
+
+		glm_vec3_sub(end, rayY, upperBotLeft);
+		glm_vec3_sub(upperBotLeft, rayX, upperBotLeft);
+
+		//cube sides
+		//top (Z+)
+		glm_vec3_copy(upperTopLeft,		vpnt[ofs + 0].Position);
+		glm_vec3_copy(upperTopRight,	vpnt[ofs + 1].Position);
+		glm_vec3_copy(upperBotRight,	vpnt[ofs + 2].Position);
+		glm_vec3_copy(upperBotLeft,		vpnt[ofs + 3].Position);
+
+		//bottom (note reversal) (Z-)
+		glm_vec3_copy(lowerTopLeft,		vpnt[ofs + 7].Position);
+		glm_vec3_copy(lowerTopRight,	vpnt[ofs + 6].Position);
+		glm_vec3_copy(lowerBotRight,	vpnt[ofs + 5].Position);
+		glm_vec3_copy(lowerBotLeft,		vpnt[ofs + 4].Position);
+
+		//top Y side (Y+)
+		glm_vec3_copy(upperTopLeft,		vpnt[ofs + 11].Position);
+		glm_vec3_copy(upperTopRight,	vpnt[ofs + 10].Position);
+		glm_vec3_copy(lowerTopRight,	vpnt[ofs + 9].Position);
+		glm_vec3_copy(lowerTopLeft,		vpnt[ofs + 8].Position);
+
+		//bottom Y side (Y-)
+		glm_vec3_copy(upperBotLeft,		vpnt[ofs + 12].Position);
+		glm_vec3_copy(upperBotRight,	vpnt[ofs + 13].Position);
+		glm_vec3_copy(lowerBotRight,	vpnt[ofs + 14].Position);
+		glm_vec3_copy(lowerBotLeft,		vpnt[ofs + 15].Position);
+
+		//-x side
+		glm_vec3_copy(upperTopLeft,		vpnt[ofs + 16].Position);
+		glm_vec3_copy(upperBotLeft,		vpnt[ofs + 17].Position);
+		glm_vec3_copy(lowerBotLeft,		vpnt[ofs + 18].Position);
+		glm_vec3_copy(lowerTopLeft,		vpnt[ofs + 19].Position);
+
+		//+x side
+		glm_vec3_copy(upperTopRight,	vpnt[ofs + 23].Position);
+		glm_vec3_copy(upperBotRight,	vpnt[ofs + 22].Position);
+		glm_vec3_copy(lowerBotRight,	vpnt[ofs + 21].Position);
+		glm_vec3_copy(lowerTopRight,	vpnt[ofs + 20].Position);
+		
+		//normals
+		//top (Z+)
+		Misc_ConvertVec3ToF16(rayZ, vpnt[ofs + 0].Normal);
+		Misc_ConvertVec3ToF16(rayZ, vpnt[ofs + 1].Normal);
+		Misc_ConvertVec3ToF16(rayZ, vpnt[ofs + 2].Normal);
+		Misc_ConvertVec3ToF16(rayZ, vpnt[ofs + 3].Normal);
+
+		//bottom (Z-)
+		Misc_ConvertVec3ToF16(rayNegZ, vpnt[ofs + 4].Normal);
+		Misc_ConvertVec3ToF16(rayNegZ, vpnt[ofs + 5].Normal);
+		Misc_ConvertVec3ToF16(rayNegZ, vpnt[ofs + 6].Normal);
+		Misc_ConvertVec3ToF16(rayNegZ, vpnt[ofs + 7].Normal);
+
+		//top Y side (Y+)
+		Misc_ConvertVec3ToF16(rayY, vpnt[ofs + 8].Normal);
+		Misc_ConvertVec3ToF16(rayY, vpnt[ofs + 9].Normal);
+		Misc_ConvertVec3ToF16(rayY, vpnt[ofs + 10].Normal);
+		Misc_ConvertVec3ToF16(rayY, vpnt[ofs + 11].Normal);
+
+		//bottom Y side (Y-)
+		Misc_ConvertVec3ToF16(rayNegY, vpnt[ofs + 12].Normal);
+		Misc_ConvertVec3ToF16(rayNegY, vpnt[ofs + 13].Normal);
+		Misc_ConvertVec3ToF16(rayNegY, vpnt[ofs + 14].Normal);
+		Misc_ConvertVec3ToF16(rayNegY, vpnt[ofs + 15].Normal);
+
+		//-x side
+		Misc_ConvertVec3ToF16(rayNegX, vpnt[ofs + 16].Normal);
+		Misc_ConvertVec3ToF16(rayNegX, vpnt[ofs + 17].Normal);
+		Misc_ConvertVec3ToF16(rayNegX, vpnt[ofs + 18].Normal);
+		Misc_ConvertVec3ToF16(rayNegX, vpnt[ofs + 19].Normal);
+
+		//+x side
+		Misc_ConvertVec3ToF16(rayX, vpnt[ofs + 20].Normal);
+		Misc_ConvertVec3ToF16(rayX, vpnt[ofs + 21].Normal);
+		Misc_ConvertVec3ToF16(rayX, vpnt[ofs + 22].Normal);
+		Misc_ConvertVec3ToF16(rayX, vpnt[ofs + 23].Normal);
+
+		//texcoords
+		for(int j=0;j < 24;j+=4)
+		{
+			Misc_Convert2ToF16(0.0f, 0.0f, vpnt[ofs + j].TexCoord0);
+			Misc_Convert2ToF16(1.0f, 0.0f, vpnt[ofs + j + 1].TexCoord0);
+			Misc_Convert2ToF16(1.0f, 1.0f, vpnt[ofs + j + 2].TexCoord0);
+			Misc_Convert2ToF16(0.0f, 1.0f, vpnt[ofs + j + 3].TexCoord0);
+		}
+
+		//indexes
+		uint32_t	idx	=ofs;
+		for(int j=0;j < 36;j+=6)
+		{
+			int	indBox	=i * 36;
+
+			inds[indBox + j]		=idx + 0;
+			inds[indBox + j + 1]	=idx + 1;
+			inds[indBox + j + 2]	=idx + 2;
+			inds[indBox + j + 3]	=idx + 0;
+			inds[indBox + j + 4]	=idx + 2;
+			inds[indBox + j + 5]	=idx + 3;
+
+			idx	+=4;
+		}
+	}
+
+	size_t	vpntSize	=sizeof(VPosNormTex0);
+
+	//return object
+	PrimObject	*pObj	=malloc(sizeof(PrimObject));
+
+	pObj->mVertCount	=24 * numRays;
+	pObj->mIndexCount	=36 * numRays;
+
+	//make vertex buffer
+	D3D11_BUFFER_DESC	bufDesc;
+	MakeVBDesc(&bufDesc, sizeof(VPosNormTex0) * 24 * numRays);
+	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
+
+	//make index buffer
+	MakeIBDesc(&bufDesc, 36 * 4 * numRays);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, inds, bufDesc.ByteWidth);
 
 	free(vpnt);

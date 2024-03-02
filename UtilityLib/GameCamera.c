@@ -11,6 +11,10 @@
 
 typedef struct GameCamera_t
 {
+	//projection matrix (top to align)
+	//contains clip distances, fov, and aspect ratio
+	mat4	mProjection;
+
 	//view quaternion
 	vec4	mView;
 	vec3	mPos;	//worldspace position
@@ -22,10 +26,6 @@ typedef struct GameCamera_t
 	//pitch angle limits, good for grounded bipedal stuff
 	float	mMinPitch, mMaxPitch;
 
-	//projection matrix
-	//contains clip distances, fov, and aspect ratio
-	mat4	mProjection;
-
 	//set for a spacelike no fixed up/forward etc
 	bool	mbSpaceMode;
 
@@ -36,7 +36,11 @@ typedef struct GameCamera_t
 GameCamera	*GameCam_Create(bool bSpaceMode, float near, float far,
 			float fov, float aspect, float minDist, float maxDist)
 {
-	GameCamera	*pRet	=malloc(sizeof(GameCamera));
+#ifdef	__AVX__
+	GameCamera	*pRet	=aligned_alloc(32, sizeof(GameCamera));
+#else
+	GameCamera	*pRet	=aligned_alloc(16, sizeof(GameCamera));
+#endif
 
 	memset(pRet, 0, sizeof(GameCamera));
 

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=gnu17 -g -march=x86-64 -msse2 -mf16c -fpic -shared \
+CFLAGS=-std=gnu17 -g -march=x86-64 -msse4.2 -mavx2 -mf16c -fpic -shared \
 	-I../SDL/include	\
 	-I../uthash/include	\
 	-I../dxvk-native/include/native/directx \

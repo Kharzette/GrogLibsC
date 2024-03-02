@@ -35,6 +35,7 @@
 #define	KEYTURN_RATE	0.1f
 #define	HEIGHT_SCALAR	0.5f
 #define	RAY_LEN			100.0f
+#define	RAY_WIDTH		0.05f
 #define	NUM_RAYS		8000
 
 //should match CommonFunctions.hlsli
@@ -87,6 +88,7 @@ int main(void)
 	//hotkey stuff
 	bool	bDrawTerNodes	=false;
 	bool	bDrawHit		=false;
+	bool	bDrawManyRays	=false;
 
 	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
 
@@ -101,6 +103,7 @@ int main(void)
 	PrimObject	*pCube	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pGD);
 	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pGD);
 	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pGD);
+	PrimObject	*pManyRays;
 
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
@@ -248,10 +251,21 @@ int main(void)
 					else if(evt.key.keysym.sym == SDLK_u)
 					{
 						TestManyRays(pTer);
+
+						if(pManyRays != NULL)
+						{
+							PF_DestroyPO(&pManyRays);
+						}
+						pManyRays	=PF_CreateManyRays(rayStarts, rayEnds, rayImpacts,
+										NUM_RAYS, RAY_WIDTH, pGD);
 					}
 					else if(evt.key.keysym.sym == SDLK_n)
 					{
 						bDrawTerNodes	=!bDrawTerNodes;
+					}
+					else if(evt.key.keysym.sym == SDLK_m)
+					{
+						bDrawManyRays	=!bDrawManyRays;
 					}
 				}
 			}
@@ -345,6 +359,16 @@ int main(void)
 			GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
 		}
 
+		//debug draw many rays
+		if(bDrawManyRays)
+		{
+			GD_IASetVertexBuffers(pGD, pManyRays->mpVB, 24, 0);
+			GD_IASetIndexBuffers(pGD, pManyRays->mpIB, DXGI_FORMAT_R32_UINT, 0);
+			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
+			CBK_UpdateObject(pCBK, pGD);
+			GD_DrawIndexed(pGD, pManyRays->mIndexCount, 0, 0);
+		}
+
 		//set up terrain draw
 		CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
 		CBK_UpdateObject(pCBK, pGD);
@@ -398,6 +422,8 @@ static void	TestManyRays(const Terrain *pTer)
 {
 	vec3	terMins, terMaxs;
 
+	numRayImpacts	=0;
+
 	Terrain_GetBounds(pTer, terMins, terMaxs);
 
 	__uint128_t	startTime	=__rdtsc();
@@ -411,7 +437,16 @@ static void	TestManyRays(const Terrain *pTer)
 		Misc_RandomPointInBound(terMins, terMaxs, start);
 		Misc_RandomPointInBound(terMins, terMaxs, end);
 
-		Terrain_LineIntersect(pTer, start, end, hit, hitPlane);
+		//store
+		glm_vec3_copy(start, rayStarts[i]);
+		glm_vec3_copy(end, rayEnds[i]);
+
+		if(Terrain_LineIntersect(pTer, start, end, hit, hitPlane))
+		{
+			glm_vec3_copy(rayImpacts[numRayImpacts], hit);
+			numRayImpacts++;
+		}
+
 	}
 
 	__uint128_t	endTime	=__rdtsc();

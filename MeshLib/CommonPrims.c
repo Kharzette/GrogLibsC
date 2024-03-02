@@ -1,8 +1,12 @@
 #include	"CommonPrims.h"
 #include	"../UtilityLib/MiscStuff.h"
 
+
 typedef struct	AxisXYZ_t
 {
+	//top to align
+	mat4	mWorld;
+
 	PrimObject	*mpX;
 	PrimObject	*mpY;
 	PrimObject	*mpZ;
@@ -10,18 +14,19 @@ typedef struct	AxisXYZ_t
 
 	float	mLength, mWidth;
 
-	__attribute__((aligned(16)))	mat4	mWorld;
 }	AxisXYZ;
 
 typedef struct	LightRay_t
 {
+	//top to align
+	mat4	mWorld;
+	mat4	mPointyOffset;
+
 	PrimObject	*mpAxis;
 	PrimObject	*mpPointyEnd;
 
 	vec3	mPosition;
 
-	__attribute__((aligned(16)))	mat4	mWorld;
-	__attribute__((aligned(16)))	mat4	mPointyOffset;
 }	LightRay;
 
 static const	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
@@ -32,7 +37,11 @@ static const	vec3	One		={	1.0f, 1.0f, 1.0f	};
 
 AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD)
 {
-	AxisXYZ	*pRet	=malloc(sizeof(AxisXYZ));
+#ifdef	__AVX__
+	AxisXYZ	*pRet	=aligned_alloc(32, sizeof(AxisXYZ));
+#else
+	AxisXYZ	*pRet	=aligned_alloc(16, sizeof(AxisXYZ));
+#endif
 
 	memset(pRet, 0, sizeof(AxisXYZ));
 
@@ -59,7 +68,11 @@ AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD)
 
 LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD)
 {
-	LightRay	*pRet	=malloc(sizeof(LightRay));
+#ifdef	__AVX__
+	LightRay	*pRet	=aligned_alloc(32, sizeof(LightRay));
+#else
+	LightRay	*pRet	=aligned_alloc(16, sizeof(LightRay));
+#endif
 
 	memset(pRet, 0, sizeof(LightRay));
 

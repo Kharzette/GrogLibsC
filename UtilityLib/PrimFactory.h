@@ -19,7 +19,9 @@ PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD);
 PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD);
 PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD);
 PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD);
-PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec3 *pHits,
+PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, const vec4 colour, int numCubes,
+								float size, GraphicsDevice *pGD);
+PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4 *pColours,
 								int numRays, float rayWidth, GraphicsDevice *pGD);
 
 void	PF_DestroyPO(PrimObject **ppObj);

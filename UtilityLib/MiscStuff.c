@@ -53,6 +53,13 @@ void	Misc_ConvertVec3ToF16(const vec3 vec, uint16_t *pDest)
 	memcpy(pDest, &converted, 8);
 }
 
+void	Misc_ConvertVec4ToF16(const vec4 vec, uint16_t *pDest)
+{
+	__m128i	converted	=Convert4F32ToF16m128i(vec[0], vec[1], vec[2], vec[3]);
+
+	memcpy(pDest, &converted, 8);
+}
+
 void	Misc_SSE_ReciprocalVec3(const vec3 vector, vec3 recip)
 {
 	__attribute__((aligned(16)))	float	vec[4]	={ vector[0], vector[1], vector[2], 1.0f };

@@ -36,17 +36,18 @@
 #define	HEIGHT_SCALAR	0.5f
 #define	RAY_LEN			100.0f
 #define	RAY_WIDTH		0.05f
-#define	NUM_RAYS		8000
+#define	IMPACT_WIDTH	0.2f
+#define	NUM_RAYS		1000
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES		55
 
 //data to store test rays
-static vec3	rayStarts[NUM_RAYS];
-static vec3	rayEnds[NUM_RAYS];
-static int	rayResults[NUM_RAYS];
-static vec3	rayImpacts[NUM_RAYS];
-static int	numRayImpacts;
+static vec3	sRayStarts[NUM_RAYS];
+static vec3	sRayEnds[NUM_RAYS];
+static vec4	sRayResults[NUM_RAYS];
+static vec3	sRayImpacts[NUM_RAYS];
+static int	sNumRayImpacts;
 
 //static forward decs
 static void	TestManyRays(const Terrain *pTer);
@@ -54,6 +55,7 @@ static void	PrintRandomPointInTerrain(const Terrain *pTer);
 static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
 static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDeltaPitch);
 static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt);
+static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
 
 
 int main(void)
@@ -86,9 +88,10 @@ int main(void)
 	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
 	//hotkey stuff
-	bool	bDrawTerNodes	=false;
-	bool	bDrawHit		=false;
-	bool	bDrawManyRays	=false;
+	bool	bDrawTerNodes		=false;
+	bool	bDrawHit			=false;
+	bool	bDrawManyRays		=false;
+	bool	bDrawManyImpacts	=false;
 
 	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
 
@@ -103,7 +106,10 @@ int main(void)
 	PrimObject	*pCube	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pGD);
 	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pGD);
 	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pGD);
+
+	//debug prims for the lotsa ray tests
 	PrimObject	*pManyRays;
+	PrimObject	*pManyImpacts;
 
 	CBKeeper	*pCBK	=CBK_Create(pGD);
 
@@ -251,13 +257,7 @@ int main(void)
 					else if(evt.key.keysym.sym == SDLK_u)
 					{
 						TestManyRays(pTer);
-
-						if(pManyRays != NULL)
-						{
-							PF_DestroyPO(&pManyRays);
-						}
-						pManyRays	=PF_CreateManyRays(rayStarts, rayEnds, rayImpacts,
-										NUM_RAYS, RAY_WIDTH, pGD);
+						ReBuildManyRayPrims(&pManyRays, &pManyImpacts, pGD);
 					}
 					else if(evt.key.keysym.sym == SDLK_n)
 					{
@@ -266,6 +266,10 @@ int main(void)
 					else if(evt.key.keysym.sym == SDLK_m)
 					{
 						bDrawManyRays	=!bDrawManyRays;
+					}
+					else if(evt.key.keysym.sym == SDLK_b)
+					{
+						bDrawManyImpacts	=!bDrawManyImpacts;
 					}
 				}
 			}
@@ -360,13 +364,30 @@ int main(void)
 		}
 
 		//debug draw many rays
-		if(bDrawManyRays)
+		if(bDrawManyRays && pManyRays != NULL)
 		{
-			GD_IASetVertexBuffers(pGD, pManyRays->mpVB, 24, 0);
+			GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormCol0"));
+			GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosVColorVS"));
+			GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidVColorSpecPS"));
+
+			GD_IASetVertexBuffers(pGD, pManyRays->mpVB, 28, 0);
 			GD_IASetIndexBuffers(pGD, pManyRays->mpIB, DXGI_FORMAT_R32_UINT, 0);
 			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
 			CBK_UpdateObject(pCBK, pGD);
 			GD_DrawIndexed(pGD, pManyRays->mIndexCount, 0, 0);
+		}
+
+		if(bDrawManyImpacts && sNumRayImpacts > 0)
+		{
+			GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormCol0"));
+			GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosVColorVS"));
+			GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidVColorSpecPS"));
+
+			GD_IASetVertexBuffers(pGD, pManyImpacts->mpVB, 28, 0);
+			GD_IASetIndexBuffers(pGD, pManyImpacts->mpIB, DXGI_FORMAT_R32_UINT, 0);
+			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
+			CBK_UpdateObject(pCBK, pGD);
+			GD_DrawIndexed(pGD, pManyImpacts->mIndexCount, 0, 0);
 		}
 
 		//set up terrain draw
@@ -405,6 +426,25 @@ int main(void)
 }
 
 
+static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD)
+{
+	//free previous
+	if(*ppMR != NULL)
+	{
+		PF_DestroyPO(ppMR);
+	}
+	if(*ppMI != NULL)
+	{
+		PF_DestroyPO(ppMI);
+	}
+
+	vec4	impactColour	={	1.0f,	0.0f,	0.0f,	1.0f	};
+
+	*ppMR	=PF_CreateManyRays(sRayStarts, sRayEnds, sRayResults, NUM_RAYS, RAY_WIDTH, pGD);
+
+	*ppMI	=PF_CreateManyCubes(sRayImpacts, impactColour, sNumRayImpacts, IMPACT_WIDTH, pGD);
+}
+
 //input handlers
 static void	PrintRandomPointInTerrain(const Terrain *pTer)
 {
@@ -422,9 +462,17 @@ static void	TestManyRays(const Terrain *pTer)
 {
 	vec3	terMins, terMaxs;
 
-	numRayImpacts	=0;
+	sNumRayImpacts	=0;
 
 	Terrain_GetBounds(pTer, terMins, terMaxs);
+
+	//bump mins down to make rays more likely to hit the ground
+	terMins[1]	-=50.0f;
+
+	//ray colours for hit and miss
+	//eventually will have start inside as well
+	vec4	hitCol	={	1.0f,	0.0f,	0.0f,	1.0f	};
+	vec4	missCol	={	0.0f,	1.0f,	0.0f,	1.0f	};
 
 	__uint128_t	startTime	=__rdtsc();
 
@@ -438,15 +486,23 @@ static void	TestManyRays(const Terrain *pTer)
 		Misc_RandomPointInBound(terMins, terMaxs, end);
 
 		//store
-		glm_vec3_copy(start, rayStarts[i]);
-		glm_vec3_copy(end, rayEnds[i]);
+		glm_vec3_copy(start, sRayStarts[i]);
+		glm_vec3_copy(end, sRayEnds[i]);
+
+		//invalidate hit point
+		glm_vec3_fill(hit, FLT_MAX);
 
 		if(Terrain_LineIntersect(pTer, start, end, hit, hitPlane))
 		{
-			glm_vec3_copy(rayImpacts[numRayImpacts], hit);
-			numRayImpacts++;
-		}
+			glm_vec4_copy(hitCol, sRayResults[i]);
 
+			glm_vec3_copy(hit, sRayImpacts[sNumRayImpacts]);
+			sNumRayImpacts++;
+		}
+		else
+		{
+			glm_vec4_copy(missCol, sRayResults[i]);
+		}
 	}
 
 	__uint128_t	endTime	=__rdtsc();
@@ -469,8 +525,8 @@ static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 e
 	glm_vec3_scale(forward, -RAY_LEN, endRay);
 	glm_vec3_add(eyePos, endRay, endRay);
 
-	//invalidate impact point
-	hitPos[0]	=hitPos[1]	=hitPos[2]	=FLT_MAX;
+	//invalidate hit point
+	glm_vec3_fill(hitPos, FLT_MAX);
 
 	bool	bHit	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
 

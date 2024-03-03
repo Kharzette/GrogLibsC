@@ -512,11 +512,6 @@ ID3D11Buffer	*GD_CreateBuffer(
 	return	NULL;
 }
 
-void	GD_DestroyBuffer(GraphicsDevice *pGD, ID3D11Buffer *pBuf)
-{
-	pBuf->lpVtbl->Release(pBuf);
-}
-
 
 //set target 0's blend state
 void GD_OMSetBlendState(GraphicsDevice *pGD, ID3D11BlendState *pBlend)

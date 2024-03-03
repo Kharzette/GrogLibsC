@@ -50,6 +50,14 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16_FLOAT,		0,	20,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 
+	//VPosNormCol0
+	D3D11_INPUT_ELEMENT_DESC	iedVPosNormCol0[]	=
+	{
+		{	"POSITION",	0,	DXGI_FORMAT_R32G32B32_FLOAT,	0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"NORMAL",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	12,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"COLOR",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	20,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
+	};
+
 	//VPosNormTex04
 	D3D11_INPUT_ELEMENT_DESC	iedVPosNormTex04[]	=
 	{
@@ -202,6 +210,16 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		return;
 	}
 	DictSZ_Addccp(ppLayouts, "VPosNormTex0", pLO);
+
+	//VPosNormCol0
+	pCode	=DictSZ_GetValueccp(pVSCode, "WNormWPosVColorVS");
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormCol0, 3, pCode->mpBytes, pCode->mLen);
+	if(pLO == NULL)
+	{
+		printf("Error creating layout.\n");
+		return;
+	}
+	DictSZ_Addccp(ppLayouts, "VPosNormCol0", pLO);
 
 	//VPosNormTex04
 	pCode	=DictSZ_GetValueccp(pVSCode, "LightMapVS");

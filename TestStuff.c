@@ -38,6 +38,7 @@
 #define	RAY_WIDTH		0.05f
 #define	IMPACT_WIDTH	0.2f
 #define	NUM_RAYS		1000
+#define	MOUSE_TO_ANG	0.001f
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES		55
@@ -132,7 +133,7 @@ int main(void)
 
 	GameCamera	*pCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
 
-	//projection won't change in this test program
+	//projection won't change in this test program, probably
 	{
 		mat4	proj;
 		GameCam_GetProjection(pCam, proj);
@@ -206,10 +207,12 @@ int main(void)
 
 	float	animTime	=0.0f;
 
-	bool	bRunning	=true;
+	bool	bRunning		=true;
+	bool	bMouseLooking	=false;
 	while(bRunning)
 	{
-		float	deltaYaw, deltaPitch;
+		float	deltaYaw		=0.0f;
+		float	deltaPitch		=0.0f;
 
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
@@ -270,6 +273,40 @@ int main(void)
 					else if(evt.key.keysym.sym == SDLK_b)
 					{
 						bDrawManyImpacts	=!bDrawManyImpacts;
+					}
+				}
+				else if(evt.type == SDL_MOUSEBUTTONDOWN)
+				{
+					if(evt.button.button == SDL_BUTTON_RIGHT)
+					{
+						int	capResult	=SDL_SetRelativeMouseMode(SDL_TRUE);
+						printf("Right button down: %d\n", capResult);
+						bMouseLooking	=(capResult == 0);
+					}
+					else if(evt.button.button == SDL_BUTTON_LEFT)
+					{
+						printf("Left button down\n");
+					}
+				}
+				else if(evt.type == SDL_MOUSEBUTTONUP)
+				{
+					if(evt.button.button == SDL_BUTTON_RIGHT)
+					{
+						int	capResult	=SDL_SetRelativeMouseMode(SDL_FALSE);
+						printf("Right button up: %d\n", capResult);
+						bMouseLooking	=false;
+					}
+					else if(evt.button.button == SDL_BUTTON_LEFT)
+					{
+						printf("Left button up\n");
+					}
+				}
+				else if(evt.type == SDL_MOUSEMOTION)
+				{
+					if(bMouseLooking)
+					{
+						deltaYaw	-=(evt.motion.xrel * MOUSE_TO_ANG);
+						deltaPitch	-=(evt.motion.yrel * MOUSE_TO_ANG);
 					}
 				}
 			}
@@ -585,19 +622,19 @@ static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDelt
 	{
 		if(pEvt->key.keysym.sym == SDLK_q)
 		{
-			*pDeltaYaw	=KEYTURN_RATE;
+			*pDeltaYaw	+=KEYTURN_RATE;
 		}
 		else if(pEvt->key.keysym.sym == SDLK_e)
 		{
-			*pDeltaYaw	=-KEYTURN_RATE;
+			*pDeltaYaw	+=-KEYTURN_RATE;
 		}
 		else if(pEvt->key.keysym.sym == SDLK_r)
 		{
-			*pDeltaPitch	=KEYTURN_RATE;
+			*pDeltaPitch	+=KEYTURN_RATE;
 		}
 		else if(pEvt->key.keysym.sym == SDLK_t)
 		{
-			*pDeltaPitch	=-KEYTURN_RATE;
+			*pDeltaPitch	+=-KEYTURN_RATE;
 		}
 	}
 }

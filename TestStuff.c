@@ -4,6 +4,7 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<unistd.h>
+#include	<assert.h>
 #include	<x86intrin.h>
 #include	<SDL3/SDL.h>
 #include	<SDL3/SDL_keycode.h>
@@ -26,13 +27,15 @@
 #include	"MeshLib/AnimLib.h"
 #include	"MeshLib/Character.h"
 #include	"MeshLib/CommonPrims.h"
+#include	"InputLib/Input.h"
 
 
 #define	RESX			800
 #define	RESY			600
 #define	ROT_RATE		10.0f
 #define	UVSCALE_RATE	1.0f
-#define	KEYTURN_RATE	0.1f
+#define	KEYTURN_RATE	0.01f
+#define	MOVE_RATE		0.1f
 #define	HEIGHT_SCALAR	0.5f
 #define	RAY_LEN			100.0f
 #define	RAY_WIDTH		0.05f
@@ -50,6 +53,34 @@ static vec4	sRayResults[NUM_RAYS];
 static vec3	sRayImpacts[NUM_RAYS];
 static int	sNumRayImpacts;
 
+//input context, stuff input handlers will need
+typedef struct	TestStuff_t
+{
+	GraphicsDevice	*mpGD;
+	Terrain			*mpTer;
+	GameCamera		*mpCam;
+	PrimObject		*mpManyRays;
+	PrimObject		*mpManyImpacts;
+
+	//toggles
+	bool	mbDrawTerNodes;
+	bool	mbDrawManyRays;
+	bool	mbDrawManyImpacts;
+	bool	mbMouseLooking;
+	bool	mbRunning;
+
+	//misc data
+	vec3	mDanglyForce;
+	vec3	mLightDir;
+	vec3	mEyePos;
+	float	mDeltaYaw, mDeltaPitch;
+
+	//single ray cast vars
+	bool	mbDrawHit;
+	vec3	mHitPos;
+	vec4	mHitPlane;
+}	TestStuff;
+
 //static forward decs
 static void	TestManyRays(const Terrain *pTer);
 static void	PrintRandomPointInTerrain(const Terrain *pTer);
@@ -58,20 +89,87 @@ static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDelt
 static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt);
 static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
 
+//input event handlers
+static void	RandLightEH(void *pContext, const SDL_Event *pEvt);
+static void	DangleDownEH(void *pContext, const SDL_Event *pEvt);
+static void	DangleUpEH(void *pContext, const SDL_Event *pEvt);
+static void	CastOneRayEH(void *pContext, const SDL_Event *pEvt);
+static void	PrintRandomEH(void *pContext, const SDL_Event *pEvt);
+static void	CastManyRaysEH(void *pContext, const SDL_Event *pEvt);
+static void	ToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt);
+static void	ToggleDrawManyRaysEH(void *pContext, const SDL_Event *pEvt);
+static void	ToggleDrawManyImpactsEH(void *pContext, const SDL_Event *pEvt);
+static void	LeftMouseDownEH(void *pContext, const SDL_Event *pEvt);
+static void	LeftMouseUpEH(void *pContext, const SDL_Event *pEvt);
+static void	RightMouseDownEH(void *pContext, const SDL_Event *pEvt);
+static void	RightMouseUpEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyMoveBackEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyMoveLeftEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyMoveUpEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyMoveDownEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyTurnLeftEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyTurnRightEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyTurnUpEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyTurnDownEH(void *pContext, const SDL_Event *pEvt);
+static void MouseMoveEH(void *pContext, const SDL_Event *pEvt);
+static void EscEH(void *pContext, const SDL_Event *pEvt);
+
 
 int main(void)
 {
 	printf("DirectX on looney loonix!\n");
 
-	GraphicsDevice	*pGD;
+	//store a bunch of vars in a struct
+	//for ref/modifying by input handlers
+	TestStuff	*pTS	=malloc(sizeof(TestStuff));
+	memset(pTS, 0, sizeof(TestStuff));
 
-	GD_Init(&pGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_0);
+	Input	*pInp	=INP_CreateInput();
 
-	StuffKeeper	*pSK	=StuffKeeper_Create(pGD);
+	//event style bindings
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_l, RandLightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_i, CastOneRayEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_p, PrintRandomEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_u, CastManyRaysEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, ToggleDrawTerNodesEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_m, ToggleDrawManyRaysEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_b, ToggleDrawManyImpactsEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, EscEH);
+
+	//held bindings
+	//movement
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_w, KeyMoveForwardEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_a, KeyMoveLeftEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_s, KeyMoveBackEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_d, KeyMoveRightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_c, KeyMoveUpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_z, KeyMoveDownEH);
+
+	//key turning
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_q, KeyTurnLeftEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_e, KeyTurnRightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_r, KeyTurnUpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_t, KeyTurnDownEH);
+
+	//move data events
+	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_MOUSEMOTION, MouseMoveEH);
+
+	//down/up events
+	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_RIGHT, RightMouseDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_RELEASE, SDL_BUTTON_RIGHT, RightMouseUpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_LEFT, LeftMouseDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_RELEASE, SDL_BUTTON_LEFT, LeftMouseUpEH);
+
+
+	GD_Init(&pTS->mpGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_0);
+
+	StuffKeeper	*pSK	=StuffKeeper_Create(pTS->mpGD);
 	if(pSK == NULL)
 	{
 		printf("Couldn't create StuffKeeper!\n");
-		GD_Destroy(&pGD);
+		GD_Destroy(&pTS->mpGD);
 		return	EXIT_FAILURE;
 	}
 
@@ -86,57 +184,42 @@ int main(void)
 	rastDesc.DepthClipEnable		=true;
 	rastDesc.ScissorEnable			=false;
 	rastDesc.SlopeScaledDepthBias	=0;
-	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
+	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pTS->mpGD, &rastDesc);
 
-	//hotkey stuff
-	bool	bDrawTerNodes		=false;
-	bool	bDrawHit			=false;
-	bool	bDrawManyRays		=false;
-	bool	bDrawManyImpacts	=false;
-
-	Terrain	*pTer	=Terrain_Create(pGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
+	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
 
 	//debugdraw quadtree boxes
 	int		numBounds;
 	vec3	*pMins, *pMaxs;
-	Terrain_GetQuadTreeLeafBoxes(pTer, &pMins, &pMaxs, &numBounds);
+	Terrain_GetQuadTreeLeafBoxes(pTS->mpTer, &pMins, &pMaxs, &numBounds);
 
-	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pGD);
+	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
 
 	//test prims
-	PrimObject	*pCube	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pGD);
-	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pGD);
-	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pGD);
+	PrimObject	*pCube	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
+	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD);
+	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD);
 
-	//debug prims for the lotsa ray tests
-	PrimObject	*pManyRays;
-	PrimObject	*pManyImpacts;
+	CBKeeper	*pCBK	=CBK_Create(pTS->mpGD);
 
-	CBKeeper	*pCBK	=CBK_Create(pGD);
+	PostProcess	*pPP	=PP_Create(pTS->mpGD, pSK, pCBK);
 
-	PostProcess	*pPP	=PP_Create(pGD, pSK, pCBK);
-
-	PP_MakePostTarget(pPP, pGD, "LinearColor", RESX, RESY, DXGI_FORMAT_R8G8B8A8_UNORM);
-	PP_MakePostDepth(pPP, pGD, "LinearDepth", RESX, RESY, DXGI_FORMAT_D32_FLOAT);
+	PP_MakePostTarget(pPP, pTS->mpGD, "LinearColor", RESX, RESY, DXGI_FORMAT_R8G8B8A8_UNORM);
+	PP_MakePostDepth(pPP, pTS->mpGD, "LinearDepth", RESX, RESY, DXGI_FORMAT_D32_FLOAT);
 
 	float	aspect	=(float)RESX / (float)RESY;
 
 	mat4	charMat, hitSphereMat;
-	vec3	eyePos	={ 0.0f, 0.6f, 4.5f };
-	vec3	targPos	={ 0.0f, 0.75f, 0.0f };
-	vec3	upVec	={ 0.0f, 1.0f, 0.0f };
 
-	//collision debuggery
-	vec3	hitPos;
-	vec4	hitPlane;
-	bool	bHit;
+	pTS->mEyePos[1]	=0.6f;
+	pTS->mEyePos[2]	=4.5f;
 
-	GameCamera	*pCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
+	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
 
 	//projection won't change in this test program, probably
 	{
 		mat4	proj;
-		GameCam_GetProjection(pCam, proj);
+		GameCam_GetProjection(pTS->mpCam, proj);
 		CBK_SetProjection(pCBK, proj);
 	}
 
@@ -152,25 +235,25 @@ int main(void)
 	vp.TopLeftX	=0;
 	vp.TopLeftY	=0;
 
-	GD_RSSetViewPort(pGD, &vp);
+	GD_RSSetViewPort(pTS->mpGD, &vp);
 
 	//set constant buffers to shaders, think I just have to do this once
-	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "SkinWNormWPosTex0VS"));
-	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));	
-	CBK_SetCommonCBToShaders(pCBK, pGD);
+	GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "SkinWNormWPosTex0VS"));
+	GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));	
+	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
 	//for each set of shaders used?
-	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
-	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));	
-	CBK_SetCommonCBToShaders(pCBK, pGD);
+	GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
+	GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));	
+	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
-	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));	
-	CBK_SetCommonCBToShaders(pCBK, pGD);
+	GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
+	GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));	
+	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
-	GD_RSSetState(pGD, pRast);
-	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
-	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	GD_RSSetState(pTS->mpGD, pRast);
+	GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
+	GD_IASetPrimitiveTopology(pTS->mpGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	vec4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	vec4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
@@ -183,12 +266,15 @@ int main(void)
 	vec3	light0		={	1.0f, 1.0f, 1.0f	};
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
-	vec3	lightDir	={	0.3f, -0.7f, -0.5f	};
 	vec3	skyGrad0	={	0.7f, 0.2f, 0.1f	};
 	vec3	skyGrad1	={	0.2f, 0.3f, 1.0f	};
-	vec3	dangly		={	700.0f, 0.0f, 0.0f	};
 
-	glm_vec3_normalize(lightDir);
+	pTS->mLightDir[0]		=0.3f;
+	pTS->mLightDir[1]		=-0.7f;
+	pTS->mLightDir[2]		=-0.5f;
+	pTS->mDanglyForce[0]	=700.0f;
+
+	glm_vec3_normalize(pTS->mLightDir);
 	glm_mat4_identity(charMat);
 
 	CBK_SetFogVars(pCBK, 500.0f, 1000.0f, true);
@@ -199,7 +285,7 @@ int main(void)
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
 
 	//character
-	Mesh		*pMesh	=Mesh_Read(pGD, pSK, "Characters/Body.mesh");
+	Mesh		*pMesh	=Mesh_Read(pTS->mpGD, pSK, "Characters/Body.mesh");
 	Character	*pChar	=Character_Read("Characters/DocuBlender.Character");
 	AnimLib		*pALib	=AnimLib_Read("Characters/DocuBlender.AnimLib");
 
@@ -207,22 +293,23 @@ int main(void)
 
 	float	animTime	=0.0f;
 
-	bool	bRunning		=true;
-	bool	bMouseLooking	=false;
-	while(bRunning)
+	pTS->mbRunning	=true;
+	while(pTS->mbRunning)
 	{
-		float	deltaYaw		=0.0f;
-		float	deltaPitch		=0.0f;
+		pTS->mDeltaYaw		=0.0f;
+		pTS->mDeltaPitch	=0.0f;
 
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
-			vec3	forward, right, up;
+//			vec3	forward, right, up;
 
-			GameCam_GetForwardVec(pCam, forward);
-			GameCam_GetRightVec(pCam, right);
-			GameCam_GetUpVec(pCam, up);
+//			GameCam_GetForwardVec(pCam, forward);
+//			GameCam_GetRightVec(pCam, right);
+//			GameCam_GetUpVec(pCam, up);
 
+			INP_Update(pInp, pTS);
+/*
 			SDL_Event	evt;
 			while(SDL_PollEvent(&evt))
 			{
@@ -310,9 +397,14 @@ int main(void)
 					}
 				}
 			}
+			*/
 
 			//do input here
 			//move turn etc
+			if(pTS->mbDrawHit)
+			{
+				glm_translate_make(hitSphereMat, pTS->mHitPos);
+			}
 
 			UpdateTimer_UpdateDone(pUT);
 		}
@@ -328,12 +420,11 @@ int main(void)
 		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
 
 		//set no blend, I think post processing turns it on maybe
-		GD_OMSetBlendState(pGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
-		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
+		GD_OMSetBlendState(pTS->mpGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
+		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
 
 		//camera update
-		GameCam_Update(pCam, eyePos, deltaPitch, deltaYaw, 0.0f);
-		deltaYaw	=deltaPitch	=0.0f;
+		GameCam_Update(pTS->mpCam, pTS->mEyePos, pTS->mDeltaPitch, pTS->mDeltaYaw, 0.0f);
 
 		//set CB view
 		{
@@ -343,121 +434,121 @@ int main(void)
 			vec4	viewQuat;
 			vec3	negPos;
 
-			GameCam_GetViewMatrixFly(pCam, viewMat, eyePos, viewQuat);
+			GameCam_GetViewMatrixFly(pTS->mpCam, viewMat, pTS->mEyePos, viewQuat);
 
-			glm_vec3_negate_to(eyePos, negPos);
+			glm_vec3_negate_to(pTS->mEyePos, negPos);
 
 			CBK_SetView(pCBK, viewMat, negPos);
 		}
 
 
-		PP_SetTargets(pPP, pGD, "LinearColor", "LinearDepth");
+		PP_SetTargets(pPP, pTS->mpGD, "LinearColor", "LinearDepth");
 
-		GD_OMSetDepthStencilState(pGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
+		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
 
-		PP_ClearDepth(pPP, pGD, "LinearDepth");
-		PP_ClearTarget(pPP, pGD, "LinearColor");
+		PP_ClearDepth(pPP, pTS->mpGD, "LinearDepth");
+		PP_ClearTarget(pPP, pTS->mpGD, "LinearColor");
 
 		//set input layout for the prim draws
-		GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
-		GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-		GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS"));
+		GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
+		GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
+		GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS"));
 
 		//update frame CB
-		CBK_UpdateFrame(pCBK, pGD);
+		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
 		//draw light ray
-		GD_PSSetSRV(pGD, NULL, 0);
-		CP_DrawLightRay(pLR, lightDir, lightRayCol, pCBK, pGD);
+		GD_PSSetSRV(pTS->mpGD, NULL, 0);
+		CP_DrawLightRay(pLR, pTS->mLightDir, lightRayCol, pCBK, pTS->mpGD);
 
 		//draw xyz axis
-		CP_DrawAxis(pAxis, lightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pGD);
+		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
 
 		//impact sphere VB/IB etc
-		if(bDrawHit)
+		if(pTS->mbDrawHit)
 		{
-			GD_IASetVertexBuffers(pGD, pCube->mpVB, 24, 0);
-			GD_IASetIndexBuffers(pGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
-			GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
-			GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
+			GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, 24, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+			GD_PSSetSRV(pTS->mpGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
+			GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
 			CBK_SetSpecular(pCBK, specColor, 6.0f);
-			CBK_SetTrilights3(pCBK, light0, light1, light2, lightDir);
+			CBK_SetTrilights3(pCBK, light0, light1, light2, pTS->mLightDir);
 			CBK_SetSolidColour(pCBK, solidColor0);
 
 			CBK_SetWorldMat(pCBK, hitSphereMat);
 			CBK_SetSolidColour(pCBK, solidColor0);
-			CBK_UpdateObject(pCBK, pGD);
-			GD_DrawIndexed(pGD, pCube->mIndexCount, 0, 0);
+			CBK_UpdateObject(pCBK, pTS->mpGD);
+			GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
 		}
 
 		//debug draw quadtree leaf cubes
-		if(bDrawTerNodes)
+		if(pTS->mbDrawTerNodes)
 		{
-			GD_IASetVertexBuffers(pGD, pQTBoxes->mpVB, 24, 0);
-			GD_IASetIndexBuffers(pGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pQTBoxes->mpVB, 24, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
 			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
-			CBK_UpdateObject(pCBK, pGD);
-			GD_DrawIndexed(pGD, pQTBoxes->mIndexCount, 0, 0);
+			CBK_UpdateObject(pCBK, pTS->mpGD);
+			GD_DrawIndexed(pTS->mpGD, pQTBoxes->mIndexCount, 0, 0);
 		}
 
 		//debug draw many rays
-		if(bDrawManyRays && pManyRays != NULL)
+		if(pTS->mbDrawManyRays && pTS->mpManyRays != NULL)
 		{
-			GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormCol0"));
-			GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosVColorVS"));
-			GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidVColorSpecPS"));
+			GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormCol0"));
+			GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosVColorVS"));
+			GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriSolidVColorSpecPS"));
 
-			GD_IASetVertexBuffers(pGD, pManyRays->mpVB, 28, 0);
-			GD_IASetIndexBuffers(pGD, pManyRays->mpIB, DXGI_FORMAT_R32_UINT, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpManyRays->mpVB, 28, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpManyRays->mpIB, DXGI_FORMAT_R32_UINT, 0);
 			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
-			CBK_UpdateObject(pCBK, pGD);
-			GD_DrawIndexed(pGD, pManyRays->mIndexCount, 0, 0);
+			CBK_UpdateObject(pCBK, pTS->mpGD);
+			GD_DrawIndexed(pTS->mpGD, pTS->mpManyRays->mIndexCount, 0, 0);
 		}
 
-		if(bDrawManyImpacts && sNumRayImpacts > 0)
+		if(pTS->mbDrawManyImpacts && sNumRayImpacts > 0)
 		{
-			GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormCol0"));
-			GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosVColorVS"));
-			GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriSolidVColorSpecPS"));
+			GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormCol0"));
+			GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosVColorVS"));
+			GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriSolidVColorSpecPS"));
 
-			GD_IASetVertexBuffers(pGD, pManyImpacts->mpVB, 28, 0);
-			GD_IASetIndexBuffers(pGD, pManyImpacts->mpIB, DXGI_FORMAT_R32_UINT, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpManyImpacts->mpVB, 28, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpManyImpacts->mpIB, DXGI_FORMAT_R32_UINT, 0);
 			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
-			CBK_UpdateObject(pCBK, pGD);
-			GD_DrawIndexed(pGD, pManyImpacts->mIndexCount, 0, 0);
+			CBK_UpdateObject(pCBK, pTS->mpGD);
+			GD_DrawIndexed(pTS->mpGD, pTS->mpManyImpacts->mIndexCount, 0, 0);
 		}
 
 		//set up terrain draw
 		CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
-		CBK_UpdateObject(pCBK, pGD);
-		Terrain_Draw(pTer, pGD, pSK);
+		CBK_UpdateObject(pCBK, pTS->mpGD);
+		Terrain_Draw(pTS->mpTer, pTS->mpGD, pSK);
 
 		//set mesh draw stuff
 		CBK_SetWorldMat(pCBK, charMat);
-		CBK_SetDanglyForce(pCBK, dangly);
+		CBK_SetDanglyForce(pCBK, pTS->mDanglyForce);
 		CBK_SetSolidColour(pCBK, solidColor0);
-		CBK_UpdateObject(pCBK, pGD);
-		GD_PSSetSampler(pGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
+		CBK_UpdateObject(pCBK, pTS->mpGD);
+		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
 		//bones
 		CBK_SetBonesWithTranspose(pCBK, bones);
-		CBK_UpdateCharacter(pCBK, pGD);
-		CBK_SetCharacterToShaders(pCBK, pGD);
+		CBK_UpdateCharacter(pCBK, pTS->mpGD);
+		CBK_SetCharacterToShaders(pCBK, pTS->mpGD);
 
 		//draw mesh
-		Mesh_Draw(pMesh, pGD, pSK, "SkinWNormWPosTex0VS", "TriTex0SpecPS", "Characters/Docu");
+		Mesh_Draw(pMesh, pTS->mpGD, pSK, "SkinWNormWPosTex0VS", "TriTex0SpecPS", "Characters/Docu");
 
-		PP_ClearDepth(pPP, pGD, "BackDepth");
-		PP_SetTargets(pPP, pGD, "BackColor", "BackDepth");
+		PP_ClearDepth(pPP, pTS->mpGD, "BackDepth");
+		PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
 
-		PP_SetSRV(pPP, pGD, "LinearColor", 1);	//1 for colortex
+		PP_SetSRV(pPP, pTS->mpGD, "LinearColor", 1);	//1 for colortex
 
-		PP_DrawStage(pPP, pGD, pCBK);
+		PP_DrawStage(pPP, pTS->mpGD, pCBK);
 
-		GD_Present(pGD);
+		GD_Present(pTS->mpGD);
 	}
 
-	GD_Destroy(&pGD);
+	GD_Destroy(&pTS->mpGD);
 
 	return	EXIT_SUCCESS;
 }
@@ -637,4 +728,259 @@ static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDelt
 			*pDeltaPitch	+=-KEYTURN_RATE;
 		}
 	}
+}
+
+//event handlers (eh)
+static void	RandLightEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	Misc_RandomDirection(pTS->mLightDir);
+}
+
+static void	DangleDownEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mDanglyForce[0]	-=UVSCALE_RATE;
+}
+
+static void	DangleUpEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mDanglyForce[0]	+=UVSCALE_RATE;
+}
+
+static void	CastOneRayEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mbDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
+}
+
+static void	PrintRandomEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	PrintRandomPointInTerrain(pTS->mpTer);
+}
+
+static void	CastManyRaysEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	TestManyRays(pTS->mpTer);
+	ReBuildManyRayPrims(&pTS->mpManyRays, &pTS->mpManyImpacts, pTS->mpGD);
+}
+
+static void	ToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mbDrawTerNodes	=!pTS->mbDrawTerNodes;
+}
+
+static void	ToggleDrawManyRaysEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mbDrawManyRays	=!pTS->mbDrawManyRays;
+}
+
+static void	ToggleDrawManyImpactsEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mbDrawManyImpacts	=!pTS->mbDrawManyImpacts;
+}
+
+static void	LeftMouseDownEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+}
+
+static void	LeftMouseUpEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+}
+
+static void	RightMouseDownEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	SDL_SetRelativeMouseMode(SDL_TRUE);
+
+	pTS->mbMouseLooking	=true;
+}
+
+static void	RightMouseUpEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	SDL_SetRelativeMouseMode(SDL_FALSE);
+
+	pTS->mbMouseLooking	=false;
+}
+
+static void	MouseMoveEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	if(pTS->mbMouseLooking)
+	{
+		pTS->mDeltaYaw		-=(pEvt->motion.xrel * MOUSE_TO_ANG);
+		pTS->mDeltaPitch	-=(pEvt->motion.yrel * MOUSE_TO_ANG);
+	}
+}
+
+static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	vec3	forward;
+	GameCam_GetForwardVec(pTS->mpCam, forward);
+	glm_vec3_scale(forward, MOVE_RATE, forward);
+
+	glm_vec3_sub(pTS->mEyePos, forward, pTS->mEyePos);
+}
+
+static void	KeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	vec3	forward;
+	GameCam_GetForwardVec(pTS->mpCam, forward);
+	glm_vec3_scale(forward, MOVE_RATE, forward);
+
+	glm_vec3_add(pTS->mEyePos, forward, pTS->mEyePos);
+}
+
+static void	KeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	vec3	right;
+	GameCam_GetRightVec(pTS->mpCam, right);
+	glm_vec3_scale(right, MOVE_RATE, right);
+
+	glm_vec3_sub(pTS->mEyePos, right, pTS->mEyePos);
+}
+
+static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	vec3	right;
+	GameCam_GetRightVec(pTS->mpCam, right);
+	glm_vec3_scale(right, MOVE_RATE, right);
+
+	glm_vec3_add(pTS->mEyePos, right, pTS->mEyePos);
+}
+
+static void	KeyMoveUpEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	vec3	up;
+	GameCam_GetUpVec(pTS->mpCam, up);
+	glm_vec3_scale(up, MOVE_RATE, up);
+
+	glm_vec3_add(pTS->mEyePos, up, pTS->mEyePos);
+}
+
+static void	KeyMoveDownEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	vec3	up;
+	GameCam_GetUpVec(pTS->mpCam, up);
+	glm_vec3_scale(up, MOVE_RATE, up);
+
+	glm_vec3_sub(pTS->mEyePos, up, pTS->mEyePos);
+}
+
+static void	KeyTurnLeftEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mDeltaYaw	+=KEYTURN_RATE;
+}
+
+static void	KeyTurnRightEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mDeltaYaw	-=KEYTURN_RATE;
+}
+
+static void	KeyTurnUpEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mDeltaPitch	+=KEYTURN_RATE;
+}
+
+static void	KeyTurnDownEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mDeltaPitch	-=KEYTURN_RATE;
+}
+
+static void	EscEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mbRunning	=false;
 }

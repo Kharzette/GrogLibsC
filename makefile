@@ -8,8 +8,8 @@ CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c	\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
 #	-Xlinker --verbose	
 SOURCES=$(wildcard *.c)
-LIBS=-lvulkan -lUtilityLib -lMaterialLib -lMeshLib -lTerrainLib# -ldxvk_d3d11 -ldxvk_dxgi
-LDFLAGS=-LUtilityLib -LMaterialLib -LMeshLib -LTerrainLib# -Ldxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu -LSDL/build
+LIBS=-lvulkan -lUtilityLib -lMaterialLib -lMeshLib -lTerrainLib -lInputLib# -ldxvk_d3d11 -ldxvk_dxgi
+LDFLAGS=-LUtilityLib -LMaterialLib -LMeshLib -LTerrainLib -LInputLib# -Ldxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu -LSDL/build
 
 all: TestStuff
 

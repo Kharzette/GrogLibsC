@@ -1323,8 +1323,6 @@ int main(void)
 
 	fclose(f);
 
-	DictSZ	*pCur, *pTmp;
-
 	DictSZ_ForEach(pPSEP, PrintEntryPointsCB, NULL);
 
 	//delete stuff, note that because our void * in the dictionary

@@ -9,3 +9,12 @@ Goals
 		RayAxialBox
 		RayOrientedBox
 	TextureAtlas based shading
+		Test textures
+			Grassland
+			Snow
+			Rocky
+			Forest Undergrowth
+			Beachy sand for water areas
+			Lava
+			Cracked mud?
+			Black rock?

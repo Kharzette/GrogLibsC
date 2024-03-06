@@ -24,7 +24,7 @@ void	KeyFrame_Read(FILE *f, KeyFrame *pKey)
 
 void	KeyFrame_GetMatrix(const KeyFrame *pKey, mat4 mat)
 {
-	mat4	scale, rot, pos, temp;
+	mat4	scale, rot, pos;
 
 	glm_scale_make(scale, pKey->mScale);
 

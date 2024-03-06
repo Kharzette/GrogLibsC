@@ -63,7 +63,6 @@ void	DictSZ_Remove(DictSZ **ppHead, const UT_string *pKey)
 
 void *DictSZ_GetValue(const DictSZ *pHead, const UT_string *pKey)
 {
-	void	*pRet	=NULL;
 	DictSZ	*pHash;
 
 	HASH_FIND_STR(pHead, utstring_body(pKey), pHash);
@@ -76,7 +75,6 @@ void *DictSZ_GetValue(const DictSZ *pHead, const UT_string *pKey)
 
 void *DictSZ_GetValueccp(const DictSZ *pHead, const char *pKey)
 {
-	void	*pRet	=NULL;
 	DictSZ	*pHash;
 
 	//HASH_FIND_STR(pHead, pKey, pHash);

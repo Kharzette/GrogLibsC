@@ -38,6 +38,8 @@ Anim	*Anim_Read(FILE *f, const Skeleton *pSkel)
 		pRet->mpSubAnims[i]	=SubAnim_Read(f, pSkel);
 	}
 	pRet->mNumSubAnims	=numSA;
+
+	return	pRet;
 }
 
 

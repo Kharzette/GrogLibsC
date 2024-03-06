@@ -61,7 +61,18 @@ typedef struct	VPosTex_t
 static void MakeQuad(PostProcess *pPP, GraphicsDevice *pGD)
 {
 	VPosTex	verts[4]	={
-		{	-1, 1, 0.9f	}, {	1, 1, 0.9f	}, {	-1, -1, 0.9f	}, {	1, -1, 0.9f	}
+		{
+			{	-1, 1, 0.9f	}
+		},
+		{
+			{	1, 1, 0.9f	}
+		},
+		{
+			{	-1, -1, 0.9f	}
+		},
+		{
+			{	1, -1, 0.9f	}
+		}
 	};
 
 	Misc_Convert2ToF16(0, 0, verts[0].TexCoord0);

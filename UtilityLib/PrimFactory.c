@@ -207,8 +207,6 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD)
 		idx	+=4;
 	}
 
-	size_t	vpntSize	=sizeof(VPosNormTex0);
-
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
 
@@ -410,8 +408,6 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 		}
 	}
 
-	size_t	vpntSize	=sizeof(VPosNormTex0);
-
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
 
@@ -586,8 +582,6 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, const vec4 colour, int 
 			idx	+=4;
 		}
 	}
-
-	size_t	vpntSize	=sizeof(VPosNormCol0);
 
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
@@ -794,8 +788,6 @@ PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4
 		}
 	}
 
-	size_t	vpntSize	=sizeof(VPosNormCol0);
-
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
 
@@ -971,8 +963,6 @@ PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD)
 		indexes[i]	=idx++;
 	}
 
-	size_t	vpntSize	=sizeof(VPosNormTex0);
-
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
 
@@ -1124,8 +1114,6 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	{
 		indexes[i]	=idx++;
 	}
-
-	size_t	vpntSize	=sizeof(VPosNormTex0);
 
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
@@ -1287,8 +1275,6 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 		pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
 	}
 
-	size_t	vpntSize	=sizeof(VPosNormTex0);
-
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
 
@@ -1350,7 +1336,6 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 			float	rtheta	=glm_rad(theta);
 			float	rdtheta	=glm_rad(dtheta);
 			float	rphi	=glm_rad(phi);
-			float	rdphi	=glm_rad(dphi);
 
 			if(pIdx == 0)
 			{
@@ -1570,8 +1555,6 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 		pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
 		pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
 	}
-
-	size_t	vpntSize	=sizeof(VPosNormTex0);
 
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));

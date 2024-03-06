@@ -32,7 +32,6 @@ typedef struct	LightRay_t
 static const	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
 static const	vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
 static const	vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
-static const	vec3	One		={	1.0f, 1.0f, 1.0f	};
 
 
 AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD)
@@ -153,7 +152,7 @@ void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 	GD_IASetIndexBuffers(pGD, pRay->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 	mat4	pointy;
-	glm_mat4_mul_sse2(pRay->mWorld, pRay->mPointyOffset, pointy);
+	glm_mat4_mul(pRay->mWorld, pRay->mPointyOffset, pointy);
 
 	CBK_SetWorldMat(pCBK, pointy);
 	CBK_UpdateObject(pCBK, pGD);
@@ -199,9 +198,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	glm_translate_make(pointyTrans, pointyPos);
 
 	mat4	pointyMat;
-	glm_mat4_mul_sse2(pointyTrans, pointyRot, pointyMat);
+	glm_mat4_mul(pointyTrans, pointyRot, pointyMat);
 
-	glm_mat4_mul_sse2(pAxis->mWorld, pointyMat, pointyMat);
+	glm_mat4_mul(pAxis->mWorld, pointyMat, pointyMat);
 
 	CBK_SetWorldMat(pCBK, pointyMat);
 	CBK_UpdateObject(pCBK, pGD);
@@ -229,9 +228,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 
 	glm_rotate_make(pointyRot, GLM_PI, UnitX);
 	glm_translate_make(pointyTrans, pointyPos);
-	glm_mat4_mul_sse2(pointyTrans, pointyRot, pointyMat);
+	glm_mat4_mul(pointyTrans, pointyRot, pointyMat);
 
-	glm_mat4_mul_sse2(pAxis->mWorld, pointyMat, pointyMat);
+	glm_mat4_mul(pAxis->mWorld, pointyMat, pointyMat);
 
 	CBK_SetWorldMat(pCBK, pointyMat);
 	CBK_UpdateObject(pCBK, pGD);
@@ -259,9 +258,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 
 	glm_rotate_make(pointyRot, -GLM_PI_2, UnitX);
 	glm_translate_make(pointyTrans, pointyPos);
-	glm_mat4_mul_sse2(pointyTrans, pointyRot, pointyMat);
+	glm_mat4_mul(pointyTrans, pointyRot, pointyMat);
 
-	glm_mat4_mul_sse2(pAxis->mWorld, pointyMat, pointyMat);
+	glm_mat4_mul(pAxis->mWorld, pointyMat, pointyMat);
 
 	CBK_SetWorldMat(pCBK, pointyMat);
 	CBK_UpdateObject(pCBK, pGD);

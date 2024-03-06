@@ -14,10 +14,11 @@
 
 typedef struct	Terrain_t
 {
-	UT_string			*mpName;
-	ID3D11Buffer		*mpVerts, *mpIndexs;
-	ID3D11InputLayout	*mpLayout;
-	int					mNumVerts, mNumTriangles, mVertSize;
+	UT_string					*mpName;
+	ID3D11Buffer				*mpVerts, *mpIndexs;
+	ID3D11InputLayout			*mpLayout;
+	ID3D11ShaderResourceView	*mpSRV;
+	int							mNumVerts, mNumTriangles, mVertSize;
 
 	QuadTree	*mpQT;
 }	Terrain;
@@ -424,6 +425,12 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 }
 
 
+void	Terrain_SetSRV(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK)
+{
+	pTer->mpSRV	=StuffKeeper_GetSRV(pSK, szSRV);
+}
+
+
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 {
 	GD_IASetVertexBuffers(pGD, pTer->mpVerts, pTer->mVertSize, 0);
@@ -432,6 +439,8 @@ void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 
 	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
 	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));
+
+	GD_PSSetSRV(pGD, pTer->mpSRV, 0);
 
 	GD_DrawIndexed(pGD, pTer->mNumTriangles * 3, 0, 0);
 }

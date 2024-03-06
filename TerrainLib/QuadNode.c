@@ -313,8 +313,6 @@ QuadNode	*QN_Build(float *pHeights, int w, int h, const vec3 mins, const vec3 ma
 	memcpy(pNode->mMins, mins, sizeof(vec3));
 	memcpy(pNode->mMaxs, maxs, sizeof(vec3));
 
-	int	sv3	=sizeof(vec3);
-
 	int	nodeSize	=Misc_SSE_RoundFToI(maxs[0] - mins[0]) + 1.0f;
 
 	if(nodeSize <= 4)

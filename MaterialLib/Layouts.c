@@ -152,14 +152,6 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16_FLOAT,		0,	28,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 
-	//VPosNormTex04Col0
-	D3D11_INPUT_ELEMENT_DESC	iedVPosNormTex04Col0[]	=
-	{
-		{	"POSITION",	0,	DXGI_FORMAT_R32G32B32_FLOAT,	0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
-		{	"NORMAL",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	12,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
-		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	20,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
-		{	"COLOR",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	28,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
-	};
 
 	//VPos
 	ShaderBytes			*pCode	=DictSZ_GetValueccp(pVSCode, "WPosVS");
@@ -320,14 +312,4 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		return;
 	}
 	DictSZ_Addccp(ppLayouts, "VPosNormTanTex0", pLO);
-
-	//VPosNormTex04Col0, do when terrain gets added
-//	pCode	=DictSZ_GetValueccp(pVSCode, "WNormWPosTexFactVS");
-//	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex04Col0, 4, pCode->mpBytes, pCode->mLen);
-//	if(pLO == NULL)
-//	{
-//		printf("Error creating layout.\n");
-//		return;
-//	}
-//	DictSZ_Addccp(ppLayouts, "VPosNormTex04Col0", pLO);
 }

@@ -13,6 +13,7 @@
 #include	"MaterialLib/StuffKeeper.h"
 #include	"MaterialLib/CBKeeper.h"
 #include	"MaterialLib/PostProcess.h"
+#include	"MaterialLib/Material.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
@@ -85,8 +86,6 @@ typedef struct	TestStuff_t
 static void	TestManyRays(const Terrain *pTer);
 static void	PrintRandomPointInTerrain(const Terrain *pTer);
 static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
-static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDeltaPitch);
-static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt);
 static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
 
 //input event handlers
@@ -146,6 +145,8 @@ int main(void)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_d, KeyMoveRightEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_c, KeyMoveUpEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_z, KeyMoveDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_LEFT, DangleDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_RIGHT, DangleUpEH);
 
 	//key turning
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_q, KeyTurnLeftEH);
@@ -188,6 +189,8 @@ int main(void)
 
 	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
 
+	Terrain_SetSRV(pTS->mpTer, "Terrain/TerAtlas", pSK);
+
 	//debugdraw quadtree boxes
 	int		numBounds;
 	vec3	*pMins, *pMaxs;
@@ -223,9 +226,6 @@ int main(void)
 		CBK_SetProjection(pCBK, proj);
 	}
 
-	//good old xna blue
-	float	clearColor[]	={ 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f };
-
 	D3D11_VIEWPORT	vp;
 
 	vp.Width	=RESX;
@@ -257,8 +257,6 @@ int main(void)
 
 	vec4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	vec4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	vec4	solidColor1	={	0.5f, 1.0f, 1.0f, 1.0f	};
-	vec4	solidColor2	={	1.0f, 0.5f, 1.0f, 1.0f	};
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
 	vec4	YAxisCol	={	0.0f, 0.0f, 1.0f, 1.0f	};
@@ -281,8 +279,23 @@ int main(void)
 	CBK_SetSky(pCBK, skyGrad0, skyGrad1);
 
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
-
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
+
+	//materials
+	Material	*pSphereMat	=MAT_Create(pTS->mpGD, pSK);
+	Material	*pRaysMat	=MAT_Create(pTS->mpGD, pSK);
+	Material	*pHitsMat	=MAT_Create(pTS->mpGD, pSK);
+	Material	*pLRayMat	=MAT_Create(pTS->mpGD, pSK);
+	Material	*pAxisMat	=MAT_Create(pTS->mpGD, pSK);
+	Material	*pCharMat	=MAT_Create(pTS->mpGD, pSK);
+
+	MAT_SetLayout(pSphereMat, "VPosNormTex0", pSK);
+	MAT_SetLights(pSphereMat, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pSphereMat, "WNormWPosTexVS", pSK);
+	MAT_SetPShader(pSphereMat, "TriSolidSpecPS", pSK);
+	MAT_SetSolidColour(pSphereMat, solidColor0);
+	MAT_SetSRV0(pSphereMat, "Walls/Glass04", pSK);
+	MAT_SetSpecular(pSphereMat, specColor, 6.0f);
 
 	//character
 	Mesh		*pMesh	=Mesh_Read(pTS->mpGD, pSK, "Characters/Body.mesh");
@@ -292,6 +305,7 @@ int main(void)
 	mat4	bones[MAX_BONES];
 
 	float	animTime	=0.0f;
+	StuffKeeper_GetInputLayout(pSK, "VPosNormTex0");
 
 	pTS->mbRunning	=true;
 	while(pTS->mbRunning)
@@ -302,102 +316,7 @@ int main(void)
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
-//			vec3	forward, right, up;
-
-//			GameCam_GetForwardVec(pCam, forward);
-//			GameCam_GetRightVec(pCam, right);
-//			GameCam_GetUpVec(pCam, up);
-
 			INP_Update(pInp, pTS);
-/*
-			SDL_Event	evt;
-			while(SDL_PollEvent(&evt))
-			{
-				bRunning	=KeyMovementHandler(pCam, eyePos, &evt);
-
-				KeyTurnHandler(&evt, &deltaYaw, &deltaPitch);
-
-				if(evt.type == SDL_KEYDOWN)
-				{
-					if(evt.key.keysym.sym == SDLK_LEFT)
-					{
-						dangly[0]	-=UVSCALE_RATE;
-					}
-					else if(evt.key.keysym.sym == SDLK_RIGHT)
-					{
-						dangly[0]	+=UVSCALE_RATE;
-					}
-					else if(evt.key.keysym.sym == SDLK_l)
-					{
-						Misc_RandomDirection(lightDir);
-					}
-					else if(evt.key.keysym.sym == SDLK_i)
-					{
-						bDrawHit	=TestOneRay(pTer, pCam, eyePos, hitPos, hitPlane);
-
-						if(bDrawHit)
-						{
-							glm_translate_make(hitSphereMat, hitPos);
-						}
-					}
-					else if(evt.key.keysym.sym == SDLK_p)
-					{
-						PrintRandomPointInTerrain(pTer);
-					}
-					else if(evt.key.keysym.sym == SDLK_u)
-					{
-						TestManyRays(pTer);
-						ReBuildManyRayPrims(&pManyRays, &pManyImpacts, pGD);
-					}
-					else if(evt.key.keysym.sym == SDLK_n)
-					{
-						bDrawTerNodes	=!bDrawTerNodes;
-					}
-					else if(evt.key.keysym.sym == SDLK_m)
-					{
-						bDrawManyRays	=!bDrawManyRays;
-					}
-					else if(evt.key.keysym.sym == SDLK_b)
-					{
-						bDrawManyImpacts	=!bDrawManyImpacts;
-					}
-				}
-				else if(evt.type == SDL_MOUSEBUTTONDOWN)
-				{
-					if(evt.button.button == SDL_BUTTON_RIGHT)
-					{
-						int	capResult	=SDL_SetRelativeMouseMode(SDL_TRUE);
-						printf("Right button down: %d\n", capResult);
-						bMouseLooking	=(capResult == 0);
-					}
-					else if(evt.button.button == SDL_BUTTON_LEFT)
-					{
-						printf("Left button down\n");
-					}
-				}
-				else if(evt.type == SDL_MOUSEBUTTONUP)
-				{
-					if(evt.button.button == SDL_BUTTON_RIGHT)
-					{
-						int	capResult	=SDL_SetRelativeMouseMode(SDL_FALSE);
-						printf("Right button up: %d\n", capResult);
-						bMouseLooking	=false;
-					}
-					else if(evt.button.button == SDL_BUTTON_LEFT)
-					{
-						printf("Left button up\n");
-					}
-				}
-				else if(evt.type == SDL_MOUSEMOTION)
-				{
-					if(bMouseLooking)
-					{
-						deltaYaw	-=(evt.motion.xrel * MOUSE_TO_ANG);
-						deltaPitch	-=(evt.motion.yrel * MOUSE_TO_ANG);
-					}
-				}
-			}
-			*/
 
 			//do input here
 			//move turn etc
@@ -414,8 +333,8 @@ int main(void)
 
 		animTime	+=dt;
 //		AnimLib_Animate(pALib, "DocuBaseBlenderCoords", animTime);
-//		AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
-		AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
+		AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
+//		AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
 		
 		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
 
@@ -428,8 +347,6 @@ int main(void)
 
 		//set CB view
 		{
-			vec3	zeroVec		={	0.0f, 0.0f, 0.0f		};
-			vec4	idntQuat	={	0.0f, 0.0f, 0.0f, 1.0f	};
 			mat4	viewMat;
 			vec4	viewQuat;
 			vec3	negPos;
@@ -443,16 +360,15 @@ int main(void)
 
 
 		PP_SetTargets(pPP, pTS->mpGD, "LinearColor", "LinearDepth");
-
 		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
 
 		PP_ClearDepth(pPP, pTS->mpGD, "LinearDepth");
 		PP_ClearTarget(pPP, pTS->mpGD, "LinearColor");
 
 		//set input layout for the prim draws
-		GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 		GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
 		GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS"));
+		GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 
 		//update frame CB
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
@@ -467,17 +383,13 @@ int main(void)
 		//impact sphere VB/IB etc
 		if(pTS->mbDrawHit)
 		{
+			MAT_SetWorld(pSphereMat, hitSphereMat);
+
 			GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, 24, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
-			GD_PSSetSRV(pTS->mpGD, StuffKeeper_GetSRV(pSK, "Floors/Floor13"), 0);
-			GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));
-			CBK_SetSpecular(pCBK, specColor, 6.0f);
-			CBK_SetTrilights3(pCBK, light0, light1, light2, pTS->mLightDir);
-			CBK_SetSolidColour(pCBK, solidColor0);
 
-			CBK_SetWorldMat(pCBK, hitSphereMat);
-			CBK_SetSolidColour(pCBK, solidColor0);
-			CBK_UpdateObject(pCBK, pTS->mpGD);
+			MAT_Apply(pSphereMat, pCBK, pTS->mpGD);
+
 			GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
 		}
 
@@ -659,75 +571,6 @@ static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 e
 	bool	bHit	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
 
 	return	bHit;
-}
-
-static bool	KeyMovementHandler(GameCamera *pCam, vec3 eyePos, const SDL_Event *pEvt)
-{
-	vec3	forward, right, up;
-
-	GameCam_GetForwardVec(pCam, forward);
-	GameCam_GetRightVec(pCam, right);
-	GameCam_GetUpVec(pCam, up);
-
-	if(pEvt->type == SDL_QUIT)
-	{
-		return	false;
-	}
-	else if(pEvt->type == SDL_KEYDOWN)
-	{
-		if(pEvt->key.keysym.sym == SDLK_w)
-		{
-			glm_vec3_sub(eyePos, forward, eyePos);
-		}
-		else if(pEvt->key.keysym.sym == SDLK_a)
-		{
-			glm_vec3_sub(eyePos, right, eyePos);
-		}
-		else if(pEvt->key.keysym.sym == SDLK_s)
-		{
-			glm_vec3_add(eyePos, forward, eyePos);
-		}
-		else if(pEvt->key.keysym.sym == SDLK_d)
-		{
-			glm_vec3_add(eyePos, right, eyePos);
-		}
-		else if(pEvt->key.keysym.sym == SDLK_z)
-		{
-			glm_vec3_sub(eyePos, up, eyePos);
-		}
-		else if(pEvt->key.keysym.sym == SDLK_c)
-		{
-			glm_vec3_add(eyePos, up, eyePos);
-		}
-		else if(pEvt->key.keysym.sym == SDLK_ESCAPE)
-		{
-			return	false;
-		}
-	}
-	return	true;
-}
-
-static void	KeyTurnHandler(const SDL_Event *pEvt, float *pDeltaYaw, float *pDeltaPitch)
-{
-	if(pEvt->type == SDL_KEYDOWN)
-	{
-		if(pEvt->key.keysym.sym == SDLK_q)
-		{
-			*pDeltaYaw	+=KEYTURN_RATE;
-		}
-		else if(pEvt->key.keysym.sym == SDLK_e)
-		{
-			*pDeltaYaw	+=-KEYTURN_RATE;
-		}
-		else if(pEvt->key.keysym.sym == SDLK_r)
-		{
-			*pDeltaPitch	+=KEYTURN_RATE;
-		}
-		else if(pEvt->key.keysym.sym == SDLK_t)
-		{
-			*pDeltaPitch	+=-KEYTURN_RATE;
-		}
-	}
 }
 
 //event handlers (eh)

@@ -1,10 +1,11 @@
 CC=gcc
-CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c	\
+CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mf16c	\
 	-ISDL/include	\
 	-Iuthash/include	\
 	-Idxvk-native/include/native/windows	\
 	-Idxvk-native/include/native/directx \
 	-Icglm/include	\
+	-Wall				\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
 #	-Xlinker --verbose	
 SOURCES=$(wildcard *.c)

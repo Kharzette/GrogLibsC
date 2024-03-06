@@ -1,8 +1,9 @@
 CC=gcc
-CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c -fpic -shared	\
+CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mf16c -fpic -shared	\
 	-I../SDL/include	\
 	-I../uthash/include	\
 	-I../cglm/include	\
+	-Wall				\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
 #	-Xlinker --verbose	
 SOURCES=$(wildcard *.c)

@@ -226,13 +226,21 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpTextModeBuf->lpVtbl->QueryInterface(pRet->mpTextModeBuf, &IID_ID3D11Resource, (void **)&pRet->mpTextModeRes);
 
 	//alloc cpu side data
-	pRet->mpPerObject	=malloc(sizeof(PerObject));
-	pRet->mpPerFrame	=malloc(sizeof(PerFrame));
-	pRet->mpTwoD		=malloc(sizeof(TwoD));
-	pRet->mpPost		=malloc(sizeof(Post));
-	pRet->mpPerShadow	=malloc(sizeof(PerShadow));
-	pRet->mpTextMode	=malloc(sizeof(TextMode));
-
+#ifdef	__AVX__
+	pRet->mpPerObject	=aligned_alloc(32, sizeof(PerObject));
+	pRet->mpPerFrame	=aligned_alloc(32, sizeof(PerFrame));
+	pRet->mpTwoD		=aligned_alloc(32, sizeof(TwoD));
+	pRet->mpPost		=aligned_alloc(32, sizeof(Post));
+	pRet->mpPerShadow	=aligned_alloc(32, sizeof(PerShadow));
+	pRet->mpTextMode	=aligned_alloc(32, sizeof(TextMode));
+#else
+	pRet->mpPerObject	=aligned_alloc(16, sizeof(PerObject));
+	pRet->mpPerFrame	=aligned_alloc(16, sizeof(PerFrame));
+	pRet->mpTwoD		=aligned_alloc(16, sizeof(TwoD));
+	pRet->mpPost		=aligned_alloc(16, sizeof(Post));
+	pRet->mpPerShadow	=aligned_alloc(16, sizeof(PerShadow));
+	pRet->mpTextMode	=aligned_alloc(16, sizeof(TextMode));
+#endif
 	return	pRet;
 }
 

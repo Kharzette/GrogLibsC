@@ -151,7 +151,6 @@ void	Misc_MakeBaseZOrgBound(float width, float height, float depth, vec3 min, ve
 {
 	float	halfWidth	=width * 0.5f;
 	float	halfHeight	=height * 0.5f;
-	float	halfDepth	=depth * 0.5f;
 
 	glm_vec3_zero(min);
 	glm_vec3_zero(max);
@@ -245,15 +244,15 @@ bool	Misc_RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float
 {
 	float	tmin, tmax, tymin, tymax, tzmin, tzmax;
 
-	char	signx	=(invDir[0] < 0);
-	char	signy	=(invDir[1] < 0);
-	char	signz	=(invDir[2] < 0);
+	bool	signx	=(invDir[0] < 0);
+	bool	signy	=(invDir[1] < 0);
+	bool	signz	=(invDir[2] < 0);
 	
-	tmin	=(bounds[signx][0] - rayStart[0]) * invDir[0];	
-	tmax	=(bounds[1 - signx][0] - rayStart[0]) * invDir[0];
+	tmin	=(bounds[(int)signx][0] - rayStart[0]) * invDir[0];	
+	tmax	=(bounds[1 - (int)signx][0] - rayStart[0]) * invDir[0];
 	
-	tymin	=(bounds[signy][1] - rayStart[1]) * invDir[1];
-	tymax	=(bounds[1 - signy][1] - rayStart[1]) * invDir[1];
+	tymin	=(bounds[(int)signy][1] - rayStart[1]) * invDir[1];
+	tymax	=(bounds[1 - (int)signy][1] - rayStart[1]) * invDir[1];
 	
 	if((tmin > tymax) || (tymin > tmax))
 	{

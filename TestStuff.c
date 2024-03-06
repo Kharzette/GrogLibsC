@@ -95,6 +95,7 @@ static Material	*MakeHitsMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeCharacterMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*MakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK);
 
 //input event handlers
 static void	RandLightEH(void *pContext, const SDL_Event *pEvt);
@@ -207,9 +208,10 @@ int main(void)
 	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
 
 	//test prims
-	PrimObject	*pCube	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
-	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pSK);
-	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
+	PrimObject	*pSphere	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
+	PrimObject	*pSkyCube	=PF_CreateCube(10.0f, true, pTS->mpGD);
+	LightRay	*pLR		=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pSK);
+	AxisXYZ		*pAxis		=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
 
 	CBKeeper	*pCBK	=CBK_Create(pTS->mpGD);
 
@@ -246,17 +248,6 @@ int main(void)
 	GD_RSSetViewPort(pTS->mpGD, &vp);
 
 	//set constant buffers to shaders, think I just have to do this once
-	GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "SkinWNormWPosTex0VS"));
-	GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));	
-	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
-
-	//for each set of shaders used?
-	GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
-	GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));	
-	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
-
-	GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-	GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriTex0SpecPS"));	
 	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
 	GD_RSSetState(pTS->mpGD, pRast);
@@ -290,6 +281,7 @@ int main(void)
 	Material	*pCharMat	=MakeCharacterMat(pTS, pSK);
 	Material	*pTerMat	=MakeTerrainMat(pTS, pSK);
 	Material	*pBoxesMat	=MakeNodeBoxesMat(pTS, pSK);
+	Material	*pSkyBoxMat	=MakeSkyBoxMat(pTS, pSK);
 
 	//character
 	Mesh		*pMesh	=Mesh_Read(pTS->mpGD, pSK, "Characters/Body.mesh");
@@ -357,17 +349,33 @@ int main(void)
 			glm_vec3_negate_to(pTS->mEyePos, negPos);
 
 			CBK_SetView(pCBK, viewMat, negPos);
+
+			//set the skybox world mat to match eye pos
+			glm_translate_make(viewMat, pTS->mEyePos);
+			MAT_SetWorld(pSkyBoxMat, viewMat);
 		}
 
 
 		PP_SetTargets(pPP, pTS->mpGD, "LinearColor", "LinearDepth");
-		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
 
 		PP_ClearDepth(pPP, pTS->mpGD, "LinearDepth");
 		PP_ClearTarget(pPP, pTS->mpGD, "LinearColor");
 
 		//update frame CB
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
+
+		//turn depth off for sky
+		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "DisableDepth"));
+
+		//draw sky first
+		GD_IASetVertexBuffers(pTS->mpGD, pSkyCube->mpVB, 24, 0);
+		GD_IASetIndexBuffers(pTS->mpGD, pSkyCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+
+		MAT_Apply(pSkyBoxMat, pCBK, pTS->mpGD);
+		GD_DrawIndexed(pTS->mpGD, pSkyCube->mIndexCount, 0, 0);
+
+		//turn depth back on
+		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
 
 		//draw light ray
 		CP_DrawLightRay(pLR, pTS->mLightDir, lightRayCol, pCBK, pTS->mpGD);
@@ -380,12 +388,12 @@ int main(void)
 		{
 			MAT_SetWorld(pSphereMat, hitSphereMat);
 
-			GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, 24, 0);
-			GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pSphere->mpVB, 24, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pSphere->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 			MAT_Apply(pSphereMat, pCBK, pTS->mpGD);
 
-			GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
+			GD_DrawIndexed(pTS->mpGD, pSphere->mIndexCount, 0, 0);
 		}
 
 		//debug draw quadtree leaf cubes
@@ -922,6 +930,18 @@ static Material	*MakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, ghosty);
 	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
+static Material	*MakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
+	MAT_SetVShader(pRet, "SkyBoxVS", pSK);
+	MAT_SetPShader(pRet, "SkyGradientFogPS", pSK);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;

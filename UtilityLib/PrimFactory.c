@@ -96,10 +96,10 @@ PrimObject	*PF_CreateCubeFromBounds(const vec3 min, const vec3 max, GraphicsDevi
 	ThreeXYZ(max, max, min, corners[6]);
 	ThreeXYZ(min, max, min, corners[7]);
 
-	return	PF_CreateCubeFromCorners(corners, pGD);
+	return	PF_CreateCubeFromCorners(corners, false, pGD);
 }
 
-PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD)
+PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, bool bFlipped, GraphicsDevice *pGD)
 {
 	VPosNormTex0	vpnt[24];
 
@@ -197,13 +197,24 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD)
 	uint16_t	idx, indexes[36];
 	for(int i=idx=0;i < 36;i+=6)
 	{
-		indexes[i]		=idx + 0;
-		indexes[i + 1]	=idx + 1;
-		indexes[i + 2]	=idx + 2;
-		indexes[i + 3]	=idx + 0;
-		indexes[i + 4]	=idx + 2;
-		indexes[i + 5]	=idx + 3;
-
+		if(bFlipped)
+		{
+			indexes[i]		=idx + 0;
+			indexes[i + 1]	=idx + 2;
+			indexes[i + 2]	=idx + 1;
+			indexes[i + 3]	=idx + 0;
+			indexes[i + 4]	=idx + 3;
+			indexes[i + 5]	=idx + 2;
+		}
+		else
+		{
+			indexes[i]		=idx + 0;
+			indexes[i + 1]	=idx + 1;
+			indexes[i + 2]	=idx + 2;
+			indexes[i + 3]	=idx + 0;
+			indexes[i + 4]	=idx + 2;
+			indexes[i + 5]	=idx + 3;
+		}
 		idx	+=4;
 	}
 
@@ -225,7 +236,7 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, GraphicsDevice *pGD)
 	return	pObj;
 }
 
-PrimObject	*PF_CreateCube(float size, GraphicsDevice *pGD)
+PrimObject	*PF_CreateCube(float size, bool bFlipped, GraphicsDevice *pGD)
 {
 	vec3	xScaled, yScaled, zScaled;
 	vec3	xNeg, yNeg, zNeg;
@@ -252,7 +263,7 @@ PrimObject	*PF_CreateCube(float size, GraphicsDevice *pGD)
 		corners[7][i]	=yScaled[i]	+ xNeg[i]		+ zNeg[i];
 	}
 
-	return	PF_CreateCubeFromCorners(corners, pGD);
+	return	PF_CreateCubeFromCorners(corners, bFlipped, pGD);
 }
 
 PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, int numBounds, GraphicsDevice *pGD)

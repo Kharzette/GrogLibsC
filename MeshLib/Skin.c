@@ -13,6 +13,9 @@ typedef struct	Skin_t
 	mat4	mInverseBindPoses[MAX_BONES];
 	mat4	mBindPoses[MAX_BONES];
 
+	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
+										//units in meters by default
+										
 	//malloc'd collision shapes for bones
 	vec3	*mpBoneBoxes;		//double num for min/max
 	vec4	*mpBoneSpheres;		//xyz center, w radius
@@ -20,16 +23,17 @@ typedef struct	Skin_t
 
 	int	*mpBoneColShapes;	//which shape chosen for each bone in CC
 
-	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
-										//units in meters by default
-
 	mat4	mRootTransform;	//art prog -> grogspace
 }	Skin;
 
 
 Skin	*Skin_Read(FILE *f)
 {
-	Skin	*pRet	=malloc(sizeof(Skin));
+#ifdef __AVX__
+	Skin	*pRet	=aligned_alloc(32, sizeof(Skin));
+#else
+	Skin	*pRet	=aligned_alloc(16, sizeof(Skin));
+#endif
 
 	glm_mat4_identity_array(pRet->mInverseBindPoses, MAX_BONES);
 	glm_mat4_identity_array(pRet->mBindPoses, MAX_BONES);

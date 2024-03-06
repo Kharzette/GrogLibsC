@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c17 -g -march=x86-64 -msse4.2 -fpic -shared	\
+CFLAGS=-std=c17 -g -march=x86-64 -msse4.2 -mavx2 -fpic -shared	\
 	-I../dxvk-native/include/native/directx \
 	-I../SDL/include	\
 	-I../libpng/build/include	\

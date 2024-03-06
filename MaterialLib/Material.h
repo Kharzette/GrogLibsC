@@ -8,7 +8,7 @@ typedef struct	StuffKeeper_t		StuffKeeper;
 typedef struct	CBKeeper_t			CBKeeper;
 
 
-Material	*MAT_Create(GraphicsDevice *pGD, StuffKeeper *pSK);
+Material	*MAT_Create(GraphicsDevice *pGD);
 
 void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD);
 
@@ -19,6 +19,7 @@ bool	MAT_SetSRV0(Material *pMat, const char *szTex, const StuffKeeper *pSK);
 bool	MAT_SetSRV1(Material *pMat, const char *szTex, const StuffKeeper *pSK);
 
 void	MAT_SetLights(Material *pMat, const vec3 tri0, const vec3 tri1, const vec3 tri2, const vec3 lightDir);
+void	MAT_SetLightDirection(Material *pMat, const vec3 lightDir);
 void	MAT_SetSolidColour(Material *pMat, const vec4 col);
 void	MAT_SetSpecular(Material *pMat, const vec4 spec, float specPower);
 void	MAT_SetDanglyForce(Material *pMat, const vec3 force);

@@ -4,6 +4,8 @@
 typedef struct	Terrain_t			Terrain;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	StuffKeeper_t		StuffKeeper;
+typedef struct	Material_t			Material;
+typedef struct	CBKeeper_t			CBKeeper;
 
 //the vertex structure used by the buffer,
 //but also used in the quadtree stuff
@@ -21,6 +23,7 @@ typedef struct	TerrainVert_t
 Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	const char *pName, const char *pPath, int numSmoothPasses, float heightScalar);
 
+void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat);
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);
 void	Terrain_SetSRV(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK);
 void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds);

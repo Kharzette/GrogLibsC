@@ -29,7 +29,7 @@ typedef struct	Material_t
 }	Material;
 
 
-Material	*MAT_Create(GraphicsDevice *pGD, StuffKeeper *pSK)
+Material	*MAT_Create(GraphicsDevice *pGD)
 {
 #ifdef	__AVX__
 	Material	*pRet	=aligned_alloc(32, sizeof(Material));
@@ -125,6 +125,11 @@ void	MAT_SetLights(Material *pMat, const vec3 tri0, const vec3 tri1,
 	glm_vec3_copy(tri0, pMat->mTrilight0);
 	glm_vec3_copy(tri1, pMat->mTrilight1);
 	glm_vec3_copy(tri2, pMat->mTrilight2);
+	glm_vec3_copy(lightDir, pMat->mLightDirection);
+}
+
+void	MAT_SetLightDirection(Material *pMat, const vec3 lightDir)
+{
 	glm_vec3_copy(lightDir, pMat->mLightDirection);
 }
 

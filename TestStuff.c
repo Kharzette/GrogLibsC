@@ -88,6 +88,14 @@ static void	PrintRandomPointInTerrain(const Terrain *pTer);
 static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
 static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
 
+//material setups
+static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*MakeRaysMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*MakeHitsMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*MakeCharacterMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*MakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*MakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK);
+
 //input event handlers
 static void	RandLightEH(void *pContext, const SDL_Event *pEvt);
 static void	DangleDownEH(void *pContext, const SDL_Event *pEvt);
@@ -200,8 +208,8 @@ int main(void)
 
 	//test prims
 	PrimObject	*pCube	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
-	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD);
-	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD);
+	LightRay	*pLR	=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pSK);
+	AxisXYZ		*pAxis	=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
 
 	CBKeeper	*pCBK	=CBK_Create(pTS->mpGD);
 
@@ -252,18 +260,12 @@ int main(void)
 	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
 	GD_RSSetState(pTS->mpGD, pRast);
-	GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
 	GD_IASetPrimitiveTopology(pTS->mpGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	vec4	specColor	={	1.0f, 1.0f, 1.0f, 1.0f	};
-	vec4	solidColor0	={	1.0f, 1.0f, 1.0f, 1.0f	};
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
 	vec4	YAxisCol	={	0.0f, 0.0f, 1.0f, 1.0f	};
 	vec4	ZAxisCol	={	0.0f, 1.0f, 0.0f, 1.0f	};
-	vec3	light0		={	1.0f, 1.0f, 1.0f	};
-	vec3	light1		={	0.2f, 0.3f, 0.3f	};
-	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 	vec3	skyGrad0	={	0.7f, 0.2f, 0.1f	};
 	vec3	skyGrad1	={	0.2f, 0.3f, 1.0f	};
 
@@ -282,20 +284,12 @@ int main(void)
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
 
 	//materials
-	Material	*pSphereMat	=MAT_Create(pTS->mpGD, pSK);
-	Material	*pRaysMat	=MAT_Create(pTS->mpGD, pSK);
-	Material	*pHitsMat	=MAT_Create(pTS->mpGD, pSK);
-	Material	*pLRayMat	=MAT_Create(pTS->mpGD, pSK);
-	Material	*pAxisMat	=MAT_Create(pTS->mpGD, pSK);
-	Material	*pCharMat	=MAT_Create(pTS->mpGD, pSK);
-
-	MAT_SetLayout(pSphereMat, "VPosNormTex0", pSK);
-	MAT_SetLights(pSphereMat, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pSphereMat, "WNormWPosTexVS", pSK);
-	MAT_SetPShader(pSphereMat, "TriSolidSpecPS", pSK);
-	MAT_SetSolidColour(pSphereMat, solidColor0);
-	MAT_SetSRV0(pSphereMat, "Walls/Glass04", pSK);
-	MAT_SetSpecular(pSphereMat, specColor, 6.0f);
+	Material	*pSphereMat	=MakeSphereMat(pTS, pSK);
+	Material	*pRaysMat	=MakeRaysMat(pTS, pSK);
+	Material	*pHitsMat	=MakeHitsMat(pTS, pSK);
+	Material	*pCharMat	=MakeCharacterMat(pTS, pSK);
+	Material	*pTerMat	=MakeTerrainMat(pTS, pSK);
+	Material	*pBoxesMat	=MakeNodeBoxesMat(pTS, pSK);
 
 	//character
 	Mesh		*pMesh	=Mesh_Read(pTS->mpGD, pSK, "Characters/Body.mesh");
@@ -305,7 +299,6 @@ int main(void)
 	mat4	bones[MAX_BONES];
 
 	float	animTime	=0.0f;
-	StuffKeeper_GetInputLayout(pSK, "VPosNormTex0");
 
 	pTS->mbRunning	=true;
 	while(pTS->mbRunning)
@@ -316,10 +309,10 @@ int main(void)
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
-			INP_Update(pInp, pTS);
-
 			//do input here
 			//move turn etc
+			INP_Update(pInp, pTS);
+
 			if(pTS->mbDrawHit)
 			{
 				glm_translate_make(hitSphereMat, pTS->mHitPos);
@@ -327,6 +320,14 @@ int main(void)
 
 			UpdateTimer_UpdateDone(pUT);
 		}
+
+		//update materials incase light changed
+		MAT_SetLightDirection(pSphereMat, pTS->mLightDir);
+		MAT_SetLightDirection(pRaysMat, pTS->mLightDir);
+		MAT_SetLightDirection(pHitsMat, pTS->mLightDir);
+		MAT_SetLightDirection(pCharMat, pTS->mLightDir);
+		MAT_SetLightDirection(pTerMat, pTS->mLightDir);
+		MAT_SetLightDirection(pBoxesMat, pTS->mLightDir);
 
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
@@ -365,16 +366,10 @@ int main(void)
 		PP_ClearDepth(pPP, pTS->mpGD, "LinearDepth");
 		PP_ClearTarget(pPP, pTS->mpGD, "LinearColor");
 
-		//set input layout for the prim draws
-		GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS"));
-		GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS"));
-		GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex0"));
-
 		//update frame CB
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
 		//draw light ray
-		GD_PSSetSRV(pTS->mpGD, NULL, 0);
 		CP_DrawLightRay(pLR, pTS->mLightDir, lightRayCol, pCBK, pTS->mpGD);
 
 		//draw xyz axis
@@ -398,48 +393,33 @@ int main(void)
 		{
 			GD_IASetVertexBuffers(pTS->mpGD, pQTBoxes->mpVB, 24, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
-			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
-			CBK_UpdateObject(pCBK, pTS->mpGD);
+			MAT_Apply(pBoxesMat, pCBK, pTS->mpGD);
 			GD_DrawIndexed(pTS->mpGD, pQTBoxes->mIndexCount, 0, 0);
 		}
 
 		//debug draw many rays
 		if(pTS->mbDrawManyRays && pTS->mpManyRays != NULL)
 		{
-			GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormCol0"));
-			GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosVColorVS"));
-			GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriSolidVColorSpecPS"));
-
 			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpManyRays->mpVB, 28, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpManyRays->mpIB, DXGI_FORMAT_R32_UINT, 0);
-			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
-			CBK_UpdateObject(pCBK, pTS->mpGD);
+			MAT_Apply(pRaysMat, pCBK, pTS->mpGD);
 			GD_DrawIndexed(pTS->mpGD, pTS->mpManyRays->mIndexCount, 0, 0);
 		}
 
 		if(pTS->mbDrawManyImpacts && sNumRayImpacts > 0)
 		{
-			GD_IASetInputLayout(pTS->mpGD, StuffKeeper_GetInputLayout(pSK, "VPosNormCol0"));
-			GD_VSSetShader(pTS->mpGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosVColorVS"));
-			GD_PSSetShader(pTS->mpGD, StuffKeeper_GetPixelShader(pSK, "TriSolidVColorSpecPS"));
-
 			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpManyImpacts->mpVB, 28, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpManyImpacts->mpIB, DXGI_FORMAT_R32_UINT, 0);
-			CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
-			CBK_UpdateObject(pCBK, pTS->mpGD);
+			MAT_Apply(pHitsMat, pCBK, pTS->mpGD);
 			GD_DrawIndexed(pTS->mpGD, pTS->mpManyImpacts->mIndexCount, 0, 0);
 		}
 
-		//set up terrain draw
-		CBK_SetWorldMat(pCBK, GLM_MAT4_IDENTITY);
-		CBK_UpdateObject(pCBK, pTS->mpGD);
-		Terrain_Draw(pTS->mpTer, pTS->mpGD, pSK);
+		//terrain draw
+		Terrain_DrawMat(pTS->mpTer, pTS->mpGD, pCBK, pTerMat);
 
 		//set mesh draw stuff
-		CBK_SetWorldMat(pCBK, charMat);
-		CBK_SetDanglyForce(pCBK, pTS->mDanglyForce);
-		CBK_SetSolidColour(pCBK, solidColor0);
-		CBK_UpdateObject(pCBK, pTS->mpGD);
+		MAT_SetWorld(pCharMat, charMat);
+		MAT_SetDanglyForce(pCharMat, pTS->mDanglyForce);
 		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
 		//bones
@@ -448,7 +428,7 @@ int main(void)
 		CBK_SetCharacterToShaders(pCBK, pTS->mpGD);
 
 		//draw mesh
-		Mesh_Draw(pMesh, pTS->mpGD, pSK, "SkinWNormWPosTex0VS", "TriTex0SpecPS", "Characters/Docu");
+		Mesh_DrawMat(pMesh, pTS->mpGD, pCBK, pCharMat);
 
 		PP_ClearDepth(pPP, pTS->mpGD, "BackDepth");
 		PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
@@ -826,4 +806,123 @@ static void	EscEH(void *pContext, const SDL_Event *pEvt)
 	assert(pTS);
 
 	pTS->mbRunning	=false;
+}
+
+static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f	};
+	vec3	light1		={	0.2f, 0.3f, 0.3f	};
+	vec3	light2		={	0.1f, 0.2f, 0.2f	};
+
+	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosTexVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
+	MAT_SetSRV0(pRet, "Walls/Glass04", pSK);
+	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
+static Material	*MakeRaysMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f	};
+	vec3	light1		={	0.5f, 0.5f, 0.5f	};
+	vec3	light2		={	0.3f, 0.3f, 0.3f	};
+
+	MAT_SetLayout(pRet, "VPosNormCol0", pSK);
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosVColorVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidVColorSpecPS", pSK);
+	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
+	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 4.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
+static Material	*MakeHitsMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f	};
+	vec3	light1		={	0.5f, 0.5f, 0.5f	};
+	vec3	light2		={	0.3f, 0.3f, 0.3f	};
+
+	MAT_SetLayout(pRet, "VPosNormCol0", pSK);
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosVColorVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidVColorSpecPS", pSK);
+	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
+	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 4.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
+static Material	*MakeCharacterMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f	};
+	vec3	light1		={	0.2f, 0.3f, 0.3f	};
+	vec3	light2		={	0.1f, 0.2f, 0.2f	};
+
+	MAT_SetLayout(pRet, "VPosNormBoneTex0", pSK);
+	MAT_SetVShader(pRet, "SkinWNormWPosTex0VS", pSK);
+	MAT_SetPShader(pRet, "TriTex0SpecPS", pSK);
+	MAT_SetSRV0(pRet, "Characters/Docu", pSK);
+
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
+	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
+static Material	*MakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f	};
+	vec3	light1		={	0.2f, 0.3f, 0.3f	};
+	vec3	light2		={	0.1f, 0.2f, 0.2f	};
+
+	MAT_SetLayout(pRet, "VPosNormTex04Tex14", pSK);
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosTexFactVS", pSK);
+	MAT_SetPShader(pRet, "TriTexFact8PS", pSK);
+	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
+	MAT_SetSRV0(pRet, "Terrain/TerAtlas", pSK);
+	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 3.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
+static Material	*MakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f		};
+	vec3	light1		={	0.5f, 0.5f, 0.5f		};
+	vec3	light2		={	0.2f, 0.2f, 0.2f		};
+	vec4	ghosty		={	1.0f, 1.0f, 1.0f, 0.5f	};
+
+	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosTexVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetSolidColour(pRet, ghosty);
+	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
 }

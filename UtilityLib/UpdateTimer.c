@@ -253,12 +253,14 @@ void UpdateTimer_SetFixedTimeStepMilliSeconds(UpdateTimer *pUT, float milliSecon
 
 //static stuff to help with unit conversion
 //from here down
+__attribute_maybe_unused__
 static uint64_t UpdateTimer_DeltaTics(UpdateTimer *pUT)
 {
 	return	Delta(pUT);
 }
 
 //deltas are reasonably safe in floats
+__attribute_maybe_unused__
 static float UpdateTimer_DeltaSeconds(UpdateTimer *pUT)
 {
 	uint64_t	tics	=Delta(pUT);
@@ -267,6 +269,7 @@ static float UpdateTimer_DeltaSeconds(UpdateTimer *pUT)
 }
 
 //deltas are reasonably safe in floats
+__attribute_maybe_unused__
 static float UpdateTimer_DeltaMilliSeconds(UpdateTimer *pUT)
 {
 	uint64_t	tics	=Delta(pUT);

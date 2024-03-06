@@ -8,6 +8,7 @@
 #include	"../UtilityLib/MiscStuff.h"
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
+#include	"../MaterialLib/Material.h"
 #include	"QuadTree.h"
 #include	"QuadNode.h"	//for testing splits
 
@@ -456,6 +457,16 @@ void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));
 
 	GD_PSSetSRV(pGD, pTer->mpSRV, 0);
+
+	GD_DrawIndexed(pGD, pTer->mNumTriangles * 3, 0, 0);
+}
+
+void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat)
+{
+	GD_IASetVertexBuffers(pGD, pTer->mpVerts, pTer->mVertSize, 0);
+	GD_IASetIndexBuffers(pGD, pTer->mpIndexs, DXGI_FORMAT_R32_UINT, 0);
+
+	MAT_Apply(pMat, pCBK, pGD);
 
 	GD_DrawIndexed(pGD, pTer->mNumTriangles * 3, 0, 0);
 }

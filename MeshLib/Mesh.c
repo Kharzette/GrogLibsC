@@ -7,6 +7,7 @@
 #include	"../UtilityLib/FileStuff.h"
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
+#include	"../MaterialLib/Material.h"
 
 
 //scale factors, collada always in meterish scale
@@ -209,6 +210,17 @@ void	Mesh_Draw(Mesh *pMesh, GraphicsDevice *pGD, StuffKeeper *pSK,
 	GD_IASetInputLayout(pGD, pMesh->mpLayout);
 
 	GD_PSSetSRV(pGD, StuffKeeper_GetSRV(pSK, szTex), 0);
+
+	GD_DrawIndexed(pGD, pMesh->mNumTriangles * 3, 0, 0);
+}
+
+//Draw with Material
+void	Mesh_DrawMat(Mesh *pMesh, GraphicsDevice *pGD, CBKeeper *pCBK, Material *pMat)
+{
+	GD_IASetVertexBuffers(pGD, pMesh->mpVerts, pMesh->mVertSize, 0);
+	GD_IASetIndexBuffers(pGD, pMesh->mpIndexs, DXGI_FORMAT_R16_UINT, 0);
+
+	MAT_Apply(pMat, pCBK, pGD);
 
 	GD_DrawIndexed(pGD, pMesh->mNumTriangles * 3, 0, 0);
 }

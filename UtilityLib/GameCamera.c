@@ -55,14 +55,6 @@ GameCamera	*GameCam_Create(bool bSpaceMode, float near, float far,
 	return	pRet;
 }
 
-static void	RotationAxis(const vec3 axis, float angle, vec4 dest)
-{
-	dest[0]	=axis[0];
-	dest[1]	=axis[1];
-	dest[2]	=axis[2];
-	dest[3]	=angle;
-}
-
 //standard fps update
 void	GameCam_Update(GameCamera *pCam, vec3 pos, float deltaPitch, float deltaYaw, float deltaRoll)
 {

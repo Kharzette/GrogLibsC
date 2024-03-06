@@ -86,6 +86,7 @@ static void	SplitBound(const vec3 mins, const vec3 maxs,
 	bMaxs[2]	=middle[2];
 }
 
+__attribute_maybe_unused__
 static bool	LineIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end,
 									vec3 intersection, vec4 planeHit)
 {

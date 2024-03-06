@@ -1,5 +1,6 @@
 #include	"CommonPrims.h"
 #include	"../UtilityLib/MiscStuff.h"
+#include	"../MaterialLib/StuffKeeper.h"
 
 
 typedef struct	AxisXYZ_t
@@ -14,6 +15,10 @@ typedef struct	AxisXYZ_t
 
 	float	mLength, mWidth;
 
+	ID3D11InputLayout	*mpLayout;
+	ID3D11VertexShader	*mpVS;
+	ID3D11PixelShader	*mpPS;
+
 }	AxisXYZ;
 
 typedef struct	LightRay_t
@@ -27,6 +32,10 @@ typedef struct	LightRay_t
 
 	vec3	mPosition;
 
+	ID3D11InputLayout	*mpLayout;
+	ID3D11VertexShader	*mpVS;
+	ID3D11PixelShader	*mpPS;
+
 }	LightRay;
 
 static const	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
@@ -34,7 +43,7 @@ static const	vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
 static const	vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
 
 
-AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD)
+AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD, const StuffKeeper *pSK)
 {
 #ifdef	__AVX__
 	AxisXYZ	*pRet	=aligned_alloc(32, sizeof(AxisXYZ));
@@ -62,10 +71,14 @@ AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD)
 
 	glm_mat4_identity(pRet->mWorld);
 
+	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNormTex0");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS");
+	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS");
+
 	return	pRet;
 }
 
-LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD)
+LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD, const StuffKeeper *pSK)
 {
 #ifdef	__AVX__
 	LightRay	*pRet	=aligned_alloc(32, sizeof(LightRay));
@@ -97,16 +110,22 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD)
 
 	glm_rotate(pRet->mPointyOffset, -GLM_PI_2, UnitX);
 
+	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNormTex0");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS");
+	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS");
+
 	return	pRet;
 }
 
-//assumes view, proj, input layout, and shaders set
 void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 						CBKeeper *pCBK, GraphicsDevice *pGD)
 {
-	//set ray VB/IB
+	//set gpu stuff
 	GD_IASetVertexBuffers(pGD, pRay->mpAxis->mpVB, 24, 0);
 	GD_IASetIndexBuffers(pGD, pRay->mpAxis->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetShader(pGD, pRay->mpVS);
+	GD_PSSetShader(pGD, pRay->mpPS);
+	GD_IASetInputLayout(pGD, pRay->mpLayout);
 
 	//get a good side perp vec
 	vec3	lightSide;
@@ -168,6 +187,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	//set X VB/IB
 	GD_IASetVertexBuffers(pGD, pAxis->mpX->mpVB, 24, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpX->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetShader(pGD, pAxis->mpVS);
+	GD_PSSetShader(pGD, pAxis->mpPS);
+	GD_IASetInputLayout(pGD, pAxis->mpLayout);
 
 	//materialish stuff
 	CBK_SetSolidColour(pCBK, xCol);

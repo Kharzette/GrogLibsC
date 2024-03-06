@@ -246,6 +246,7 @@ static UT_string	*SMToString(ShaderModel sm)
 	}
 }
 
+__attribute_maybe_unused__
 static UT_string	*ProfileFromSM(ShaderModel sm, ShaderEntryType set)
 {
 	UT_string	*pRet;

@@ -19,6 +19,8 @@
 //Post			b5
 //TextMode		b6
 //TwoD			b7
+//BSP Dynamic	b8
+//BSP Dyn Color	b9
 #define	PEROBJECT_REG	0
 #define	PERFRAME_REG	1
 #define	PERSHADOW_REG	2
@@ -27,6 +29,8 @@
 #define	POST_REG		5
 #define	TEXTMODE_REG	6
 #define	TWOD_REG		7
+#define	BSP_LIGHT_POS	8
+#define	BSP_LIGHT_COL	9
 
 
 //constants that need to match shaders

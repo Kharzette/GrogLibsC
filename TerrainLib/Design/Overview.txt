@@ -18,3 +18,5 @@ Goals
 			Lava
 			Cracked mud?
 			Black rock?
+	Editing
+		Scale factor of each atlas piece

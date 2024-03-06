@@ -567,7 +567,7 @@ BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
 	png_byte	colType		=png_get_color_type(pPng, pInfo);
 	png_byte	bitDepth	=png_get_bit_depth(pPng, pInfo);
 
-	int	numPasses	=png_set_interlace_handling(pPng);
+//	int	numPasses	=png_set_interlace_handling(pPng);
 	
 	if(bitDepth == 16)
 	{

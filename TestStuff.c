@@ -14,6 +14,7 @@
 #include	"MaterialLib/CBKeeper.h"
 #include	"MaterialLib/PostProcess.h"
 #include	"MaterialLib/Material.h"
+#include	"MaterialLib/ScreenText.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
@@ -43,6 +44,7 @@
 #define	IMPACT_WIDTH	0.2f
 #define	NUM_RAYS		1000
 #define	MOUSE_TO_ANG	0.001f
+#define	MAX_ST_CHARS	256
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES		55
@@ -229,12 +231,14 @@ int main(void)
 
 	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
 
-	//projection won't change in this test program, probably
-	{
-		mat4	proj;
-		GameCam_GetProjection(pTS->mpCam, proj);
-		CBK_SetProjection(pCBK, proj);
-	}
+	//3D Projection
+	mat4	camProj;
+	GameCam_GetProjection(pTS->mpCam, camProj);
+	CBK_SetProjection(pCBK, camProj);
+
+	//2d projection for text
+	mat4	textProj;
+	glm_ortho(0, RESX, RESY, 0, -1.0f, 1.0f, textProj);
 
 	D3D11_VIEWPORT	vp;
 
@@ -274,6 +278,15 @@ int main(void)
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
 
+	//debug screen text
+	ScreenText	*pST	=ST_Create(pTS->mpGD, pSK, MAX_ST_CHARS, "CGA", "CGA");
+
+	ST_AddString(pST, "Timing thing", 69, ZAxisCol, GLM_VEC2_ONE, GLM_VEC2_ONE);
+	{
+		vec2	embiggen	={	4.0f, 4.0f	};
+		ST_ModifyStringScale(pST, 69, embiggen);
+	}
+
 	//materials
 	Material	*pSphereMat	=MakeSphereMat(pTS, pSK);
 	Material	*pRaysMat	=MakeRaysMat(pTS, pSK);
@@ -291,6 +304,7 @@ int main(void)
 	mat4	bones[MAX_BONES];
 
 	float	animTime	=0.0f;
+	float	maxDT		=0.0f;
 
 	pTS->mbRunning	=true;
 	while(pTS->mbRunning)
@@ -323,6 +337,21 @@ int main(void)
 
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
+
+		{
+			if(dt > maxDT)
+			{
+				maxDT	=dt;
+			}
+
+			char	timeStr[32];
+
+			sprintf(timeStr, "maxDT: %f", maxDT);
+
+			ST_ModifyStringText(pST, 69, timeStr);
+		}
+
+		ST_Update(pST, pTS->mpGD);
 
 		animTime	+=dt;
 //		AnimLib_Animate(pALib, "DocuBaseBlenderCoords", animTime);
@@ -437,6 +466,16 @@ int main(void)
 
 		//draw mesh
 		Mesh_DrawMat(pMesh, pTS->mpGD, pCBK, pCharMat);
+
+		//set proj for 2D
+		CBK_SetProjection(pCBK, textProj);
+		CBK_UpdateFrame(pCBK, pTS->mpGD);
+
+		ST_Draw(pST, pTS->mpGD, pCBK);
+
+		//change back to 3D
+		CBK_SetProjection(pCBK, camProj);
+		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
 		PP_ClearDepth(pPP, pTS->mpGD, "BackDepth");
 		PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");

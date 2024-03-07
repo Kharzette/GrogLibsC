@@ -85,3 +85,5 @@ extern void GD_ClearRenderTargetView(GraphicsDevice *pGD,
 	ID3D11RenderTargetView *pView, vec4 clearColor);
 extern void GD_OMSetRenderTargets(GraphicsDevice *pGD,
 	ID3D11RenderTargetView *pRTV, ID3D11DepthStencilView *pDSV);
+extern void	GD_MapDiscard(GraphicsDevice *pGD, ID3D11Resource *pRS, D3D11_MAPPED_SUBRESOURCE *pMSR);
+extern void	GD_UnMap(GraphicsDevice *pGD, ID3D11Resource *pRS);

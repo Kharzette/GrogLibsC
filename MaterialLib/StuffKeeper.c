@@ -1307,6 +1307,16 @@ ID3D11ShaderResourceView	*StuffKeeper_GetSRV(const StuffKeeper *pSK, const char 
 	return	DictSZ_GetValueccp(pSK->mpSRVs, pName);
 }
 
+Font	*StuffKeeper_GetFont(const StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpFonts, pName);
+}
+
+ID3D11ShaderResourceView	*StuffKeeper_GetFontSRV(const StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpFontSRVs, pName);
+}
+
 
 int main(void)
 {

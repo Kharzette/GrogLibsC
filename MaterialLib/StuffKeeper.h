@@ -4,6 +4,7 @@
 //forward struct decs
 typedef struct	StuffKeeper_t		StuffKeeper;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
+typedef struct	Font_t				Font;
 
 
 //eventually stuff here about loading shaders and textures
@@ -22,3 +23,5 @@ extern ID3D11VertexShader		*StuffKeeper_GetVertexShader(const StuffKeeper *pSK, 
 extern ID3D11PixelShader		*StuffKeeper_GetPixelShader(const StuffKeeper *pSK, const char *pName);
 extern ID3D11InputLayout		*StuffKeeper_GetInputLayout(const StuffKeeper *pSK, const char *pName);
 extern ID3D11ShaderResourceView	*StuffKeeper_GetSRV(const StuffKeeper *pSK, const char *pName);
+extern Font						*StuffKeeper_GetFont(const StuffKeeper *pSK, const char *pName);
+extern ID3D11ShaderResourceView	*StuffKeeper_GetFontSRV(const StuffKeeper *pSK, const char *pName);

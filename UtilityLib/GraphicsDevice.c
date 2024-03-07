@@ -642,3 +642,18 @@ void GD_Present(GraphicsDevice *pGD)
 	}
 	printf("Present error 0x%X\n", hr);
 }
+
+void	GD_MapDiscard(GraphicsDevice *pGD, ID3D11Resource *pRS, D3D11_MAPPED_SUBRESOURCE *pMSR)
+{
+	HRESULT	hr	=pGD->mpContext1->lpVtbl->Map(pGD->mpContext1, pRS, 0, D3D11_MAP_WRITE_DISCARD, 0, pMSR);
+	if(hr == S_OK)
+	{
+		return;
+	}
+	printf("Map error 0x%X\n", hr);
+}
+
+void	GD_UnMap(GraphicsDevice *pGD, ID3D11Resource *pRS)
+{
+	pGD->mpContext1->lpVtbl->Unmap(pGD->mpContext1, pRS, 0);
+}

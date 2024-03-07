@@ -193,13 +193,33 @@ void UpdateTimer_SetFixedTimeStepTics(UpdateTimer *pUT, uint64_t tics)
 //returns the time amount between this frame and last
 static uint64_t Delta(const UpdateTimer *pUT)
 {
-	uint64_t	delta	=pUT->mTimeNow.tv_nsec - pUT->mLastTimeStamp.tv_nsec;
+	uint64_t	delta	=0;
+
+	if(pUT->mTimeNow.tv_sec == pUT->mLastTimeStamp.tv_sec)
+	{
+		delta	=pUT->mTimeNow.tv_nsec - pUT->mLastTimeStamp.tv_nsec;
+	}
+	else
+	{
+		//difference in seconds
+		uint64_t	secDiff	=pUT->mTimeNow.tv_sec - pUT->mLastTimeStamp.tv_sec;
+		uint64_t	ticDiff	=SecondsToTics(secDiff);
+		
+		delta	=pUT->mTimeNow.tv_nsec + (ticDiff - pUT->mLastTimeStamp.tv_nsec);
+	}
 
 	//will this ever overflow?
 	//the nsecs are longs, so makes me nervous
 	assert(delta < UINT64_MAX);
 
-	return	MIN(delta, pUT->mMaxDelta);
+	if(delta < pUT->mMaxDelta)
+	{
+		return	delta;
+	}
+	else
+	{
+		return	pUT->mMaxDelta;
+	}
 }
 
 

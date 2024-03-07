@@ -89,6 +89,8 @@ static void	TestManyRays(const Terrain *pTer);
 static void	PrintRandomPointInTerrain(const Terrain *pTer);
 static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
 static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
+static void	SetupKeyBinds(Input *pInp);
+static void	SetupRastVP(GraphicsDevice *pGD);
 
 //material setups
 static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
@@ -136,46 +138,13 @@ int main(void)
 	TestStuff	*pTS	=malloc(sizeof(TestStuff));
 	memset(pTS, 0, sizeof(TestStuff));
 
+	//input and key / mouse bindings
 	Input	*pInp	=INP_CreateInput();
-
-	//event style bindings
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_l, RandLightEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_i, CastOneRayEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_p, PrintRandomEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_u, CastManyRaysEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, ToggleDrawTerNodesEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_m, ToggleDrawManyRaysEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_b, ToggleDrawManyImpactsEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, EscEH);
-
-	//held bindings
-	//movement
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_w, KeyMoveForwardEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_a, KeyMoveLeftEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_s, KeyMoveBackEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_d, KeyMoveRightEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_c, KeyMoveUpEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_z, KeyMoveDownEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_LEFT, DangleDownEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_RIGHT, DangleUpEH);
-
-	//key turning
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_q, KeyTurnLeftEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_e, KeyTurnRightEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_r, KeyTurnUpEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_t, KeyTurnDownEH);
-
-	//move data events
-	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_MOUSEMOTION, MouseMoveEH);
-
-	//down/up events
-	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_RIGHT, RightMouseDownEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_RELEASE, SDL_BUTTON_RIGHT, RightMouseUpEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_LEFT, LeftMouseDownEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_RELEASE, SDL_BUTTON_LEFT, LeftMouseUpEH);
-
+	SetupKeyBinds(pInp);
 
 	GD_Init(&pTS->mpGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_0);
+
+	SetupRastVP(pTS->mpGD);
 
 	StuffKeeper	*pSK	=StuffKeeper_Create(pTS->mpGD);
 	if(pSK == NULL)
@@ -185,22 +154,8 @@ int main(void)
 		return	EXIT_FAILURE;
 	}
 
-	D3D11_RASTERIZER_DESC	rastDesc;
-	rastDesc.AntialiasedLineEnable	=false;
-	rastDesc.CullMode				=D3D11_CULL_BACK;
-	rastDesc.FillMode				=D3D11_FILL_SOLID;
-	rastDesc.FrontCounterClockwise	=true;
-	rastDesc.MultisampleEnable		=false;
-	rastDesc.DepthBias				=0;
-	rastDesc.DepthBiasClamp			=0;
-	rastDesc.DepthClipEnable		=true;
-	rastDesc.ScissorEnable			=false;
-	rastDesc.SlopeScaledDepthBias	=0;
-	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pTS->mpGD, &rastDesc);
-
+	//a terrain chunk
 	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
-
-	Terrain_SetSRV(pTS->mpTer, "Terrain/TerAtlas", pSK);
 
 	//debugdraw quadtree boxes
 	int		numBounds;
@@ -216,7 +171,6 @@ int main(void)
 	AxisXYZ		*pAxis		=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
 
 	CBKeeper	*pCBK	=CBK_Create(pTS->mpGD);
-
 	PostProcess	*pPP	=PP_Create(pTS->mpGD, pSK, pCBK);
 
 	PP_MakePostTarget(pPP, pTS->mpGD, "LinearColor", RESX, RESY, DXGI_FORMAT_R8G8B8A8_UNORM);
@@ -240,22 +194,8 @@ int main(void)
 	mat4	textProj;
 	glm_ortho(0, RESX, RESY, 0, -1.0f, 1.0f, textProj);
 
-	D3D11_VIEWPORT	vp;
-
-	vp.Width	=RESX;
-	vp.Height	=RESY;
-	vp.MaxDepth	=1.0f;
-	vp.MinDepth	=0.0f;
-	vp.TopLeftX	=0;
-	vp.TopLeftY	=0;
-
-	GD_RSSetViewPort(pTS->mpGD, &vp);
-
 	//set constant buffers to shaders, think I just have to do this once
 	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
-
-	GD_RSSetState(pTS->mpGD, pRast);
-	GD_IASetPrimitiveTopology(pTS->mpGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
@@ -283,7 +223,7 @@ int main(void)
 
 	ST_AddString(pST, "Timing thing", 69, ZAxisCol, GLM_VEC2_ONE, GLM_VEC2_ONE);
 	{
-		vec2	embiggen	={	4.0f, 4.0f	};
+		vec2	embiggen	={	2.0f, 2.0f	};
 		ST_ModifyStringScale(pST, 69, embiggen);
 	}
 
@@ -984,4 +924,72 @@ static Material	*MakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
+}
+
+static void	SetupKeyBinds(Input *pInp)
+{
+	//event style bindings
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_l, RandLightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_i, CastOneRayEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_p, PrintRandomEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_u, CastManyRaysEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, ToggleDrawTerNodesEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_m, ToggleDrawManyRaysEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_b, ToggleDrawManyImpactsEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, EscEH);
+
+	//held bindings
+	//movement
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_w, KeyMoveForwardEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_a, KeyMoveLeftEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_s, KeyMoveBackEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_d, KeyMoveRightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_c, KeyMoveUpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_z, KeyMoveDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_LEFT, DangleDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_RIGHT, DangleUpEH);
+
+	//key turning
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_q, KeyTurnLeftEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_e, KeyTurnRightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_r, KeyTurnUpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_t, KeyTurnDownEH);
+
+	//move data events
+	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_MOUSEMOTION, MouseMoveEH);
+
+	//down/up events
+	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_RIGHT, RightMouseDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_RELEASE, SDL_BUTTON_RIGHT, RightMouseUpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_LEFT, LeftMouseDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_RELEASE, SDL_BUTTON_LEFT, LeftMouseUpEH);
+}
+
+static void	SetupRastVP(GraphicsDevice *pGD)
+{
+	D3D11_RASTERIZER_DESC	rastDesc;
+	rastDesc.AntialiasedLineEnable	=false;
+	rastDesc.CullMode				=D3D11_CULL_BACK;
+	rastDesc.FillMode				=D3D11_FILL_SOLID;
+	rastDesc.FrontCounterClockwise	=true;
+	rastDesc.MultisampleEnable		=false;
+	rastDesc.DepthBias				=0;
+	rastDesc.DepthBiasClamp			=0;
+	rastDesc.DepthClipEnable		=true;
+	rastDesc.ScissorEnable			=false;
+	rastDesc.SlopeScaledDepthBias	=0;
+	ID3D11RasterizerState	*pRast	=GD_CreateRasterizerState(pGD, &rastDesc);
+
+	D3D11_VIEWPORT	vp;
+
+	vp.Width	=RESX;
+	vp.Height	=RESY;
+	vp.MaxDepth	=1.0f;
+	vp.MinDepth	=0.0f;
+	vp.TopLeftX	=0;
+	vp.TopLeftY	=0;
+
+	GD_RSSetViewPort(pGD, &vp);
+	GD_RSSetState(pGD, pRast);
+	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }

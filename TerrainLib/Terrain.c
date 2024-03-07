@@ -319,7 +319,7 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	}
 
 	//copy extra row at the bottom
-	memcpy(&pVerts[h * wp1], &pVerts[(h - 1) * wp1], sizeof(TerrainVert) * w);
+	memcpy(&pVerts[h * wp1], &pVerts[(h - 1) * wp1], sizeof(TerrainVert) * wp1);
 
 	//increment Z in that bottom row
 	for(int x=0;x < wp1;x++)

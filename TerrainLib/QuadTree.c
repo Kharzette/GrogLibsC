@@ -126,8 +126,6 @@ bool	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 		return	false;
 	}
 
-//	return	QN_LineIntersectCV(pQT->mpRoot, start, end, intersection, hitNorm);
-
 	return	QN_LineIntersect(pQT->mpRoot, start, end, invDir, rayLen, intersection, planeHit);
 }
 
@@ -138,13 +136,27 @@ bool	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 bool	QT_CapsuleIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 							float radius, vec3 intersection, vec4 planeHit)
 {
+	//convert to a ray format
+	vec3	rayDir;
+
+	glm_vec3_sub(end, start, rayDir);
+
+	float	rayLen	=glm_vec3_norm(rayDir);
+
+	glm_vec3_scale(rayDir, 1.0f / rayLen, rayDir);
+
+	vec3	invDir;
+	Misc_SSE_ReciprocalVec3(rayDir, invDir);
+
+	vec3	bounds[2];
+	glm_vec3_copy(pQT->mMins, bounds[0]);
+	glm_vec3_copy(pQT->mMaxs, bounds[1]);
+
 	//check against bounds encompassing entire tree
-	vec3	hit;
-	vec4	hitNorm;	//don't want to affect real values
-	if(!Misc_CapsuleIntersectBounds(pQT->mMins, pQT->mMaxs, start, end, radius, hit, hitNorm))
+	if(!Misc_RayIntersectBounds(start, invDir, rayLen, bounds))
 	{
 		return	false;
 	}
 
-	return	QN_CapsuleIntersectCV(pQT->mpRoot, start, end, radius, intersection, planeHit);
+	return	QN_LineSphereIntersect(pQT->mpRoot, start, end, invDir, radius, rayLen, intersection, planeHit);
 }

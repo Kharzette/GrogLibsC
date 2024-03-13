@@ -10,8 +10,11 @@
 
 #define		MIN_MAX_BOUNDS	15192.0f
 
+__attribute_maybe_unused__
 static const vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
+__attribute_maybe_unused__
 static const vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
+__attribute_maybe_unused__
 static const vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
 
 
@@ -239,70 +242,6 @@ void	Misc_BuildBasisVecsFromDirection(const vec3 direction, vec3 baseX, vec3 bas
 	glm_vec3_normalize(baseY);
 }
 
-//make a huge quad from a plane
-void	Misc_WindingFromPlane(const vec4 plane, vec3 wind[4])
-{
-	vec3	dir	={	plane[0], plane[1], plane[2]	};
-
-	vec3	vX, vY, vZ;
-	Misc_BuildBasisVecsFromDirection(dir, vX, vY, vZ);
-
-	//plane centerish
-	vec3	org;
-	glm_vec3_scale(vZ, plane[3], org);
-
-	//scale up X and Y
-	glm_vec3_scale(vX, MIN_MAX_BOUNDS, vX);
-	glm_vec3_scale(vY, MIN_MAX_BOUNDS, vY);
-
-	glm_vec3_sub(org, vX, wind[0]);
-	glm_vec3_add(wind[0], vY, wind[0]);
-
-	glm_vec3_add(org, vX, wind[1]);
-	glm_vec3_add(wind[1], vY, wind[1]);
-
-	glm_vec3_add(org, vX, wind[2]);
-	glm_vec3_sub(wind[2], vY, wind[2]);
-
-	glm_vec3_sub(org, vX, wind[3]);
-	glm_vec3_sub(wind[3], vY, wind[3]);
-}
-
-
-//intersection of line and plane
-int	Misc_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, vec3 intersection)
-{
-	float	startDist	=glm_vec3_dot(plane, start) - plane[3];
-	float	endDist		=glm_vec3_dot(plane, end) - plane[3];
-
-	if(startDist > 0.0f && endDist > 0.0f)
-	{
-		return	PLANE_FRONT;
-	}
-	else if(startDist < 0.0f && endDist < 0.0f)
-	{
-		return	PLANE_BACK;
-	}
-
-	//get a unit vector of the line segment
-	vec3	segVec;
-	glm_vec3_sub(end, start, segVec);
-
-	//vector length is named strangely in glm
-	float	segLength	=glm_vec3_norm(segVec);
-
-	//normalize
-	glm_vec3_scale(segVec, 1.0f / segLength, segVec);
-
-	float	ratio	=startDist / (startDist - endDist);
-
-	glm_vec3_scale(segVec, ratio * segLength, intersection);
-
-	glm_vec3_add(intersection, start, intersection);
-
-	return	PLANE_HIT;
-}
-
 //based on reading https://tavianator.com/2011/ray_box.html and comments
 //Mine checks distance as I'm usually working with finite distances
 //invDir should be 1 divided by the unit direction vector
@@ -357,28 +296,6 @@ bool	Misc_RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float
 		return	true;
 	}
 	return	false;
-}
-
-//return one of the above values along with the intersection point and normal
-int	Misc_LineIntersectBounds(const vec3 min, const vec3 max, const vec3 start, const vec3 end,
-						vec3 intersection, vec3 hitNorm)
-{
-	vec4	boundPlanes[6];
-
-	CV_MakeConvexVolumeFromBound(min, max, boundPlanes);
-
-	return	CV_LineIntersectVolume(boundPlanes, 6, start, end, intersection, hitNorm);
-}
-
-//return one of the above values along with the intersection point and normal
-int	Misc_CapsuleIntersectBounds(const vec3 min, const vec3 max, const vec3 start, const vec3 end,
-								float radius, vec3 intersection, vec3 hitNorm)
-{
-	vec4	boundPlanes[6];
-
-	CV_MakeConvexVolumeFromBound(min, max, boundPlanes);
-
-	return	CV_CapsuleIntersectVolume(boundPlanes, 6, start, end, radius, intersection, hitNorm);
 }
 
 bool	Misc_CheckTwoAABBOverlap(const vec3 aMin, const vec3 aMax, const vec3 bMin, const vec3 bMax)
@@ -436,60 +353,6 @@ bool	Misc_BPIntersectSweptAABBLineAABB(const vec3 min, const vec3 max,	//moving 
 	Misc_AddPointToBounds(moveMin, moveMax, endMax);
 
 	return	Misc_CheckTwoAABBOverlap(moveMin, moveMax, statMin, statMax);
-}
-
-//fails if the triangle has no plane (colinear points etc)
-bool	Misc_PlaneFromVerts(const vec3 *pVerts, int numVerts, vec4 plane)
-{
-	int	i;
-
-	glm_vec4_zero(plane);
-
-	if(numVerts < 3)
-	{
-		return	false;
-	}
-
-	for(i=0;i < numVerts;i++)
-	{
-		vec3	v1, v2;
-
-		//edge vectors
-		glm_vec3_sub(pVerts[i], pVerts[(i + 1) % numVerts], v1);
-		glm_vec3_sub(pVerts[(i + 2) % numVerts], pVerts[(i + 1) % numVerts], v2);
-
-		//gen a plane normal from the cross of edge vectors
-		glm_vec3_cross(v1, v2, plane);
-
-		if(!glm_vec3_eq_eps(plane, 0.0f))
-		{
-			break;
-		}
-		//try the next three if there are three
-	}
-
-	if(i >= numVerts)
-	{
-		return	false;
-	}
-
-	glm_vec3_normalize(plane);
-
-	//plane distance
-	plane[3]	=glm_vec3_dot(pVerts[0], plane);
-
-	return	true;
-}
-
-bool	Misc_PlaneFromTri(const vec3 v0, const vec3 v1, const vec3 v2, vec4 plane)
-{
-	vec3	tri[3];
-
-	memcpy(tri[0], v0, sizeof(vec3));
-	memcpy(tri[1], v1, sizeof(vec3));
-	memcpy(tri[2], v2, sizeof(vec3));
-
-	return	Misc_PlaneFromVerts(tri, 3, plane);
 }
 
 //uses the add up the angles trick to determine point in poly

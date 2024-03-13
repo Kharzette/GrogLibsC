@@ -57,12 +57,11 @@ static vec3	sRayImpacts[NUM_RAYS];
 static int	sNumRayImpacts;
 
 //test box
-static vec3	sTestBoxMin	={	-5, -5, -5	};
-static vec3	sTestBoxMax	={	5, 5, 5		};
+static vec3	sTestBoxMin	={	-3, 3, -3	};
+static vec3	sTestBoxMax	={	-5, 5, -5	};
 
-//drawing convex volume for debug
-static LightRay	*spTVNormal;
-static vec4		*spTestVol;
+//drawing convex volume for debug stuff
+static ConvexVolume	*spTestVol;
 
 
 //input context, stuff input handlers will need
@@ -183,9 +182,6 @@ int main(void)
 		};
 
 		spTestVol	=CV_MakeFromTri(tri, 1.0f);
-
-		//create a ray to draw the normals
-		spTVNormal	=CP_CreateLightRay(1.0f, 0.1f, pTS->mpGD, pSK);
 	}
 
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
@@ -199,7 +195,7 @@ int main(void)
 	PrimObject	*pSphere	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
 	PrimObject	*pCube		=PF_CreateCubeFromBounds(sTestBoxMin, sTestBoxMax, pTS->mpGD);
 	PrimObject	*pSkyCube	=PF_CreateCube(10.0f, true, pTS->mpGD);
-	PrimObject	*pCVPO		=PF_CreateCV(spTestVol, 5, YAxisCol, pTS->mpGD);
+	PrimObject	*pCVPO		=PF_CreateCV(spTestVol, YAxisCol, pTS->mpGD);
 	LightRay	*pLR		=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pSK);
 	AxisXYZ		*pAxis		=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
 
@@ -385,25 +381,12 @@ int main(void)
 			CP_DrawLightRay(pLR, pTS->mLightDir, lightRayCol, rayLoc, pCBK, pTS->mpGD);
 		}
 
-		//draw test volume normals
+		//draw test volume
 		{
 			GD_IASetVertexBuffers(pTS->mpGD, pCVPO->mpVB, 28, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pCVPO->mpIB, DXGI_FORMAT_R16_UINT, 0);
 			MAT_Apply(pHitsMat, pCBK, pTS->mpGD);
 			GD_DrawIndexed(pTS->mpGD, pCVPO->mIndexCount, 0, 0);
-
-			for(int i=0;i < 5;i++)
-			{
-				vec3	rayLoc	={	spTestVol[i][0], spTestVol[i][1], spTestVol[i][2]	};
-
-				glm_vec3_scale(rayLoc, spTestVol[i][3], rayLoc);
-
-				rayLoc[0]	+=25.0f;
-				rayLoc[1]	+=25.0f;
-				rayLoc[2]	+=25.0f;
-
-				CP_DrawLightRay(spTVNormal, spTestVol[i], ZAxisCol, rayLoc, pCBK, pTS->mpGD);
-			}
 		}
 
 		//draw xyz axis
@@ -617,12 +600,7 @@ static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 e
 //	bool	bHit	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
 //	bool	bHit	=Terrain_CapsuleIntersect(pTer, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	bool	bHit	=Misc_CapsuleIntersectBounds(sTestBoxMin, sTestBoxMax, eyePos, endRay, 0.5f, hitPos, hitPlane);
-	bool	bHit	=Misc_RayIntersectBounds(eyePos, invDir, RAY_LEN, bounds);
-	if(bHit)
-	{
-		//do a accurate one to determine hit spot
-		bool	bHitOther	=Misc_LineIntersectBounds(bounds[0], bounds[1], eyePos, endRay, hitPos, hitPlane);
-	}
+	bool	bHit	=CV_CapsuleIntersectVolume(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
 
 	return	bHit;
 }

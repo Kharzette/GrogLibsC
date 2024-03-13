@@ -4,6 +4,8 @@
 #include	"GraphicsDevice.h"
 
 
+typedef struct	ConvexVolume_t	ConvexVolume;
+
 typedef struct	PrimObject_t
 {
 	ID3D11Buffer	*mpVB, *mpIB;	//vert and index buffers
@@ -23,6 +25,6 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, const vec4 colour, int 
 								float size, GraphicsDevice *pGD);
 PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4 *pColours,
 								int numRays, float rayWidth, GraphicsDevice *pGD);
-PrimObject	*PF_CreateCV(const vec4 *pPlanes, int numPlanes, const vec4 colour, GraphicsDevice *pGD);
+PrimObject	*PF_CreateCV(const ConvexVolume *pVol, const vec4 colour, GraphicsDevice *pGD);
 
 void	PF_DestroyPO(PrimObject **ppObj);

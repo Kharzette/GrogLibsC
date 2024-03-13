@@ -12,6 +12,7 @@
 #include	"PrimFactory.h"
 #include	"MiscStuff.h"
 #include	"ConvexVolume.h"
+#include	"PlaneMath.h"
 
 
 typedef struct	VPosNormTex0_t
@@ -1578,11 +1579,14 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 }
 
 //make a drawable convex volume
-PrimObject	*PF_CreateCV(const vec4 *pPlanes, int numPlanes, const vec4 colour, GraphicsDevice *pGD)
+PrimObject	*PF_CreateCV(const ConvexVolume *pCV, const vec4 colour, GraphicsDevice *pGD)
 {
 	Winding	*pCur, *pWinds	=NULL;
 
-	int	numWindings	=CV_GenerateWindings(pPlanes, numPlanes, &pWinds);
+	//this var isn't used because I end up counting
+	//with foreeach which is lazier
+//	int	numWindings	=
+		CV_GenerateWindings(pCV, &pWinds);
 
 	pCur	=NULL;
 
@@ -1609,7 +1613,7 @@ PrimObject	*PF_CreateCV(const vec4 *pPlanes, int numPlanes, const vec4 colour, G
 	LL_FOREACH(pWinds, pCur)
 	{
 		vec4	plane;
-		Misc_PlaneFromVerts(pCur->mpVerts, pCur->mNumVerts, plane);
+		PM_PlaneFromVerts(pCur->mpVerts, pCur->mNumVerts, plane);
 
 		int	idx	=cur;
 		for(int i=0;i < pCur->mNumVerts;i++)

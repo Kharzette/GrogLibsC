@@ -39,7 +39,6 @@ typedef struct	LightRay_t
 }	LightRay;
 
 static const	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
-static const	vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
 static const	vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
 
 

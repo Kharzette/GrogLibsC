@@ -6,11 +6,14 @@
 #include	<assert.h>
 #include	"../UtilityLib/FileStuff.h"
 #include	"../UtilityLib/MiscStuff.h"
+#include	"../UtilityLib/PlaneMath.h"
 #include	"QuadNode.h"
 #include	"Terrain.h"
 
-//minimum vertical box thickness?
-#define	TOO_THIN	0.1f
+#define	TOO_THIN	0.1f	//minimum vertical box thickness?
+#define	NODE_SIZE	2		//size in meters
+#define	LEAF_QUADS	(NODE_SIZE * NODE_SIZE)
+#define	LEAF_TRIS	LEAF_QUADS * 2
 
 typedef struct	QuadNode_t	QuadNode;
 
@@ -24,6 +27,7 @@ typedef struct	QuadNode_t
 	QuadNode	*mpChildC;
 	QuadNode	*mpChildD;
 
+//	vec4	mCVPlanes[LEAF_TRIS];
 	vec3	*mpLVArray;		//leaf vert array
 	uint8_t	*mpLVInds;		//leaf triangles
 }	QuadNode;
@@ -121,11 +125,11 @@ static bool	LineIntersectLeafNode(const QuadNode *pQN, const vec3 start, const v
 		glm_vec3_copy(pQN->mpLVArray[pQN->mpLVInds[triOfs + 1]], v1);
 		glm_vec3_copy(pQN->mpLVArray[pQN->mpLVInds[triOfs + 2]], v2);
 
-		if(Misc_PlaneFromTri(v0, v1, v2, triPlane))
+		if(PM_PlaneFromTri(v0, v1, v2, triPlane))
 		{
 			vec3	hit;
 
-			if(Misc_LineIntersectPlane(triPlane, start, end, hit) == PLANE_HIT)
+			if(PM_LineIntersectPlane(triPlane, start, end, hit) == PLANE_HIT)
 			{
 				vec3	tri[3];
 
@@ -194,7 +198,7 @@ static bool	LineIntersectLeafNodeGLM(const QuadNode *pQN, const vec3 start, cons
 		{
 			glm_vec3_scale(direction, dist, intersection);
 			glm_vec3_add(start, intersection, intersection);
-			Misc_PlaneFromTri(v0, v1, v2, planeHit);
+			PM_PlaneFromTri(v0, v1, v2, planeHit);
 			return	true;
 		}
 	}
@@ -314,9 +318,9 @@ QuadNode	*QN_Build(float *pHeights, int w, int h, const vec3 mins, const vec3 ma
 	memcpy(pNode->mMins, mins, sizeof(vec3));
 	memcpy(pNode->mMaxs, maxs, sizeof(vec3));
 
-	int	nodeSize	=Misc_SSE_RoundFToI(maxs[0] - mins[0]) + 1.0f;
+	int	nodeSize	=Misc_SSE_RoundFToI(maxs[0] - mins[0]);
 
-	if(nodeSize <= 4)
+	if(nodeSize <= NODE_SIZE)
 	{
 		//leaf
 		MakeLeafTris(pNode, pHeights, w, h);
@@ -473,82 +477,6 @@ bool	QN_LineSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 	ret			|=QN_LineSphereIntersect(pQN->mpChildB, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
 	ret			|=QN_LineSphereIntersect(pQN->mpChildC, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
 	ret			|=QN_LineSphereIntersect(pQN->mpChildD, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
-
-	return	ret;
-}
-
-//slower trace with the convex volume routine
-int	QN_LineIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
-						vec3 intersection, vec3 hitNorm)
-{
-	int		res	=MISS;
-	vec3	hit, hitN;
-
-	//first check node
-	res	=Misc_LineIntersectBounds(pQN->mMins, pQN->mMaxs, rayStart, end, hit, hitN);
-	if(res == MISS)
-	{
-		return	res;
-	}
-
-	if(pQN->mpLVArray)	//leaf?
-	{
-		//can check squared distance for comparison
-		float	curDist	=glm_vec3_distance2(rayStart, intersection);
-		float	newDist	=glm_vec3_distance2(rayStart, hit);
-
-		//new hit nearer than previous hits?
-		if(newDist < curDist)
-		{
-			glm_vec3_copy(hit, intersection);
-			glm_vec3_copy(hitN, hitNorm);
-			return	res;
-		}		
-		return	MISS;
-	}
-
-	int	ret	=QN_LineIntersectCV(pQN->mpChildA, rayStart, end, intersection, hitNorm);
-	ret		|=QN_LineIntersectCV(pQN->mpChildB, rayStart, end, intersection, hitNorm);
-	ret		|=QN_LineIntersectCV(pQN->mpChildC, rayStart, end, intersection, hitNorm);
-	ret		|=QN_LineIntersectCV(pQN->mpChildD, rayStart, end, intersection, hitNorm);
-
-	return	ret;
-}
-
-//slower trace with the convex volume routine
-int	QN_CapsuleIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
-							float radius, vec3 intersection, vec3 hitNorm)
-{
-	int		res	=MISS;
-	vec3	hit, hitN;
-
-	//first check node
-	res	=Misc_CapsuleIntersectBounds(pQN->mMins, pQN->mMaxs, rayStart, end, radius, hit, hitN);
-	if(res == MISS)
-	{
-		return	res;
-	}
-
-	if(pQN->mpLVArray)	//leaf?
-	{
-		//can check squared distance for comparison
-		float	curDist	=glm_vec3_distance2(rayStart, intersection);
-		float	newDist	=glm_vec3_distance2(rayStart, hit);
-
-		//new hit nearer than previous hits?
-		if(newDist < curDist)
-		{
-			glm_vec3_copy(hit, intersection);
-			glm_vec3_copy(hitN, hitNorm);
-			return	res;
-		}		
-		return	MISS;
-	}
-
-	int	ret	=QN_CapsuleIntersectCV(pQN->mpChildA, rayStart, end, radius, intersection, hitNorm);
-	ret		|=QN_CapsuleIntersectCV(pQN->mpChildB, rayStart, end, radius, intersection, hitNorm);
-	ret		|=QN_CapsuleIntersectCV(pQN->mpChildC, rayStart, end, radius, intersection, hitNorm);
-	ret		|=QN_CapsuleIntersectCV(pQN->mpChildD, rayStart, end, radius, intersection, hitNorm);
 
 	return	ret;
 }

@@ -118,7 +118,7 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD, cons
 }
 
 void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
-						CBKeeper *pCBK, GraphicsDevice *pGD)
+						const vec3 location, CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//set gpu stuff
 	GD_IASetVertexBuffers(pGD, pRay->mpAxis->mpVB, 24, 0);
@@ -128,26 +128,17 @@ void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 	GD_IASetInputLayout(pGD, pRay->mpLayout);
 
 	//get a good side perp vec
-	vec3	lightSide;
-	glm_vec3_cross(UnitY, lightDir, lightSide);
-	if(glm_vec3_eq_eps(lightSide, 0.0f))
-	{
-		glm_vec3_cross(UnitX, lightDir, lightSide);
-	}
-
-	//good up vec
-	vec3	lightUp;
-	glm_vec3_cross(lightDir, lightSide, lightUp);
-
+	vec3	lightX, lightY, lightZ;
+	Misc_BuildBasisVecsFromDirection(lightDir, lightX, lightY, lightZ);
 
 	mat3	rayMat;
 
 	//build a rotation from the basis vectors
-	glm_vec3_copy(lightSide, rayMat[0]);
-	glm_vec3_copy(lightUp, rayMat[1]);
-	glm_vec3_copy(lightDir, rayMat[2]);
+	glm_vec3_copy(lightX, rayMat[0]);
+	glm_vec3_copy(lightY, rayMat[1]);
+	glm_vec3_copy(lightZ, rayMat[2]);
 
-	glm_mat4_identity(pRay->mWorld);
+	glm_translate_make(pRay->mWorld, location);
 	glm_mat4_ins3(rayMat, pRay->mWorld);
 
 	//materialish stuff

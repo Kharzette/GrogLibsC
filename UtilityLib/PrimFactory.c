@@ -6,10 +6,12 @@
 #include	<stdlib.h>
 #include	<unistd.h>
 #include	<x86intrin.h>
+#include	<utlist.h>
 #include	<cglm/call.h>
 #include	"GraphicsDevice.h"
 #include	"PrimFactory.h"
 #include	"MiscStuff.h"
+#include	"ConvexVolume.h"
 
 
 typedef struct	VPosNormTex0_t
@@ -636,24 +638,8 @@ PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4
 
 		//z for the ray direction
 		glm_vec3_sub(end, start, rayZ);
-		glm_vec3_normalize(rayZ);
 
-		//generate a good side vector
-		glm_vec3_cross(UnitY, rayZ, rayX);
-		if(glm_vec3_eq_eps(rayX, 0.0f))
-		{
-			//first cross failed
-			glm_vec3_cross(UnitX, rayZ, rayX);
-		}
-
-		//up vec
-		glm_vec3_cross(rayZ, rayX, rayY);
-
-		assert(!glm_vec3_eq_eps(rayX, 0.0f));
-		assert(!glm_vec3_eq_eps(rayY, 0.0f));
-
-		glm_vec3_normalize(rayX);
-		glm_vec3_normalize(rayY);
+		Misc_BuildBasisVecsFromDirection(rayZ, rayX, rayY, rayZ);
 
 		glm_vec3_scale(rayX, rayWidth, rayX);
 		glm_vec3_scale(rayY, rayWidth, rayY);
@@ -1589,4 +1575,90 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 	free(vpnt);
 
 	return	pObj;
+}
+
+//make a drawable convex volume
+PrimObject	*PF_CreateCV(const vec4 *pPlanes, int numPlanes, const vec4 colour, GraphicsDevice *pGD)
+{
+	Winding	*pCur, *pWinds	=NULL;
+
+	int	numWindings	=CV_GenerateWindings(pPlanes, numPlanes, &pWinds);
+
+	pCur	=NULL;
+
+	//count up total verts
+	int	totalVerts	=0;
+	int	numIdx		=0;
+	LL_FOREACH(pWinds, pCur)
+	{
+		totalVerts	+=pCur->mNumVerts;
+
+		//count indexes
+		for(int i=1;i < pCur->mNumVerts - 1;i++)
+		{
+			numIdx	+=3;
+		}
+	}
+
+	VPosNormCol0	*pVerts	=malloc(sizeof(VPosNormCol0) * totalVerts);
+	uint16_t		*pInds	=malloc(sizeof(uint16_t) * numIdx);
+
+	int		cur		=0;
+	int		curIdx	=0;
+	pCur			=NULL;
+	LL_FOREACH(pWinds, pCur)
+	{
+		vec4	plane;
+		Misc_PlaneFromVerts(pCur->mpVerts, pCur->mNumVerts, plane);
+
+		int	idx	=cur;
+		for(int i=0;i < pCur->mNumVerts;i++)
+		{
+			glm_vec3_copy(pCur->mpVerts[i],	pVerts[cur].Position);
+
+			Misc_ConvertVec4ToF16(plane, pVerts[cur].Normal);
+			Misc_ConvertVec4ToF16(colour, pVerts[cur].Color0);
+			cur++;
+		}
+
+		//indexes
+		for(int i=1;i < pCur->mNumVerts - 1;i++)
+		{
+			pInds[curIdx++]	=idx;
+			pInds[curIdx++]	=idx + ((i + 1) % pCur->mNumVerts);
+			pInds[curIdx++]	=idx + i;
+		}
+	}
+
+	//return object
+	PrimObject	*pObj	=malloc(sizeof(PrimObject));
+
+	pObj->mVertCount	=totalVerts;
+	pObj->mIndexCount	=numIdx;
+
+	//make vertex buffer
+	D3D11_BUFFER_DESC	bufDesc;
+	MakeVBDesc(&bufDesc, sizeof(VPosNormCol0) * totalVerts);
+	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
+
+	//make index buffer
+	MakeIBDesc(&bufDesc, numIdx * 2);
+	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);
+
+	//free temp buffers
+	free(pVerts);
+	free(pInds);
+
+	//free windings
+	pCur	=NULL;
+	Winding	*pTmp;
+	LL_FOREACH_SAFE(pWinds, pCur, pTmp)
+	{
+		LL_DELETE(pWinds, pCur);
+		free(pCur);
+	}
+
+	return	pObj;
+
+
 }

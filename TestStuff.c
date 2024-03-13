@@ -56,6 +56,15 @@ static vec4	sRayResults[NUM_RAYS];
 static vec3	sRayImpacts[NUM_RAYS];
 static int	sNumRayImpacts;
 
+//test box
+static vec3	sTestBoxMin	={	-5, -5, -5	};
+static vec3	sTestBoxMax	={	5, 5, 5		};
+
+//drawing convex volume for debug
+static LightRay	*spTVNormal;
+static vec4		*spTestVol;
+
+
 //input context, stuff input handlers will need
 typedef struct	TestStuff_t
 {
@@ -94,6 +103,7 @@ static void	SetupRastVP(GraphicsDevice *pGD);
 
 //material setups
 static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*MakeCubeMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeRaysMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeHitsMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeCharacterMat(TestStuff *pTS, const StuffKeeper *pSK);
@@ -164,9 +174,32 @@ int main(void)
 
 	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
 
+	//create a test convex volume from tri
+	{
+		vec3	tri[3]	={
+			{5, 5, 5},
+			{6, 5, 5},
+			{6, 5, 6}
+		};
+
+		spTestVol	=CV_MakeFromTri(tri, 1.0f);
+
+		//create a ray to draw the normals
+		spTVNormal	=CP_CreateLightRay(1.0f, 0.1f, pTS->mpGD, pSK);
+	}
+
+	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
+	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
+	vec4	YAxisCol	={	0.0f, 0.0f, 1.0f, 1.0f	};
+	vec4	ZAxisCol	={	0.0f, 1.0f, 0.0f, 1.0f	};
+	vec3	skyGrad0	={	0.7f, 0.8f, 0.9f	};
+	vec3	skyGrad1	={	0.2f, 0.3f, 1.0f	};
+
 	//test prims
 	PrimObject	*pSphere	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
+	PrimObject	*pCube		=PF_CreateCubeFromBounds(sTestBoxMin, sTestBoxMax, pTS->mpGD);
 	PrimObject	*pSkyCube	=PF_CreateCube(10.0f, true, pTS->mpGD);
+	PrimObject	*pCVPO		=PF_CreateCV(spTestVol, 5, YAxisCol, pTS->mpGD);
 	LightRay	*pLR		=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pSK);
 	AxisXYZ		*pAxis		=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
 
@@ -197,13 +230,6 @@ int main(void)
 	//set constant buffers to shaders, think I just have to do this once
 	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
-	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
-	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
-	vec4	YAxisCol	={	0.0f, 0.0f, 1.0f, 1.0f	};
-	vec4	ZAxisCol	={	0.0f, 1.0f, 0.0f, 1.0f	};
-	vec3	skyGrad0	={	0.7f, 0.2f, 0.1f	};
-	vec3	skyGrad1	={	0.2f, 0.3f, 1.0f	};
-
 	pTS->mLightDir[0]		=0.3f;
 	pTS->mLightDir[1]		=-0.7f;
 	pTS->mLightDir[2]		=-0.5f;
@@ -229,6 +255,7 @@ int main(void)
 
 	//materials
 	Material	*pSphereMat	=MakeSphereMat(pTS, pSK);
+	Material	*pCubeMat	=MakeCubeMat(pTS, pSK);
 	Material	*pRaysMat	=MakeRaysMat(pTS, pSK);
 	Material	*pHitsMat	=MakeHitsMat(pTS, pSK);
 	Material	*pCharMat	=MakeCharacterMat(pTS, pSK);
@@ -262,6 +289,11 @@ int main(void)
 			if(pTS->mbDrawHit)
 			{
 				glm_translate_make(hitSphereMat, pTS->mHitPos);
+				MAT_SetSolidColour(pCubeMat, XAxisCol);
+			}
+			else
+			{
+				MAT_SetSolidColour(pCubeMat, GLM_VEC4_ONE);
 			}
 
 			UpdateTimer_UpdateDone(pUT);
@@ -269,6 +301,7 @@ int main(void)
 
 		//update materials incase light changed
 		MAT_SetLightDirection(pSphereMat, pTS->mLightDir);
+		MAT_SetLightDirection(pCubeMat, pTS->mLightDir);
 		MAT_SetLightDirection(pRaysMat, pTS->mLightDir);
 		MAT_SetLightDirection(pHitsMat, pTS->mLightDir);
 		MAT_SetLightDirection(pCharMat, pTS->mLightDir);
@@ -347,10 +380,41 @@ int main(void)
 		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
 
 		//draw light ray
-		CP_DrawLightRay(pLR, pTS->mLightDir, lightRayCol, pCBK, pTS->mpGD);
+		{
+			vec3	rayLoc	={	0.0f, 5.0f, 0.0f	};
+			CP_DrawLightRay(pLR, pTS->mLightDir, lightRayCol, rayLoc, pCBK, pTS->mpGD);
+		}
+
+		//draw test volume normals
+		{
+			GD_IASetVertexBuffers(pTS->mpGD, pCVPO->mpVB, 28, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pCVPO->mpIB, DXGI_FORMAT_R16_UINT, 0);
+			MAT_Apply(pHitsMat, pCBK, pTS->mpGD);
+			GD_DrawIndexed(pTS->mpGD, pCVPO->mIndexCount, 0, 0);
+
+			for(int i=0;i < 5;i++)
+			{
+				vec3	rayLoc	={	spTestVol[i][0], spTestVol[i][1], spTestVol[i][2]	};
+
+				glm_vec3_scale(rayLoc, spTestVol[i][3], rayLoc);
+
+				rayLoc[0]	+=25.0f;
+				rayLoc[1]	+=25.0f;
+				rayLoc[2]	+=25.0f;
+
+				CP_DrawLightRay(spTVNormal, spTestVol[i], ZAxisCol, rayLoc, pCBK, pTS->mpGD);
+			}
+		}
 
 		//draw xyz axis
 		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
+
+		//draw test cube
+		GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, 24, 0);
+		GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+
+		MAT_Apply(pCubeMat, pCBK, pTS->mpGD);
+		GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
 
 		//impact sphere VB/IB etc
 		if(pTS->mbDrawHit)
@@ -535,7 +599,30 @@ static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 e
 	//invalidate hit point
 	glm_vec3_fill(hitPos, FLT_MAX);
 
-	bool	bHit	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
+	//convert to a ray format
+	vec3	rayDir;
+
+	glm_vec3_sub(endRay, eyePos, rayDir);
+	glm_vec3_scale(rayDir, 1.0f / RAY_LEN, rayDir);
+
+	vec3	invDir;
+	Misc_SSE_ReciprocalVec3(rayDir, invDir);
+
+	vec3	bounds[2];
+	glm_vec3_copy(sTestBoxMin, bounds[0]);
+	glm_vec3_copy(sTestBoxMax, bounds[1]);
+
+	Misc_ExpandBounds(bounds[0], bounds[1], 0.5f);
+
+//	bool	bHit	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
+//	bool	bHit	=Terrain_CapsuleIntersect(pTer, eyePos, endRay, 0.5f, hitPos, hitPlane);
+//	bool	bHit	=Misc_CapsuleIntersectBounds(sTestBoxMin, sTestBoxMax, eyePos, endRay, 0.5f, hitPos, hitPlane);
+	bool	bHit	=Misc_RayIntersectBounds(eyePos, invDir, RAY_LEN, bounds);
+	if(bHit)
+	{
+		//do a accurate one to determine hit spot
+		bool	bHitOther	=Misc_LineIntersectBounds(bounds[0], bounds[1], eyePos, endRay, hitPos, hitPlane);
+	}
 
 	return	bHit;
 }
@@ -806,7 +893,27 @@ static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetVShader(pRet, "WNormWPosTexVS", pSK);
-	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetPShader(pRet, "TriTex0SpecPS", pSK);
+	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
+	MAT_SetSRV0(pRet, "Walls/Glass04", pSK);
+	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
+static Material	*MakeCubeMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f	};
+	vec3	light1		={	0.2f, 0.3f, 0.3f	};
+	vec3	light2		={	0.1f, 0.2f, 0.2f	};
+
+	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosTexVS", pSK);
+	MAT_SetPShader(pRet, "TriTex0SpecPS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
 	MAT_SetSRV0(pRet, "Walls/Glass04", pSK);
 	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);

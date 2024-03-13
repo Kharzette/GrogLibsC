@@ -30,3 +30,5 @@ void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, i
 void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs);
 bool	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 								vec3 intersection, vec4 planeHit);
+bool	Terrain_CapsuleIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
+								float radius, vec3 intersection, vec4 planeHit);

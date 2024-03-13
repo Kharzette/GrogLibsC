@@ -374,6 +374,12 @@ bool	QN_LineIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 						const vec3 invDir, const float rayLen,
 						vec3 intersection, vec4 planeHit)
 {
+	//broad phase
+//	if(!Misc_BPIntersectLineAABB(rayStart, end, pQN->mMins, pQN->mMaxs))
+//	{
+//		return	false;
+//	}
+
 	vec3	bounds[2];
 	glm_vec3_copy(pQN->mMins, bounds[0]);
 	glm_vec3_copy(pQN->mMaxs, bounds[1]);
@@ -414,6 +420,63 @@ bool	QN_LineIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 	return	ret;
 }
 
+//invDir should be 1 divided by the direction vector
+//This is a swept sphere around a ray
+//see https://www.gamedeveloper.com/programming/bsp-collision-detection-as-used-in-mdk2-and-neverwinter-nights
+//for problems related to corners
+bool	QN_LineSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+								const vec3 invDir, float radius, float rayLen,
+								vec3 intersection, vec4 planeHit)
+{
+	vec3	bounds[2];
+	glm_vec3_copy(pQN->mMins, bounds[0]);
+	glm_vec3_copy(pQN->mMaxs, bounds[1]);
+
+	//expand by radius
+	Misc_ExpandBounds(bounds[0], bounds[1], radius);
+
+	//broad phase
+//	if(!Misc_BPIntersectLineAABB(rayStart, end, pQN->mMins, pQN->mMaxs))
+//	{
+//		return	false;
+//	}
+
+	//fast intersect check for nodes
+	//don't need plane hit or point returned, just a yes or no
+	if(!Misc_RayIntersectBounds(rayStart, invDir, rayLen, bounds))
+	{
+		return	false;
+	}
+
+	if(pQN->mpLVArray)	//leaf?
+	{
+		vec3	hit;
+		vec4	hitPlane;
+		if(LineIntersectLeafNodeGLM(pQN, rayStart, end, hit, hitPlane))
+		{
+			//can check squared distance for comparison
+			float	curDist	=glm_vec3_distance2(rayStart, intersection);
+			float	newDist	=glm_vec3_distance2(rayStart, hit);
+
+			//new hit nearer than previous hits?
+			if(newDist < curDist)
+			{
+				glm_vec3_copy(hit, intersection);
+				glm_vec4_copy(hitPlane, planeHit);
+				return	true;
+			}
+		}
+		return	false;
+	}
+
+	bool	ret	=QN_LineSphereIntersect(pQN->mpChildA, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	ret			|=QN_LineSphereIntersect(pQN->mpChildB, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	ret			|=QN_LineSphereIntersect(pQN->mpChildC, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	ret			|=QN_LineSphereIntersect(pQN->mpChildD, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+
+	return	ret;
+}
+
 //slower trace with the convex volume routine
 int	QN_LineIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 						vec3 intersection, vec3 hitNorm)
@@ -448,6 +511,44 @@ int	QN_LineIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 	ret		|=QN_LineIntersectCV(pQN->mpChildB, rayStart, end, intersection, hitNorm);
 	ret		|=QN_LineIntersectCV(pQN->mpChildC, rayStart, end, intersection, hitNorm);
 	ret		|=QN_LineIntersectCV(pQN->mpChildD, rayStart, end, intersection, hitNorm);
+
+	return	ret;
+}
+
+//slower trace with the convex volume routine
+int	QN_CapsuleIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+							float radius, vec3 intersection, vec3 hitNorm)
+{
+	int		res	=MISS;
+	vec3	hit, hitN;
+
+	//first check node
+	res	=Misc_CapsuleIntersectBounds(pQN->mMins, pQN->mMaxs, rayStart, end, radius, hit, hitN);
+	if(res == MISS)
+	{
+		return	res;
+	}
+
+	if(pQN->mpLVArray)	//leaf?
+	{
+		//can check squared distance for comparison
+		float	curDist	=glm_vec3_distance2(rayStart, intersection);
+		float	newDist	=glm_vec3_distance2(rayStart, hit);
+
+		//new hit nearer than previous hits?
+		if(newDist < curDist)
+		{
+			glm_vec3_copy(hit, intersection);
+			glm_vec3_copy(hitN, hitNorm);
+			return	res;
+		}		
+		return	MISS;
+	}
+
+	int	ret	=QN_CapsuleIntersectCV(pQN->mpChildA, rayStart, end, radius, intersection, hitNorm);
+	ret		|=QN_CapsuleIntersectCV(pQN->mpChildB, rayStart, end, radius, intersection, hitNorm);
+	ret		|=QN_CapsuleIntersectCV(pQN->mpChildC, rayStart, end, radius, intersection, hitNorm);
+	ret		|=QN_CapsuleIntersectCV(pQN->mpChildD, rayStart, end, radius, intersection, hitNorm);
 
 	return	ret;
 }

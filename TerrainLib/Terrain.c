@@ -490,3 +490,9 @@ bool	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end
 {
 	return	QT_LineIntersect(pTer->mpQT, start, end, intersection, planeHit);
 }
+
+bool	Terrain_CapsuleIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
+								float radius, vec3 intersection, vec4 planeHit)
+{
+	return	QT_CapsuleIntersect(pTer->mpQT, start, end, radius, intersection, planeHit);
+}

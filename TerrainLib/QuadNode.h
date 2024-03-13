@@ -14,3 +14,5 @@ bool		QN_LineIntersect(const QuadNode *pQT, const vec3 rayStart, const vec3 end,
 							vec3 intersection, vec4 planeHit);
 int			QN_LineIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 								vec3 intersection, vec3 hitNorm);
+int			QN_CapsuleIntersectCV(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+									float radius, vec3 intersection, vec3 hitNorm);

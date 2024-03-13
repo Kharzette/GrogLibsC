@@ -10,6 +10,10 @@
 
 #define		MIN_MAX_BOUNDS	15192.0f
 
+static const vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
+static const vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
+static const vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
+
 
 static __m128i	Convert4F32ToF16m128i(float f0, float f1, float f2, float f3)
 {
@@ -111,6 +115,15 @@ void	Misc_AddPointToBounds(vec3 min, vec3 max, const vec3 pnt)
 	}
 }
 
+void	Misc_ExpandBounds(vec3 min, vec3 max, float radius)
+{
+	for(int i=0;i < 3;i++)
+	{
+		min[i]	-=radius;
+		max[i]	+=radius;
+	}
+}
+
 bool	Misc_IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt)
 {
 	for(int i=0;i < 3;i++)
@@ -202,6 +215,59 @@ void	Misc_RandomDirection(vec3 dir)
 	glm_vec3_scale(dir, 1.0f / len, dir);
 }
 
+//build basis vectors for a transform or whatever
+void	Misc_BuildBasisVecsFromDirection(const vec3 direction, vec3 baseX, vec3 baseY, vec3 baseZ)
+{
+	//z for direction
+	glm_vec3_normalize_to(direction, baseZ);
+
+	//generate a good side vector
+	glm_vec3_cross(UnitY, baseZ, baseX);
+	if(glm_vec3_eq_eps(baseX, 0.0f))
+	{
+		//first cross failed
+		glm_vec3_cross(UnitX, baseZ, baseX);
+	}
+
+	//up vec
+	glm_vec3_cross(baseZ, baseX, baseY);
+
+	assert(!glm_vec3_eq_eps(baseX, 0.0f));
+	assert(!glm_vec3_eq_eps(baseY, 0.0f));
+
+	glm_vec3_normalize(baseX);
+	glm_vec3_normalize(baseY);
+}
+
+//make a huge quad from a plane
+void	Misc_WindingFromPlane(const vec4 plane, vec3 wind[4])
+{
+	vec3	dir	={	plane[0], plane[1], plane[2]	};
+
+	vec3	vX, vY, vZ;
+	Misc_BuildBasisVecsFromDirection(dir, vX, vY, vZ);
+
+	//plane centerish
+	vec3	org;
+	glm_vec3_scale(vZ, plane[3], org);
+
+	//scale up X and Y
+	glm_vec3_scale(vX, MIN_MAX_BOUNDS, vX);
+	glm_vec3_scale(vY, MIN_MAX_BOUNDS, vY);
+
+	glm_vec3_sub(org, vX, wind[0]);
+	glm_vec3_add(wind[0], vY, wind[0]);
+
+	glm_vec3_add(org, vX, wind[1]);
+	glm_vec3_add(wind[1], vY, wind[1]);
+
+	glm_vec3_add(org, vX, wind[2]);
+	glm_vec3_sub(wind[2], vY, wind[2]);
+
+	glm_vec3_sub(org, vX, wind[3]);
+	glm_vec3_sub(wind[3], vY, wind[3]);
+}
+
 
 //intersection of line and plane
 int	Misc_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, vec3 intersection)
@@ -239,7 +305,7 @@ int	Misc_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, 
 
 //based on reading https://tavianator.com/2011/ray_box.html and comments
 //Mine checks distance as I'm usually working with finite distances
-//invDir should be 1 divided by the direction vector
+//invDir should be 1 divided by the unit direction vector
 bool	Misc_RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float rayLen, const vec3 bounds[2])
 {
 	float	tmin, tmax, tymin, tymax, tzmin, tzmax;
@@ -299,9 +365,77 @@ int	Misc_LineIntersectBounds(const vec3 min, const vec3 max, const vec3 start, c
 {
 	vec4	boundPlanes[6];
 
-	MakeConvexVolumeFromBound(min, max, boundPlanes);
+	CV_MakeConvexVolumeFromBound(min, max, boundPlanes);
 
-	return	LineIntersectVolume(boundPlanes, 6, start, end, intersection, hitNorm);
+	return	CV_LineIntersectVolume(boundPlanes, 6, start, end, intersection, hitNorm);
+}
+
+//return one of the above values along with the intersection point and normal
+int	Misc_CapsuleIntersectBounds(const vec3 min, const vec3 max, const vec3 start, const vec3 end,
+								float radius, vec3 intersection, vec3 hitNorm)
+{
+	vec4	boundPlanes[6];
+
+	CV_MakeConvexVolumeFromBound(min, max, boundPlanes);
+
+	return	CV_CapsuleIntersectVolume(boundPlanes, 6, start, end, radius, intersection, hitNorm);
+}
+
+bool	Misc_CheckTwoAABBOverlap(const vec3 aMin, const vec3 aMax, const vec3 bMin, const vec3 bMax)
+{
+	return	aMin[0] <= bMax[0] && aMax[0] >= bMin[0] &&
+			aMin[1] <= bMax[1] && aMax[1] >= bMin[1] &&
+			aMin[2] <= bMax[2] && aMax[2] >= bMin[2];
+}
+
+//broad phase check of a ray against a bound
+//simply expands the movement into a single AABB
+//This made large rays twice as slow in the quadtree intersect!
+//Might help vs smaller rays of a few meters.
+bool	Misc_BPIntersectLineAABB(const vec3 start, const vec3 end,	//line segment
+								const vec3 statMin, const vec3 statMax)	//static aabb
+{
+	//expand
+	vec3	moveMin, moveMax;
+
+	glm_vec3_zero(moveMin);
+	glm_vec3_zero(moveMax);
+
+	Misc_AddPointToBounds(moveMin, moveMax, start);
+	Misc_AddPointToBounds(moveMin, moveMax, end);
+
+	return	Misc_CheckTwoAABBOverlap(moveMin, moveMax, statMin, statMax);
+}
+
+//broad phase check of a ray with bounds against a bound
+//simply expands the movement into a single AABB
+bool	Misc_BPIntersectSweptAABBLineAABB(const vec3 min, const vec3 max,	//moving aabb
+										const vec3 start, const vec3 end,	//line segment
+										const vec3 statMin, const vec3 statMax)	//static aabb
+{
+	//find the worldspace bound at start
+	vec3	startMin, startMax;
+
+	glm_vec3_add(min, start, startMin);
+	glm_vec3_add(max, start, startMax);
+
+	//worldspace bound at end
+	vec3	endMin, endMax;
+	glm_vec3_add(min, end, endMin);
+	glm_vec3_add(max, end, endMax);
+
+	//expand
+	vec3	moveMin, moveMax;
+
+	glm_vec3_zero(moveMin);
+	glm_vec3_zero(moveMax);
+
+	Misc_AddPointToBounds(moveMin, moveMax, startMin);
+	Misc_AddPointToBounds(moveMin, moveMax, startMax);
+	Misc_AddPointToBounds(moveMin, moveMax, endMin);
+	Misc_AddPointToBounds(moveMin, moveMax, endMax);
+
+	return	Misc_CheckTwoAABBOverlap(moveMin, moveMax, statMin, statMax);
 }
 
 //fails if the triangle has no plane (colinear points etc)

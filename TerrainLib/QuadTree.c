@@ -130,3 +130,21 @@ bool	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 
 	return	QN_LineIntersect(pQT->mpRoot, start, end, invDir, rayLen, intersection, planeHit);
 }
+
+//Note that a previous intersection might be passed in here.
+//Only a new intersection closer to the start point would result
+//in a hit.  This could be used to mix collision with statics or
+//mobiles or bsps or whatever
+bool	QT_CapsuleIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
+							float radius, vec3 intersection, vec4 planeHit)
+{
+	//check against bounds encompassing entire tree
+	vec3	hit;
+	vec4	hitNorm;	//don't want to affect real values
+	if(!Misc_CapsuleIntersectBounds(pQT->mMins, pQT->mMaxs, start, end, radius, hit, hitNorm))
+	{
+		return	false;
+	}
+
+	return	QN_CapsuleIntersectCV(pQT->mpRoot, start, end, radius, intersection, planeHit);
+}

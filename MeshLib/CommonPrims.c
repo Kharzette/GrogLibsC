@@ -70,8 +70,8 @@ AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD, const Stu
 
 	glm_mat4_identity(pRet->mWorld);
 
-	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNormTex0");
-	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS");
+	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNorm");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosVS");
 	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS");
 
 	return	pRet;
@@ -109,8 +109,8 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD, cons
 
 	glm_rotate(pRet->mPointyOffset, -GLM_PI_2, UnitX);
 
-	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNormTex0");
-	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosTexVS");
+	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNorm");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosVS");
 	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS");
 
 	return	pRet;
@@ -120,7 +120,7 @@ void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 						const vec3 location, CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//set gpu stuff
-	GD_IASetVertexBuffers(pGD, pRay->mpAxis->mpVB, 24, 0);
+	GD_IASetVertexBuffers(pGD, pRay->mpAxis->mpVB, pRay->mpAxis->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pRay->mpAxis->mpIB, DXGI_FORMAT_R16_UINT, 0);
 	GD_VSSetShader(pGD, pRay->mpVS);
 	GD_PSSetShader(pGD, pRay->mpPS);
@@ -157,7 +157,7 @@ void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 	GD_DrawIndexed(pGD, pRay->mpAxis->mIndexCount, 0, 0);
 
 	//set pointy end VB/IB
-	GD_IASetVertexBuffers(pGD, pRay->mpPointyEnd->mpVB, 24, 0);
+	GD_IASetVertexBuffers(pGD, pRay->mpPointyEnd->mpVB, pRay->mpPointyEnd->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pRay->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 	mat4	pointy;
@@ -175,7 +175,7 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 					CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//set X VB/IB
-	GD_IASetVertexBuffers(pGD, pAxis->mpX->mpVB, 24, 0);
+	GD_IASetVertexBuffers(pGD, pAxis->mpX->mpVB, pAxis->mpX->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpX->mpIB, DXGI_FORMAT_R16_UINT, 0);
 	GD_VSSetShader(pGD, pAxis->mpVS);
 	GD_PSSetShader(pGD, pAxis->mpPS);
@@ -198,7 +198,7 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpX->mIndexCount, 0, 0);
 
 	//set pointy end VB/IB for X
-	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, 24, 0);
+	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 	mat4	pointyRot;
@@ -220,7 +220,7 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpPointyEnd->mIndexCount, 0, 0);
 
 	//set Y VB/IB
-	GD_IASetVertexBuffers(pGD, pAxis->mpY->mpVB, 24, 0);
+	GD_IASetVertexBuffers(pGD, pAxis->mpY->mpVB, pAxis->mpY->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpY->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 	//materialish stuff
@@ -231,7 +231,7 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpY->mIndexCount, 0, 0);
 
 	//set pointy end VB/IB for Y
-	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, 24, 0);
+	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 	pointyPos[0]	=0.0f;
@@ -250,7 +250,7 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpPointyEnd->mIndexCount, 0, 0);
 
 	//set Z VB/IB
-	GD_IASetVertexBuffers(pGD, pAxis->mpZ->mpVB, 24, 0);
+	GD_IASetVertexBuffers(pGD, pAxis->mpZ->mpVB, pAxis->mpZ->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpZ->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 	//materialish stuff
@@ -261,7 +261,7 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpZ->mIndexCount, 0, 0);
 
 	//set pointy end VB/IB for Z
-	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, 24, 0);
+	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 	pointyPos[0]	=0.0f;

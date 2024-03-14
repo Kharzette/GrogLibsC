@@ -240,6 +240,17 @@ void	Misc_RandomDirection(vec3 dir)
 	glm_vec3_scale(dir, 1.0f / len, dir);
 }
 
+//make a random colour
+void	Misc_RandomColour(vec4 col)
+{
+	col[0]	=rand();
+	col[1]	=rand();
+	col[2]	=rand();
+	col[3]	=RAND_MAX;
+
+	glm_vec4_scale(col, 1.0f / RAND_MAX, col);
+}
+
 //build basis vectors for a transform or whatever
 void	Misc_BuildBasisVecsFromDirection(const vec3 direction, vec3 baseX, vec3 baseY, vec3 baseZ)
 {
@@ -325,56 +336,6 @@ bool	Misc_CheckTwoAABBOverlap(const vec3 aMin, const vec3 aMax, const vec3 bMin,
 	return	aMin[0] <= bMax[0] && aMax[0] >= bMin[0] &&
 			aMin[1] <= bMax[1] && aMax[1] >= bMin[1] &&
 			aMin[2] <= bMax[2] && aMax[2] >= bMin[2];
-}
-
-//broad phase check of a ray against a bound
-//simply expands the movement into a single AABB
-//This made large rays twice as slow in the quadtree intersect!
-//Might help vs smaller rays of a few meters.
-bool	Misc_BPIntersectLineAABB(const vec3 start, const vec3 end,	//line segment
-								const vec3 statMin, const vec3 statMax)	//static aabb
-{
-	//expand
-	vec3	moveMin, moveMax;
-
-	glm_vec3_zero(moveMin);
-	glm_vec3_zero(moveMax);
-
-	Misc_AddPointToBounds(moveMin, moveMax, start);
-	Misc_AddPointToBounds(moveMin, moveMax, end);
-
-	return	Misc_CheckTwoAABBOverlap(moveMin, moveMax, statMin, statMax);
-}
-
-//broad phase check of a ray with bounds against a bound
-//simply expands the movement into a single AABB
-bool	Misc_BPIntersectSweptAABBLineAABB(const vec3 min, const vec3 max,	//moving aabb
-										const vec3 start, const vec3 end,	//line segment
-										const vec3 statMin, const vec3 statMax)	//static aabb
-{
-	//find the worldspace bound at start
-	vec3	startMin, startMax;
-
-	glm_vec3_add(min, start, startMin);
-	glm_vec3_add(max, start, startMax);
-
-	//worldspace bound at end
-	vec3	endMin, endMax;
-	glm_vec3_add(min, end, endMin);
-	glm_vec3_add(max, end, endMax);
-
-	//expand
-	vec3	moveMin, moveMax;
-
-	glm_vec3_zero(moveMin);
-	glm_vec3_zero(moveMax);
-
-	Misc_AddPointToBounds(moveMin, moveMax, startMin);
-	Misc_AddPointToBounds(moveMin, moveMax, startMax);
-	Misc_AddPointToBounds(moveMin, moveMax, endMin);
-	Misc_AddPointToBounds(moveMin, moveMax, endMax);
-
-	return	Misc_CheckTwoAABBOverlap(moveMin, moveMax, statMin, statMax);
 }
 
 //uses the add up the angles trick to determine point in poly

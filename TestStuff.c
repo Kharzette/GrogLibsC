@@ -195,7 +195,7 @@ int main(void)
 	PrimObject	*pSphere	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
 	PrimObject	*pCube		=PF_CreateCubeFromBounds(sTestBoxMin, sTestBoxMax, pTS->mpGD);
 	PrimObject	*pSkyCube	=PF_CreateCube(10.0f, true, pTS->mpGD);
-	PrimObject	*pCVPO		=PF_CreateCV(spTestVol, YAxisCol, pTS->mpGD);
+	PrimObject	*pCVPO		=PF_CreateCV(spTestVol, pTS->mpGD);
 	LightRay	*pLR		=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pSK);
 	AxisXYZ		*pAxis		=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
 
@@ -380,7 +380,7 @@ int main(void)
 		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "DisableDepth"));
 
 		//draw sky first
-		GD_IASetVertexBuffers(pTS->mpGD, pSkyCube->mpVB, 24, 0);
+		GD_IASetVertexBuffers(pTS->mpGD, pSkyCube->mpVB, pSkyCube->mVertSize, 0);
 		GD_IASetIndexBuffers(pTS->mpGD, pSkyCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 		MAT_Apply(pSkyBoxMat, pCBK, pTS->mpGD);
@@ -397,7 +397,7 @@ int main(void)
 
 		//draw test volume
 		{
-			GD_IASetVertexBuffers(pTS->mpGD, pCVPO->mpVB, 28, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pCVPO->mpVB, pCVPO->mVertSize, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pCVPO->mpIB, DXGI_FORMAT_R16_UINT, 0);
 			MAT_Apply(pHitsMat, pCBK, pTS->mpGD);
 			GD_DrawIndexed(pTS->mpGD, pCVPO->mIndexCount, 0, 0);
@@ -407,7 +407,7 @@ int main(void)
 		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
 
 		//draw test cube
-		GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, 24, 0);
+		GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, pCube->mVertSize, 0);
 		GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 		MAT_Apply(pCubeMat, pCBK, pTS->mpGD);
@@ -418,7 +418,7 @@ int main(void)
 		{
 			MAT_SetWorld(pSphereMat, hitSphereMat);
 
-			GD_IASetVertexBuffers(pTS->mpGD, pSphere->mpVB, 24, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pSphere->mpVB, pSphere->mVertSize, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pSphere->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 			MAT_Apply(pSphereMat, pCBK, pTS->mpGD);
@@ -429,7 +429,7 @@ int main(void)
 		//debug draw quadtree leaf cubes
 		if(pTS->mbDrawTerNodes)
 		{
-			GD_IASetVertexBuffers(pTS->mpGD, pQTBoxes->mpVB, 24, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pQTBoxes->mpVB, pQTBoxes->mVertSize, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
 			MAT_Apply(pBoxesMat, pCBK, pTS->mpGD);
 			GD_DrawIndexed(pTS->mpGD, pQTBoxes->mIndexCount, 0, 0);
@@ -438,7 +438,7 @@ int main(void)
 		//debug draw many rays
 		if(pTS->mbDrawManyRays && pTS->mpManyRays != NULL)
 		{
-			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpManyRays->mpVB, 28, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpManyRays->mpVB, pTS->mpManyRays->mVertSize, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpManyRays->mpIB, DXGI_FORMAT_R32_UINT, 0);
 			MAT_Apply(pRaysMat, pCBK, pTS->mpGD);
 			GD_DrawIndexed(pTS->mpGD, pTS->mpManyRays->mIndexCount, 0, 0);
@@ -446,7 +446,7 @@ int main(void)
 
 		if(pTS->mbDrawManyImpacts && sNumRayImpacts > 0)
 		{
-			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpManyImpacts->mpVB, 28, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpManyImpacts->mpVB, pTS->mpManyImpacts->mVertSize, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpManyImpacts->mpIB, DXGI_FORMAT_R32_UINT, 0);
 			MAT_Apply(pHitsMat, pCBK, pTS->mpGD);
 			GD_DrawIndexed(pTS->mpGD, pTS->mpManyImpacts->mIndexCount, 0, 0);
@@ -506,11 +506,9 @@ static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDe
 		PF_DestroyPO(ppMI);
 	}
 
-	vec4	impactColour	={	1.0f,	0.0f,	0.0f,	1.0f	};
-
 	*ppMR	=PF_CreateManyRays(sRayStarts, sRayEnds, sRayResults, NUM_RAYS, RAY_WIDTH, pGD);
 
-	*ppMI	=PF_CreateManyCubes(sRayImpacts, impactColour, sNumRayImpacts, IMPACT_WIDTH, pGD);
+	*ppMI	=PF_CreateManyCubes(sRayImpacts, sNumRayImpacts, IMPACT_WIDTH, pGD);
 }
 
 //input handlers
@@ -883,12 +881,11 @@ static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 
-	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
+	MAT_SetLayout(pRet, "VPosNorm", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "WNormWPosTexVS", pSK);
-	MAT_SetPShader(pRet, "TriTex0SpecPS", pSK);
+	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSRV0(pRet, "Walls/Glass04", pSK);
 	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
@@ -903,12 +900,11 @@ static Material	*MakeCubeMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 
-	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
+	MAT_SetLayout(pRet, "VPosNorm", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "WNormWPosTexVS", pSK);
-	MAT_SetPShader(pRet, "TriTex0SpecPS", pSK);
+	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSRV0(pRet, "Walls/Glass04", pSK);
 	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
@@ -938,15 +934,16 @@ static Material	*MakeHitsMat(TestStuff *pTS, const StuffKeeper *pSK)
 {
 	Material	*pRet	=MAT_Create(pTS->mpGD);
 
-	vec3	light0		={	1.0f, 1.0f, 1.0f	};
-	vec3	light1		={	0.5f, 0.5f, 0.5f	};
-	vec3	light2		={	0.3f, 0.3f, 0.3f	};
+	vec3	light0		={	1.0f, 1.0f, 1.0f		};
+	vec3	light1		={	0.5f, 0.5f, 0.5f		};
+	vec3	light2		={	0.3f, 0.3f, 0.3f		};
+	vec4	hitCol		={	1.0f, 0.0f, 0.0f, 1.0f	};
 
-	MAT_SetLayout(pRet, "VPosNormCol0", pSK);
+	MAT_SetLayout(pRet, "VPosNorm", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "WNormWPosVColorVS", pSK);
-	MAT_SetPShader(pRet, "TriSolidVColorSpecPS", pSK);
-	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
+	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetSolidColour(pRet, hitCol);
 	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 4.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
@@ -1003,9 +1000,9 @@ static Material	*MakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light2		={	0.2f, 0.2f, 0.2f		};
 	vec4	ghosty		={	1.0f, 1.0f, 1.0f, 0.5f	};
 
-	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
+	MAT_SetLayout(pRet, "VPosNorm", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "WNormWPosTexVS", pSK);
+	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, ghosty);
 	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);

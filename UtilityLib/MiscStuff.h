@@ -33,19 +33,11 @@ extern float	Misc_BoundDistanceForNormal(const vec4 plane, const vec3 min, const
 
 //vector stuff
 extern void		Misc_RandomDirection(vec3 dir);
+extern void		Misc_RandomColour(vec4 col);
 extern void		Misc_BuildBasisVecsFromDirection(const vec3 direction, vec3 baseX, vec3 baseY, vec3 baseZ);
 extern float	Misc_ComputeAngleSum(const vec3 pointOnPlane, const vec3 *pVerts, int numVerts);
 
 //collision stuff
 extern bool	Misc_CheckTwoAABBOverlap(const vec3 aMin, const vec3 aMax, const vec3 bMin, const vec3 bMax);
-extern bool	Misc_BPIntersectLineAABB(const vec3 start, const vec3 end,			//line segment
-									const vec3 statMin, const vec3 statMax);	//static aabb
-extern bool	Misc_BPIntersectSweptAABBLineAABB(const vec3 min, const vec3 max,			//moving aabb
-											const vec3 start, const vec3 end,			//line segment
-											const vec3 statMin, const vec3 statMax);	//static aabb
 extern bool	Misc_IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt);
-extern int	Misc_LineIntersectBounds(const vec3 min, const vec3 max, const vec3 start, const vec3 end,
-								vec3 intersection, vec3 hitNorm);
 extern bool	Misc_RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float rayLen, const vec3 bounds[2]);
-extern int	Misc_CapsuleIntersectBounds(const vec3 min, const vec3 max, const vec3 start, const vec3 end,
-										float radius, vec3 intersection, vec3 hitNorm);

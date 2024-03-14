@@ -140,6 +140,51 @@ static int	LineIntersectLeafNode(const QuadNode *pQN, const vec3 start, const ve
 	return	ret;
 }
 
+static int	SweptSphereIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end,
+										float radius, vec3 intersection, vec4 planeHit)
+{
+	assert(pQN->mpCVs);
+
+	//invalidate
+	glm_vec3_fill(intersection, FLT_MAX);
+
+	CVList	*pCur	=NULL;
+	int		ret		=-1;
+
+	LL_FOREACH(pQN->mpCVs, pCur)
+	{
+		vec3	hit;
+		vec4	hitPlane;
+
+		int	res	=CV_SweptSphereIntersect(pCur->mpCV, start, end, radius, hit, hitPlane);
+		if(res == VOL_MISS)
+		{
+			continue;
+		}
+
+		//completely contained within one volume?
+		if(res == VOL_INSIDE)
+		{
+			return	VOL_INSIDE;
+		}
+
+		//favour visible surface hits
+		if(res & VOL_HIT_VISIBLE)
+		{
+			float	hitDist		=glm_vec3_distance2(start, hit);
+			float	prevHitDist	=glm_vec3_distance2(start, intersection);
+			if(hitDist < prevHitDist)
+			{
+				glm_vec3_copy(hit, intersection);
+				glm_vec4_copy(hitPlane, planeHit);
+				ret	=res;
+			}
+		}
+	}
+	return	ret;
+}
+
+
 static void	MakeLeafVolumes(QuadNode *pQN, const float *pHeights, int w, int h)
 {
 	pQN->mpCVs	=NULL;
@@ -425,13 +470,10 @@ int	QN_LineIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 //This is a swept sphere around a ray
 //see https://www.gamedeveloper.com/programming/bsp-collision-detection-as-used-in-mdk2-and-neverwinter-nights
 //for problems related to corners
-bool	QN_LineSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
-								const vec3 invDir, float radius, float rayLen,
-								vec3 intersection, vec4 planeHit)
+int	QN_SweptSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+							const vec3 invDir, float radius, float rayLen,
+							vec3 intersection, vec4 planeHit)
 {
-	//not ready to do this one yet
-	return	false;
-
 	vec3	bounds[2];
 	glm_vec3_copy(pQN->mMins, bounds[0]);
 	glm_vec3_copy(pQN->mMaxs, bounds[1]);
@@ -449,14 +491,22 @@ bool	QN_LineSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 	//don't need plane hit or point returned, just a yes or no
 	if(!Misc_RayIntersectBounds(rayStart, invDir, rayLen, bounds))
 	{
-		return	false;
+		return	VOL_MISS;
 	}
 
 	if(pQN->mpCVs)	//leaf?
 	{
 		vec3	hit;
 		vec4	hitPlane;
-		if(LineIntersectLeafNodeGLM(pQN, rayStart, end, hit, hitPlane))
+		int	res	=SweptSphereIntersectLeafNode(pQN, rayStart, end, radius, hit, hitPlane);
+
+		if(res == VOL_INSIDE)
+		{
+			//line fully contained in solid space
+			return	VOL_INSIDE;
+		}
+
+		if(res != VOL_MISS)
 		{
 			//can check squared distance for comparison
 			float	curDist	=glm_vec3_distance2(rayStart, intersection);
@@ -467,16 +517,47 @@ bool	QN_LineSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 			{
 				glm_vec3_copy(hit, intersection);
 				glm_vec4_copy(hitPlane, planeHit);
-				return	true;
+				return	res;	//some form of hit
 			}
 		}
-		return	false;
+		return	VOL_MISS;	//too distant
 	}
 
-	bool	ret	=QN_LineSphereIntersect(pQN->mpChildA, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
-	ret			|=QN_LineSphereIntersect(pQN->mpChildB, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
-	ret			|=QN_LineSphereIntersect(pQN->mpChildC, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
-	ret			|=QN_LineSphereIntersect(pQN->mpChildD, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	int	ret	=QN_SweptSphereIntersect(pQN->mpChildA, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	if(ret == VOL_INSIDE)	//early exit check
+	{
+		return	VOL_INSIDE;
+	}
+
+	int	ret2	=QN_SweptSphereIntersect(pQN->mpChildB, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	if(ret2 == VOL_INSIDE)	//early exit check
+	{
+		return	VOL_INSIDE;
+	}
+	else if(ret2 != VOL_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
+
+	ret2	=QN_SweptSphereIntersect(pQN->mpChildC, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	if(ret2 == VOL_INSIDE)	//early exit check
+	{
+		return	VOL_INSIDE;
+	}
+	else if(ret2 != VOL_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
+
+	ret2	=QN_SweptSphereIntersect(pQN->mpChildD, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	if(ret2 == VOL_INSIDE)	//early exit check
+	{
+		return	VOL_INSIDE;
+	}
+	else if(ret2 != VOL_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
 
 	return	ret;
 }

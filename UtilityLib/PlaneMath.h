@@ -13,5 +13,5 @@ int	PM_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, ve
 
 //chops
 int		PM_ClipLineToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end);
-int		PM_ClipCapsuleToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end, float radius);
+int		PM_ClipSweptSphere(const vec4 plane, bool bFront, vec3 start, vec3 end, float radius);
 Winding	*PM_ClipWindingBehindPlane(const vec4 plane, const Winding *pW);

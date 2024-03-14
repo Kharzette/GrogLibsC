@@ -28,7 +28,9 @@ void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);
 void	Terrain_SetSRV(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK);
 void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds);
 void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs);
-bool	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-								vec3 intersection, vec4 planeHit);
-bool	Terrain_CapsuleIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-								float radius, vec3 intersection, vec4 planeHit);
+
+//collision
+int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
+							vec3 intersection, vec4 planeHit);
+int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
+									float radius, vec3 intersection, vec4 planeHit);

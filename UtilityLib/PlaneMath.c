@@ -212,7 +212,7 @@ int	PM_ClipLineToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end)
 
 //chop start->end by plane
 //modify start and end to return the front or back side of plane segment
-int	PM_ClipCapsuleToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end, float radius)
+int	PM_ClipSweptSphere(const vec4 plane, bool bFront, vec3 start, vec3 end, float radius)
 {
 	float	startDist	=glm_vec3_dot(plane, start) - plane[3];
 	float	endDist		=glm_vec3_dot(plane, end) - plane[3];
@@ -293,12 +293,12 @@ int	PM_ClipCapsuleToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end, f
 
 			if(startDist < radius)
 			{
-				//start is the one outside the radius
+				//start is the one inside the radius
 				glm_vec3_copy(hit, end);
 			}
 			else
 			{
-				//end is the one outside the radius
+				//end is the one inside the radius
 				glm_vec3_copy(hit, start);
 			}
 			return	PLANE_HIT;

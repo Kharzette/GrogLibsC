@@ -227,7 +227,7 @@ int	CV_LineIntersectVolume(const ConvexVolume *pVol, const vec3 start, const vec
 
 	//see which plane was hit
 	int		hitPIdx	=-1;
-	float	nearest		=FLT_MAX;
+	float	nearest	=FLT_MAX;
 	for(int i=0;i < pVol->mNumPlanes;i++)
 	{
 		float	hitDist	=glm_vec3_dot(pVol->mpPlanes[i], intersection) - pVol->mpPlanes[i][3];
@@ -290,7 +290,7 @@ int	CV_SweptSphereIntersect(const ConvexVolume *pVol, const vec3 start, const ve
 			bStartInside	=false;
 		}
 
-		int	res	=PM_ClipCapsuleToPlane(pVol->mpPlanes[i], false, backStart, backEnd, radius);
+		int	res	=PM_ClipSweptSphere(pVol->mpPlanes[i], false, backStart, backEnd, radius);
 		if(res == PLANE_BACK)
 		{
 			continue;
@@ -325,6 +325,7 @@ int	CV_SweptSphereIntersect(const ConvexVolume *pVol, const vec3 start, const ve
 	{
 		float	hitDist	=glm_vec3_dot(pVol->mpPlanes[i], intersection) - pVol->mpPlanes[i][3];
 
+		hitDist	-=radius;
 		hitDist	=fabs(hitDist);
 
 		if(hitDist < nearest)
@@ -340,9 +341,23 @@ int	CV_SweptSphereIntersect(const ConvexVolume *pVol, const vec3 start, const ve
 
 	if(bStartInside)
 	{
-		return	VOL_HIT_INSIDE;
+		if(hitPIdx == 0)
+		{
+			return	VOL_HIT_INSIDE | VOL_HIT_VISIBLE;
+		}
+		else
+		{
+			return	VOL_HIT_INSIDE;
+		}
 	}
-	return	VOL_HIT;
+	if(hitPIdx == 0)
+	{
+		return	VOL_HIT | VOL_HIT_VISIBLE;
+	}
+	else
+	{
+		return	VOL_HIT;
+	}
 }
 
 

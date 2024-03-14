@@ -612,8 +612,8 @@ static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 ey
 //	bool	bHit	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
 //	bool	bHit	=Terrain_CapsuleIntersect(pTer, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	bool	bHit	=Misc_CapsuleIntersectBounds(sTestBoxMin, sTestBoxMax, eyePos, endRay, 0.5f, hitPos, hitPlane);
-//	bool	bHit	=CV_SweptSphereIntersect(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
-	int	res	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
+//	int	res	=CV_SweptSphereIntersect(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
+	int	res	=Terrain_SweptSphereIntersect(pTer, eyePos, endRay, 0.5f, hitPos, hitPlane);
 
 	return	res;
 }

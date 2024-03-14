@@ -34,3 +34,6 @@ int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 							vec3 intersection, vec4 planeHit);
 int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 									float radius, vec3 intersection, vec4 planeHit);
+int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
+								const vec3 min, const vec3 max,
+								vec3 intersection, vec4 planeHit);

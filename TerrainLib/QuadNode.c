@@ -184,6 +184,51 @@ static int	SweptSphereIntersectLeafNode(const QuadNode *pQN, const vec3 start, c
 	return	ret;
 }
 
+static int	SweptBoundIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end,
+										const vec3 min, const vec3 max,
+										vec3 intersection, vec4 planeHit)
+{
+	assert(pQN->mpCVs);
+
+	//invalidate
+	glm_vec3_fill(intersection, FLT_MAX);
+
+	CVList	*pCur	=NULL;
+	int		ret		=-1;
+
+	LL_FOREACH(pQN->mpCVs, pCur)
+	{
+		vec3	hit;
+		vec4	hitPlane;
+
+		int	res	=CV_SweptBoundIntersect(pCur->mpCV, start, end, min, max, hit, hitPlane);
+		if(res == VOL_MISS)
+		{
+			continue;
+		}
+
+		//completely contained within one volume?
+		if(res == VOL_INSIDE)
+		{
+			return	VOL_INSIDE;
+		}
+
+		//favour visible surface hits
+		if(res & VOL_HIT_VISIBLE)
+		{
+			float	hitDist		=glm_vec3_distance2(start, hit);
+			float	prevHitDist	=glm_vec3_distance2(start, intersection);
+			if(hitDist < prevHitDist)
+			{
+				glm_vec3_copy(hit, intersection);
+				glm_vec4_copy(hitPlane, planeHit);
+				ret	=res;
+			}
+		}
+	}
+	return	ret;
+}
+
 
 static void	MakeLeafVolumes(QuadNode *pQN, const float *pHeights, int w, int h)
 {
@@ -550,6 +595,103 @@ int	QN_SweptSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 	}
 
 	ret2	=QN_SweptSphereIntersect(pQN->mpChildD, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	if(ret2 == VOL_INSIDE)	//early exit check
+	{
+		return	VOL_INSIDE;
+	}
+	else if(ret2 != VOL_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
+
+	return	ret;
+}
+
+//invDir should be 1 divided by the direction vector
+//This is a swept sphere around a ray
+//see https://www.gamedeveloper.com/programming/bsp-collision-detection-as-used-in-mdk2-and-neverwinter-nights
+//for problems related to corners
+int	QN_SweptBoundIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+							const vec3 invDir, float rayLen,
+							const vec3 min, const vec3 max,
+							vec3 intersection, vec4 planeHit)
+{
+	vec3	bounds[2];
+	glm_vec3_copy(pQN->mMins, bounds[0]);
+	glm_vec3_copy(pQN->mMaxs, bounds[1]);
+
+	//expand by radius
+	Misc_ExpandBoundsByBounds(bounds[0], bounds[1], min, max);
+
+	//broad phase
+//	if(!Misc_BPIntersectLineAABB(rayStart, end, pQN->mMins, pQN->mMaxs))
+//	{
+//		return	false;
+//	}
+
+	//fast intersect check for nodes
+	//don't need plane hit or point returned, just a yes or no
+	if(!Misc_RayIntersectBounds(rayStart, invDir, rayLen, bounds))
+	{
+		return	VOL_MISS;
+	}
+
+	if(pQN->mpCVs)	//leaf?
+	{
+		vec3	hit;
+		vec4	hitPlane;
+		int	res	=SweptBoundIntersectLeafNode(pQN, rayStart, end, min, max, hit, hitPlane);
+
+		if(res == VOL_INSIDE)
+		{
+			//line fully contained in solid space
+			return	VOL_INSIDE;
+		}
+
+		if(res != VOL_MISS)
+		{
+			//can check squared distance for comparison
+			float	curDist	=glm_vec3_distance2(rayStart, intersection);
+			float	newDist	=glm_vec3_distance2(rayStart, hit);
+
+			//new hit nearer than previous hits?
+			if(newDist < curDist)
+			{
+				glm_vec3_copy(hit, intersection);
+				glm_vec4_copy(hitPlane, planeHit);
+				return	res;	//some form of hit
+			}
+		}
+		return	VOL_MISS;	//too distant
+	}
+
+	int	ret	=QN_SweptBoundIntersect(pQN->mpChildA, rayStart, end, invDir, rayLen, min, max, intersection, planeHit);
+	if(ret == VOL_INSIDE)	//early exit check
+	{
+		return	VOL_INSIDE;
+	}
+
+	int	ret2	=QN_SweptBoundIntersect(pQN->mpChildB, rayStart, end, invDir, rayLen, min, max, intersection, planeHit);
+	if(ret2 == VOL_INSIDE)	//early exit check
+	{
+		return	VOL_INSIDE;
+	}
+	else if(ret2 != VOL_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
+
+	ret2	=QN_SweptBoundIntersect(pQN->mpChildC, rayStart, end, invDir, rayLen, min, max, intersection, planeHit);
+	if(ret2 == VOL_INSIDE)	//early exit check
+	{
+		return	VOL_INSIDE;
+	}
+	else if(ret2 != VOL_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
+
+	ret2	=QN_SweptBoundIntersect(pQN->mpChildD, rayStart, end, invDir, rayLen, min, max, intersection, planeHit);
 	if(ret2 == VOL_INSIDE)	//early exit check
 	{
 		return	VOL_INSIDE;

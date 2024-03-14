@@ -35,4 +35,7 @@ bool	CV_PointInVolume(const ConvexVolume *pVol, const vec3 point);
 int		CV_LineIntersectVolume(const ConvexVolume *pVol, const vec3 start, const vec3 end,
 								vec3 intersection, vec4 hitPlane);
 int		CV_SweptSphereIntersect(const ConvexVolume *pVol, const vec3 start, const vec3 end,
-									float radius, vec3 intersection, vec4 hitPlane);
+								float radius, vec3 intersection, vec4 hitPlane);
+int		CV_SweptBoundIntersect(const ConvexVolume *pVol, const vec3 start, const vec3 end,
+								const vec3 min, const vec3 max,
+								vec3 intersection, vec4 hitPlane);

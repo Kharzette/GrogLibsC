@@ -22,12 +22,14 @@ extern void	Misc_SSE_ReciprocalVec3(const vec3 vector, vec3 recip);
 extern int	Misc_SSE_RoundFToI(float val);
 
 //bound stuff
-extern void	Misc_ClearBounds(vec3 min, vec3 max);
-extern void	Misc_AddPointToBounds(vec3 min, vec3 max, const vec3 pnt);
-extern void	Misc_ExpandBounds(vec3 min, vec3 max, float radius);
-extern void	Misc_MakeBound(float width, float height, float depth, vec3 min, vec3 max);
-extern void	Misc_MakeBaseZOrgBound(float width, float height, float depth, vec3 min, vec3 max);
-extern void	Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result);
+extern void		Misc_ClearBounds(vec3 min, vec3 max);
+extern void		Misc_AddPointToBounds(vec3 min, vec3 max, const vec3 pnt);
+extern void		Misc_ExpandBounds(vec3 min, vec3 max, float radius);
+extern void		Misc_ExpandBoundsByBounds(vec3 min, vec3 max, const vec3 minX, const vec3 maxX);
+extern void		Misc_MakeBound(float width, float height, float depth, vec3 min, vec3 max);
+extern void		Misc_MakeBaseZOrgBound(float width, float height, float depth, vec3 min, vec3 max);
+extern void		Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result);
+extern float	Misc_BoundDistanceForNormal(const vec4 plane, const vec3 min, const vec3 max);
 
 //vector stuff
 extern void		Misc_RandomDirection(vec3 dir);

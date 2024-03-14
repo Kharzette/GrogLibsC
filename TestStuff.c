@@ -57,8 +57,8 @@ static vec3	sRayImpacts[NUM_RAYS];
 static int	sNumRayImpacts;
 
 //test box
-static vec3	sTestBoxMin	={	-3, 3, -3	};
-static vec3	sTestBoxMax	={	-5, 5, -5	};
+static vec3	sTestBoxMin	={	-0.25f, -0.85f, -0.25f	};
+static vec3	sTestBoxMax	={	0.25f, 0.85f, 0.25f		};
 
 //drawing convex volume for debug stuff
 static ConvexVolume	*spTestVol;
@@ -290,13 +290,15 @@ int main(void)
 			{
 				glm_translate_make(hitSphereMat, pTS->mHitPos);
 
+				MAT_SetWorld(pCubeMat, hitSphereMat);
+
 				if(pTS->mDrawHit & VOL_HIT)
 				{
-					MAT_SetSolidColour(pSphereMat, XAxisCol);
+					MAT_SetSolidColour(pCubeMat, XAxisCol);
 				}
 				if(pTS->mDrawHit & VOL_HIT_INSIDE)
 				{
-					MAT_SetSolidColour(pSphereMat, YAxisCol);
+					MAT_SetSolidColour(pCubeMat, YAxisCol);
 				}
 			}
 			else
@@ -613,7 +615,7 @@ static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 ey
 //	bool	bHit	=Terrain_CapsuleIntersect(pTer, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	bool	bHit	=Misc_CapsuleIntersectBounds(sTestBoxMin, sTestBoxMax, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	int	res	=CV_SweptSphereIntersect(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
-	int	res	=Terrain_SweptSphereIntersect(pTer, eyePos, endRay, 0.5f, hitPos, hitPlane);
+	int	res	=Terrain_SweptBoundIntersect(pTer, eyePos, endRay, sTestBoxMin, sTestBoxMax, hitPos, hitPlane);
 
 	return	res;
 }

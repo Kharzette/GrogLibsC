@@ -496,3 +496,10 @@ int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const ve
 {
 	return	QT_SweptSphereIntersect(pTer->mpQT, start, end, radius, intersection, planeHit);
 }
+
+int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
+								const vec3 min, const vec3 max,
+								vec3 intersection, vec4 planeHit)
+{
+	return	QT_SweptBoundIntersect(pTer->mpQT, start, end, min, max, intersection, planeHit);
+}

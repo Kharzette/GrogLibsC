@@ -361,6 +361,106 @@ int	CV_SweptSphereIntersect(const ConvexVolume *pVol, const vec3 start, const ve
 }
 
 
+int	CV_SweptBoundIntersect(const ConvexVolume *pVol, const vec3 start, const vec3 end,
+							const vec3 min, const vec3 max,
+							vec3 intersection, vec4 hitPlane)
+{
+	vec3	backStart, backEnd;
+
+	//check if the start point is inside
+	bool	bStartInside	=true;
+
+	//see if the entire segment is inside
+	bool	bAllInside		=true;
+
+	glm_vec3_copy(start, backStart);
+	glm_vec3_copy(end, backEnd);
+
+	for(int i=0;i < pVol->mNumPlanes;i++)
+	{
+		//check the start point
+		float	startDist	=glm_vec3_dot(pVol->mpPlanes[i], start) - pVol->mpPlanes[i][3];
+
+		float	radius	=Misc_BoundDistanceForNormal(pVol->mpPlanes[i], min, max);
+
+		if(startDist > radius)
+		{
+			bStartInside	=false;
+		}
+
+		int	res	=PM_ClipSweptSphere(pVol->mpPlanes[i], false, backStart, backEnd, radius);
+		if(res == PLANE_BACK)
+		{
+			continue;
+		}
+		else if(res == PLANE_FRONT)
+		{
+			return	VOL_MISS;
+		}
+		bAllInside	=false;
+	}
+
+	if(bStartInside)
+	{
+		//I'm guessing if starting inside, user would
+		//want the point where the ray leaves the volume?
+		glm_vec3_copy(backEnd, intersection);
+	}
+	else
+	{
+		glm_vec3_copy(backStart, intersection);
+	}
+
+	if(bAllInside)
+	{
+		return	VOL_INSIDE;
+	}
+
+	//see which plane was hit
+	int		hitPIdx	=-1;
+	float	nearest	=FLT_MAX;
+	for(int i=0;i < pVol->mNumPlanes;i++)
+	{
+		float	hitDist	=glm_vec3_dot(pVol->mpPlanes[i], intersection) - pVol->mpPlanes[i][3];
+
+		float	radius	=Misc_BoundDistanceForNormal(pVol->mpPlanes[i], min, max);
+		
+		hitDist	-=radius;
+		hitDist	=fabs(hitDist);
+
+		if(hitDist < nearest)
+		{
+			hitPIdx	=i;
+			nearest	=hitDist;
+		}
+	}
+
+	assert(hitPIdx != -1);
+
+	glm_vec4_copy(pVol->mpPlanes[hitPIdx], hitPlane);
+
+	if(bStartInside)
+	{
+		if(hitPIdx == 0)
+		{
+			return	VOL_HIT_INSIDE | VOL_HIT_VISIBLE;
+		}
+		else
+		{
+			return	VOL_HIT_INSIDE;
+		}
+	}
+	if(hitPIdx == 0)
+	{
+		return	VOL_HIT | VOL_HIT_VISIBLE;
+	}
+	else
+	{
+		return	VOL_HIT;
+	}
+}
+
+
 bool	CV_PointInVolume(const ConvexVolume *pVol, const vec3 point)
 {
 	for(int i=0;i < pVol->mNumPlanes;i++)

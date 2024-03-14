@@ -127,6 +127,18 @@ void	Misc_ExpandBounds(vec3 min, vec3 max, float radius)
 	}
 }
 
+void	Misc_ExpandBoundsByBounds(vec3 min, vec3 max, const vec3 minX, const vec3 maxX)
+{
+	for(int i=0;i < 3;i++)
+	{
+		float	size	=(maxX[i] - minX[i]) * 0.5f;
+
+		min[i]	-=size;
+		max[i]	+=size;
+	}
+}
+
+
 bool	Misc_IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt)
 {
 	for(int i=0;i < 3;i++)
@@ -196,6 +208,16 @@ void	Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result)
 	result[1]	=scalarY * y;
 	result[2]	=scalarZ * z;
 }
+
+//return a radiuslike distance to adjust a plane by to keep the AABB just touching it
+float	Misc_BoundDistanceForNormal(const vec4 plane, const vec3 min, const vec3 max)
+{
+	float	minDot	=glm_vec3_dot(plane, min);
+	float	maxDot	=glm_vec3_dot(plane, max);
+
+	return	fmax(minDot, maxDot);
+}
+
 
 //make a random direction (unit vector)
 void	Misc_RandomDirection(vec3 dir)

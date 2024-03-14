@@ -5,7 +5,8 @@
 #define	VOL_MISS		0
 #define	VOL_INSIDE		1	//whole line segment inside
 #define	VOL_HIT			2	//start outside hit
-#define	VOL_HIT_INSIDE	3	//start inside hit
+#define	VOL_HIT_INSIDE	4	//start inside hit
+#define	VOL_HIT_VISIBLE	8	//hit visible surface
 
 
 typedef struct	Winding_t
@@ -33,5 +34,5 @@ int				CV_GenerateWindings(const ConvexVolume *pVol, Winding **pWL);
 bool	CV_PointInVolume(const ConvexVolume *pVol, const vec3 point);
 int		CV_LineIntersectVolume(const ConvexVolume *pVol, const vec3 start, const vec3 end,
 								vec3 intersection, vec4 hitPlane);
-int		CV_CapsuleIntersectVolume(const ConvexVolume *pVol, const vec3 start, const vec3 end,
+int		CV_SweptSphereIntersect(const ConvexVolume *pVol, const vec3 start, const vec3 end,
 									float radius, vec3 intersection, vec4 hitPlane);

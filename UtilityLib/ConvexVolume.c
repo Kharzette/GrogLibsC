@@ -113,6 +113,7 @@ int	CV_GenerateWindings(const ConvexVolume *pCV, Winding **ppWL)
 
 //Given a triangle, make a volume with the triangle
 //as the top (Y) surface, and bottomY as the -Y
+//TODO: bevel sharp angles
 ConvexVolume *CV_MakeFromTri(const vec3 tri[3], float bottomY)
 {
 	//top Y plane
@@ -127,6 +128,7 @@ ConvexVolume *CV_MakeFromTri(const vec3 tri[3], float bottomY)
 
 	vec3	norm;
 	glm_vec3_cross(edgeVec, upVec, norm);
+	glm_vec3_normalize(norm);
 
 	vec4	plane01	={	norm[0], norm[1], norm[2], 0.0f	};
 
@@ -136,6 +138,7 @@ ConvexVolume *CV_MakeFromTri(const vec3 tri[3], float bottomY)
 	glm_vec3_sub(tri[0], tri[2], edgeVec);
 
 	glm_vec3_cross(upVec, edgeVec, norm);
+	glm_vec3_normalize(norm);
 
 	vec4	plane02	={	norm[0], norm[1], norm[2], 0.0f	};
 
@@ -145,6 +148,7 @@ ConvexVolume *CV_MakeFromTri(const vec3 tri[3], float bottomY)
 	glm_vec3_sub(tri[1], tri[2], edgeVec);
 
 	glm_vec3_cross(edgeVec, upVec, norm);
+	glm_vec3_normalize(norm);
 
 	vec4	plane12	={	norm[0], norm[1], norm[2], 0.0f	};
 
@@ -158,6 +162,8 @@ ConvexVolume *CV_MakeFromTri(const vec3 tri[3], float bottomY)
 	pRet->mNumPlanes	=5;
 
 	//copy generated planes
+	//The triangle's plane goes at 0 index,
+	//this is used to determine a hit on a visible surface later.
 	glm_vec4_copy(triPlane, pRet->mpPlanes[0]);
 	glm_vec4_copy(bottomPlane, pRet->mpPlanes[1]);
 	glm_vec4_copy(plane01, pRet->mpPlanes[2]);
@@ -231,7 +237,7 @@ int	CV_LineIntersectVolume(const ConvexVolume *pVol, const vec3 start, const vec
 		if(hitDist < nearest)
 		{
 			hitPIdx	=i;
-			nearest		=hitDist;
+			nearest	=hitDist;
 		}
 	}
 
@@ -241,14 +247,28 @@ int	CV_LineIntersectVolume(const ConvexVolume *pVol, const vec3 start, const vec
 
 	if(bStartInside)
 	{
-		return	VOL_HIT_INSIDE;
+		if(hitPIdx == 0)
+		{
+			return	VOL_HIT_INSIDE | VOL_HIT_VISIBLE;
+		}
+		else
+		{
+			return	VOL_HIT_INSIDE;
+		}
 	}
-	return	VOL_HIT;
+	if(hitPIdx == 0)
+	{
+		return	VOL_HIT | VOL_HIT_VISIBLE;
+	}
+	else
+	{
+		return	VOL_HIT;
+	}
 }
 
 
-int	CV_CapsuleIntersectVolume(const ConvexVolume *pVol, const vec3 start, const vec3 end,
-								float radius, vec3 intersection, vec4 hitPlane)
+int	CV_SweptSphereIntersect(const ConvexVolume *pVol, const vec3 start, const vec3 end,
+							float radius, vec3 intersection, vec4 hitPlane)
 {
 	vec3	backStart, backEnd;
 

@@ -87,7 +87,7 @@ typedef struct	TestStuff_t
 	float	mDeltaYaw, mDeltaPitch;
 
 	//single ray cast vars
-	bool	mbDrawHit;
+	int		mDrawHit;
 	vec3	mHitPos;
 	vec4	mHitPlane;
 }	TestStuff;
@@ -95,7 +95,7 @@ typedef struct	TestStuff_t
 //static forward decs
 static void	TestManyRays(const Terrain *pTer);
 static void	PrintRandomPointInTerrain(const Terrain *pTer);
-static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
+static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
 static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
 static void	SetupKeyBinds(Input *pInp);
 static void	SetupRastVP(GraphicsDevice *pGD);
@@ -177,11 +177,11 @@ int main(void)
 	{
 		vec3	tri[3]	={
 			{5, 5, 5},
-			{6, 5, 5},
-			{6, 5, 6}
+			{9, 5, 5},
+			{9, 5, 9}
 		};
 
-		spTestVol	=CV_MakeFromTri(tri, 1.0f);
+		spTestVol	=CV_MakeFromTri(tri, 3.0f);
 	}
 
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
@@ -282,10 +282,22 @@ int main(void)
 			//move turn etc
 			INP_Update(pInp, pTS);
 
-			if(pTS->mbDrawHit)
+			if(pTS->mDrawHit == VOL_INSIDE)
+			{
+				MAT_SetSolidColour(pCubeMat, ZAxisCol);
+			}
+			else if(pTS->mDrawHit != VOL_MISS)
 			{
 				glm_translate_make(hitSphereMat, pTS->mHitPos);
-				MAT_SetSolidColour(pCubeMat, XAxisCol);
+
+				if(pTS->mDrawHit & VOL_HIT)
+				{
+					MAT_SetSolidColour(pSphereMat, XAxisCol);
+				}
+				if(pTS->mDrawHit & VOL_HIT_INSIDE)
+				{
+					MAT_SetSolidColour(pSphereMat, YAxisCol);
+				}
 			}
 			else
 			{
@@ -400,7 +412,7 @@ int main(void)
 		GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
 
 		//impact sphere VB/IB etc
-		if(pTS->mbDrawHit)
+		if(pTS->mDrawHit & VOL_HIT || pTS->mDrawHit & VOL_HIT_INSIDE)
 		{
 			MAT_SetWorld(pSphereMat, hitSphereMat);
 
@@ -568,7 +580,7 @@ static void	TestManyRays(const Terrain *pTer)
 	printf("Ray test of %d rays took %lu tics\n", numRays, delta);
 }
 
-static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane)
+static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane)
 {
 	vec3	forward, right, up, endRay;
 
@@ -600,9 +612,10 @@ static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 e
 //	bool	bHit	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
 //	bool	bHit	=Terrain_CapsuleIntersect(pTer, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	bool	bHit	=Misc_CapsuleIntersectBounds(sTestBoxMin, sTestBoxMax, eyePos, endRay, 0.5f, hitPos, hitPlane);
-	bool	bHit	=CV_CapsuleIntersectVolume(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
+//	bool	bHit	=CV_SweptSphereIntersect(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
+	int	res	=Terrain_LineIntersect(pTer, eyePos, endRay, hitPos, hitPlane);
 
-	return	bHit;
+	return	res;
 }
 
 //event handlers (eh)
@@ -639,7 +652,7 @@ static void	CastOneRayEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	pTS->mbDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
+	pTS->mDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
 }
 
 static void	PrintRandomEH(void *pContext, const SDL_Event *pEvt)

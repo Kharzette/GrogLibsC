@@ -36,10 +36,10 @@ void CBK_SetFogVars(CBKeeper *pCBK, float start, float end, bool bOn);
 void CBK_SetSky(CBKeeper *pCBK, const vec3 grad0, const vec3 grad1);
 
 //per object stuff
-void CBK_SetTrilights(CBKeeper *pCBK, const vec4 L0, const vec4 L1, const vec4 L2, const vec3 lightDir);
+void CBK_SetTrilights(CBKeeper *pCBK, const vec4 L0, const vec4 L1, const vec4 L2);
 void CBK_SetTrilights3(CBKeeper *pCBK, const vec3 L0, const vec3 L1, const vec3 L2, const vec3 lightDir);
 void CBK_SetSolidColour(CBKeeper *pCBK, const vec4 sc);
-void CBK_SetSpecular(CBKeeper *pCBK, const vec4 specColour, float specPow);
+void CBK_SetSpecular(CBKeeper *pCBK, const vec3 specColour, float specPow);
 void CBK_SetSpecularPower(CBKeeper *pCBK, float specPow);
 void CBK_SetWorldMat(CBKeeper *pCBK, const mat4 world);
 void CBK_SetTransposedWorldMat(CBKeeper *pCBK, const mat4 world);

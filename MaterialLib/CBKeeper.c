@@ -50,9 +50,10 @@ typedef struct PerFrame_t
 	mat4		mView;
 	mat4		mProjection;
 	mat4		mLightViewProj;	//for shadows
-	vec3		mEyePos;
-	float		mFogStart, mFogEnd, mFogEnabled;
-	vec3		mSkyGradient0, mSkyGradient1;
+	vec4		mEyePos;		//w unused
+	vec4		mFog;			//start, end, enabled, unused
+	vec4		mSkyGradient0;
+	vec4		mSkyGradient1;
 }	PerFrame;
 
 //CommonFunctions.hlsli
@@ -60,19 +61,17 @@ typedef struct PerObject_t
 {
 	mat4	mWorld;
 	vec4	mSolidColour;
-	vec4	mSpecColor;
+	vec4	mSpecColorPow;	//power in w
 
 	//These are considered directional (no falloff)
+	//light direction in w component
 	vec4	mLightColor0;		//trilights need 3 colors
 	vec4	mLightColor1;		//trilights need 3 colors
 	vec4	mLightColor2;		//trilights need 3 colors
 
-	vec3	mLightDirection;
-	float	mSpecPower;
-
-	//material id for borders etc
-	int		mMaterialID;
-	vec3	mDanglyForce;
+	//a force vector for doing physicsy stuff
+	//integer material id in w
+	vec4	mDanglyForceMID;
 }	PerObject;
 
 //CommonFunctions.hlsli
@@ -353,9 +352,9 @@ void CBK_SetView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
 
 void	CBK_SetFogVars(CBKeeper *pCBK, float start, float end, bool bOn)
 {
-	pCBK->mpPerFrame->mFogStart		=start;
-	pCBK->mpPerFrame->mFogEnd		=end;
-	pCBK->mpPerFrame->mFogEnabled	=(bOn)?	1.0f : 0.0f;
+	pCBK->mpPerFrame->mFog[0]	=start;
+	pCBK->mpPerFrame->mFog[1]	=end;
+	pCBK->mpPerFrame->mFog[2]	=(bOn)?	1.0f : 0.0f;
 }
 
 void	CBK_SetSky(CBKeeper *pCBK, const vec3 grad0, const vec3 grad1)
@@ -394,25 +393,26 @@ void CBK_SetProjection(CBKeeper *pCBK, const mat4 proj)
 
 
 //per object stuff
-void CBK_SetTrilights(CBKeeper *pCBK, const vec4 L0, const vec4 L1, const vec4 L2, const vec3 lightDir)
+//this should have light direction crammed into the w components
+void CBK_SetTrilights(CBKeeper *pCBK, const vec4 L0, const vec4 L1, const vec4 L2)
 {
 	glm_vec4_copy(L0, pCBK->mpPerObject->mLightColor0);
 	glm_vec4_copy(L1, pCBK->mpPerObject->mLightColor1);
 	glm_vec4_copy(L2, pCBK->mpPerObject->mLightColor2);
-	glm_vec3_copy(lightDir, pCBK->mpPerObject->mLightDirection);
 }
 
 void CBK_SetTrilights3(CBKeeper *pCBK, const vec3 L0, const vec3 L1, const vec3 L2, const vec3 lightDir)
 {
-	glm_vec4_copy3(L0, pCBK->mpPerObject->mLightColor0);
-	glm_vec4_copy3(L1, pCBK->mpPerObject->mLightColor1);
-	glm_vec4_copy3(L2, pCBK->mpPerObject->mLightColor2);
+	for(int i=0;i < 3;i++)
+	{
+		pCBK->mpPerObject->mLightColor0[i]	=L0[i];
+		pCBK->mpPerObject->mLightColor1[i]	=L1[i];
+		pCBK->mpPerObject->mLightColor2[i]	=L2[i];
+	}
 
-	glm_vec3_copy(lightDir, pCBK->mpPerObject->mLightDirection);
-
-	pCBK->mpPerObject->mLightColor0[3]	=1.0f;
-	pCBK->mpPerObject->mLightColor1[3]	=1.0f;
-	pCBK->mpPerObject->mLightColor2[3]	=1.0f;
+	pCBK->mpPerObject->mLightColor0[3]	=lightDir[0];
+	pCBK->mpPerObject->mLightColor1[3]	=lightDir[1];
+	pCBK->mpPerObject->mLightColor2[3]	=lightDir[2];
 }
 
 void CBK_SetSolidColour(CBKeeper *pCBK, const vec4 sc)
@@ -420,16 +420,16 @@ void CBK_SetSolidColour(CBKeeper *pCBK, const vec4 sc)
 	glm_vec4_copy(sc, pCBK->mpPerObject->mSolidColour);
 }
 
-void CBK_SetSpecular(CBKeeper *pCBK, const vec4 specColour, float specPow)
+void CBK_SetSpecular(CBKeeper *pCBK, const vec3 specColour, float specPow)
 {
-	glm_vec4_copy(specColour, pCBK->mpPerObject->mSpecColor);
+	vec4	spec	={	specColour[0], specColour[1], specColour[2], specPow	};
 
-	pCBK->mpPerObject->mSpecPower	=specPow;
+	glm_vec4_copy(spec, pCBK->mpPerObject->mSpecColorPow);
 }
 
 void CBK_SetSpecularPower(CBKeeper *pCBK, float specPow)
 {
-	pCBK->mpPerObject->mSpecPower	=specPow;
+	pCBK->mpPerObject->mSpecColorPow[4]	=specPow;
 }
 
 void CBK_SetWorldMat(CBKeeper *pCBK, const mat4 world)
@@ -444,12 +444,12 @@ void CBK_SetTransposedWorldMat(CBKeeper *pCBK, const mat4 world)
 
 void CBK_SetMaterialID(CBKeeper *pCBK, int matID)
 {
-	pCBK->mpPerObject->mMaterialID	=matID;
+	*((int *)&pCBK->mpPerObject->mDanglyForceMID[3])	=matID;
 }
 
 void CBK_SetDanglyForce(CBKeeper *pCBK, const vec3 force)
 {
-	glm_vec3_copy(force, pCBK->mpPerObject->mDanglyForce);
+	glm_vec3_copy(force, pCBK->mpPerObject->mDanglyForceMID);
 }
 
 

@@ -202,6 +202,15 @@ int main(void)
 	CBKeeper	*pCBK	=CBK_Create(pTS->mpGD);
 	PostProcess	*pPP	=PP_Create(pTS->mpGD, pSK, pCBK);
 
+	//set sky gradient
+	{
+		vec3	skyHorizon	={	0.0f, 0.5f, 1.0f	};
+		vec3	skyHigh		={	0.0f, 0.25f, 1.0f	};
+
+		CBK_SetSky(pCBK, skyHorizon, skyHigh);
+		CBK_SetFogVars(pCBK, 50.0f, 300.0f, true);
+	}
+
 	PP_MakePostTarget(pPP, pTS->mpGD, "LinearColor", RESX, RESY, DXGI_FORMAT_R8G8B8A8_UNORM);
 	PP_MakePostDepth(pPP, pTS->mpGD, "LinearDepth", RESX, RESY, DXGI_FORMAT_D32_FLOAT);
 
@@ -233,9 +242,6 @@ int main(void)
 
 	glm_vec3_normalize(pTS->mLightDir);
 	glm_mat4_identity(charMat);
-
-	CBK_SetFogVars(pCBK, 500.0f, 1000.0f, true);
-	CBK_SetSky(pCBK, skyGrad0, skyGrad1);
 
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz

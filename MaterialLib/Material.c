@@ -21,7 +21,7 @@ typedef struct	Material_t
 	vec3	mTrilight2;
 	vec3	mLightDirection;
 	vec4	mSolidColour;
-	vec4	mSpecular;
+	vec3	mSpecular;
 	vec3	mDanglyForce;
 	int		mMaterialID;
 	float	mSpecPower;
@@ -49,8 +49,10 @@ Material	*MAT_Create(GraphicsDevice *pGD)
 	pRet->mLightDirection[2]	=3.0f;
 	glm_vec3_normalize(pRet->mLightDirection);
 
-	glm_vec4_copy(GLM_VEC4_ONE, pRet->mSpecular);
+	glm_vec3_copy(GLM_VEC3_ONE, pRet->mSpecular);
 	glm_vec4_copy(GLM_VEC4_ONE, pRet->mSolidColour);
+
+	pRet->mSpecPower	=3.0f;
 
 	return	pRet;
 }
@@ -138,9 +140,9 @@ void	MAT_SetSolidColour(Material *pMat, const vec4 col)
 	glm_vec4_copy(col, pMat->mSolidColour);
 }
 
-void	MAT_SetSpecular(Material *pMat, const vec4 spec, float specPower)
+void	MAT_SetSpecular(Material *pMat, const vec3 spec, float specPower)
 {
-	glm_vec4_copy(spec, pMat->mSpecular);
+	glm_vec3_copy(spec, pMat->mSpecular);
 
 	pMat->mSpecPower	=specPower;
 }

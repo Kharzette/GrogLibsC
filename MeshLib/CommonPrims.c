@@ -143,10 +143,10 @@ void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 	//materialish stuff
 	CBK_SetSolidColour(pCBK, rayColour);
 
-	vec3	lightColour0	={	1,		1,		1			};
-	vec3	lightColour1	={	0.8f,	0.8f,	0.8f		};
-	vec3	lightColour2	={	0.6f,	0.6f,	0.6f		};
-	vec4	specColour		={	1,		1,		1,		1	};
+	vec3	lightColour0	={	1,		1,		1		};
+	vec3	lightColour1	={	0.8f,	0.8f,	0.8f	};
+	vec3	lightColour2	={	0.6f,	0.6f,	0.6f	};
+	vec3	specColour		={	1,		1,		1		};
 
 	CBK_SetTrilights3(pCBK, lightColour0, lightColour1, lightColour2, lightDir);
 	CBK_SetSpecular(pCBK, specColour, 1.0f);
@@ -184,10 +184,10 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	//materialish stuff
 	CBK_SetSolidColour(pCBK, xCol);
 
-	vec3	lightColour0	={	1,		1,		1			};
-	vec3	lightColour1	={	0.8f,	0.8f,	0.8f		};
-	vec3	lightColour2	={	0.6f,	0.6f,	0.6f		};
-	vec4	specColour		={	1,		1,		1,		1	};
+	vec3	lightColour0	={	1,		1,		1		};
+	vec3	lightColour1	={	0.8f,	0.8f,	0.8f	};
+	vec3	lightColour2	={	0.6f,	0.6f,	0.6f	};
+	vec3	specColour		={	1,		1,		1		};
 
 	CBK_SetTrilights3(pCBK, lightColour0, lightColour1, lightColour2, lightDir);
 	CBK_SetSpecular(pCBK, specColour, 1.0f);

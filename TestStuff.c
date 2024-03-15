@@ -188,8 +188,6 @@ int main(void)
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
 	vec4	YAxisCol	={	0.0f, 0.0f, 1.0f, 1.0f	};
 	vec4	ZAxisCol	={	0.0f, 1.0f, 0.0f, 1.0f	};
-	vec3	skyGrad0	={	0.7f, 0.8f, 0.9f	};
-	vec3	skyGrad1	={	0.2f, 0.3f, 1.0f	};
 
 	//test prims
 	PrimObject	*pSphere	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
@@ -892,7 +890,7 @@ static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 6.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
@@ -911,7 +909,7 @@ static Material	*MakeCubeMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 6.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
@@ -930,7 +928,7 @@ static Material	*MakeRaysMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetVShader(pRet, "WNormWPosVColorVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidVColorSpecPS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 4.0f);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 4.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
@@ -950,7 +948,7 @@ static Material	*MakeHitsMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, hitCol);
-	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 4.0f);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 4.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
@@ -971,7 +969,7 @@ static Material	*MakeCharacterMat(TestStuff *pTS, const StuffKeeper *pSK)
 
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 6.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
@@ -991,7 +989,7 @@ static Material	*MakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetPShader(pRet, "TriTexFact8PS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
 	MAT_SetSRV0(pRet, "Terrain/TerAtlas", pSK);
-	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 3.0f);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 3.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
@@ -1011,7 +1009,7 @@ static Material	*MakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, ghosty);
-	MAT_SetSpecular(pRet, GLM_VEC4_ONE, 6.0f);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 6.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;

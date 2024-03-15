@@ -117,16 +117,6 @@ int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 	vec3	invDir;
 	Misc_SSE_ReciprocalVec3(rayDir, invDir);
 
-	vec3	bounds[2];
-	glm_vec3_copy(pQT->mMins, bounds[0]);
-	glm_vec3_copy(pQT->mMaxs, bounds[1]);
-
-	//check against bounds encompassing entire tree
-	if(!Misc_RayIntersectBounds(start, invDir, rayLen, bounds))
-	{
-		return	VOL_MISS;
-	}
-
 	return	QN_LineIntersect(pQT->mpRoot, start, end, invDir, rayLen, intersection, planeHit);
 }
 
@@ -148,16 +138,6 @@ int	QT_SweptSphereIntersect(const QuadTree *pQT, const vec3 start, const vec3 en
 
 	vec3	invDir;
 	Misc_SSE_ReciprocalVec3(rayDir, invDir);
-
-	vec3	bounds[2];
-	glm_vec3_copy(pQT->mMins, bounds[0]);
-	glm_vec3_copy(pQT->mMaxs, bounds[1]);
-
-	//check against bounds encompassing entire tree
-	if(!Misc_RayIntersectBounds(start, invDir, rayLen, bounds))
-	{
-		return	VOL_MISS;
-	}
 
 	return	QN_SweptSphereIntersect(pQT->mpRoot, start, end, invDir, radius, rayLen, intersection, planeHit);
 }
@@ -181,16 +161,6 @@ int	QT_SweptBoundIntersect(const QuadTree *pQT, const vec3 start, const vec3 end
 
 	vec3	invDir;
 	Misc_SSE_ReciprocalVec3(rayDir, invDir);
-
-	vec3	bounds[2];
-	glm_vec3_copy(pQT->mMins, bounds[0]);
-	glm_vec3_copy(pQT->mMaxs, bounds[1]);
-
-	//check against bounds encompassing entire tree
-	if(!Misc_RayIntersectBounds(start, invDir, rayLen, bounds))
-	{
-		return	VOL_MISS;
-	}
 
 	return	QN_SweptBoundIntersect(pQT->mpRoot, start, end, invDir, rayLen, min, max, intersection, planeHit);
 }

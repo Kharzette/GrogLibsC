@@ -501,5 +501,11 @@ int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec
 								const vec3 min, const vec3 max,
 								vec3 intersection, vec4 planeHit)
 {
+	//box needs to be centered
+	vec3	diff;
+	glm_vec3_add(max, min, diff);
+
+	assert(glm_vec3_eq_eps(diff, 0.0f));
+
 	return	QT_SweptBoundIntersect(pTer->mpQT, start, end, min, max, intersection, planeHit);
 }

@@ -6,9 +6,18 @@
 #include	<assert.h>
 #include	"MiscStuff.h"
 #include	"ConvexVolume.h"
+#include	"PlaneMath.h"
 
 
-#define		MIN_MAX_BOUNDS	15192.0f
+#define	MIN_MAX_BOUNDS			15192.0f
+#define	DIST_EPSILON			0.01f
+#define	RAMP_ANGLE				0.7f	//steepness can traverse on foot
+#define	STEP_HEIGHT				18.0f	//quake units
+#define	STOP_DOWN_HEIGHT		10.0f	//quake units
+#define	METERS_TO_QUAKEUNITS	37.6471f
+#define	METERS_TO_VALVEUNITS	39.37001f
+#define	METERS_TO_GROGUNITS		METERS_TO_VALVEUNITS
+#define	METERS_TO_CENTIMETERS	100f
 
 __attribute_maybe_unused__
 static const vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
@@ -21,7 +30,7 @@ static Winding *CopyWinding(const Winding *pW);
 
 
 //fails if the triangle has no plane (colinear points etc)
-bool	PM_PlaneFromVerts(const vec3 *pVerts, int numVerts, vec4 plane)
+bool	PM_FromVerts(const vec3 *pVerts, int numVerts, vec4 plane)
 {
 	int	i;
 
@@ -63,7 +72,7 @@ bool	PM_PlaneFromVerts(const vec3 *pVerts, int numVerts, vec4 plane)
 	return	true;
 }
 
-bool	PM_PlaneFromTri(const vec3 v0, const vec3 v1, const vec3 v2, vec4 plane)
+bool	PM_FromTri(const vec3 v0, const vec3 v1, const vec3 v2, vec4 plane)
 {
 	vec3	tri[3];
 
@@ -71,11 +80,11 @@ bool	PM_PlaneFromTri(const vec3 v0, const vec3 v1, const vec3 v2, vec4 plane)
 	memcpy(tri[1], v1, sizeof(vec3));
 	memcpy(tri[2], v2, sizeof(vec3));
 
-	return	PM_PlaneFromVerts(tri, 3, plane);
+	return	PM_FromVerts(tri, 3, plane);
 }
 
 //make a huge quad from a plane
-void	PM_VertsFromPlane(const vec4 plane, vec3 verts[4])
+void	PM_ToVerts(const vec4 plane, vec3 verts[4])
 {
 	vec3	dir	={	plane[0], plane[1], plane[2]	};
 
@@ -114,7 +123,7 @@ int	PM_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, ve
 	{
 		return	PLANE_FRONT;
 	}
-	else if(startDist < 0.0f && endDist < 0.0f)
+	else if(startDist <= 0.0f && endDist <= 0.0f)
 	{
 		return	PLANE_BACK;
 	}
@@ -141,7 +150,7 @@ int	PM_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, ve
 
 //chop start->end by plane
 //modify start and end to return the front or back side of plane segment
-int	PM_ClipLineToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end)
+int	PM_ClipLine(const vec4 plane, bool bFront, vec3 start, vec3 end)
 {
 	float	startDist	=glm_vec3_dot(plane, start) - plane[3];
 	float	endDist		=glm_vec3_dot(plane, end) - plane[3];
@@ -211,7 +220,10 @@ int	PM_ClipLineToPlane(const vec4 plane, bool bFront, vec3 start, vec3 end)
 }
 
 //chop start->end by plane
-//modify start and end to return the front or back side of plane segment
+//Modify start and end to return the front side of plane segment.
+//Note that back side clips aren't really safe to do as the radius
+//can cause the volume to turn inside out and go negative.
+//For quadtree terrain I shift only the visible surface plane.
 int	PM_ClipSweptSphere(const vec4 plane, bool bFront, vec3 start, vec3 end, float radius)
 {
 	float	startDist	=glm_vec3_dot(plane, start) - plane[3];
@@ -227,7 +239,7 @@ int	PM_ClipSweptSphere(const vec4 plane, bool bFront, vec3 start, vec3 end, floa
 		}
 		return	PLANE_FRONT;
 	}
-	else if(startDist < radius && endDist < radius)
+	else if(startDist <= radius && endDist <= radius)
 	{
 		if(bFront)
 		{
@@ -289,7 +301,11 @@ int	PM_ClipSweptSphere(const vec4 plane, bool bFront, vec3 start, vec3 end, floa
 
 			vec3	hit;
 			int	res	=PM_LineIntersectPlane(bumped, start, end, hit);
-			assert(res == PLANE_HIT);
+			if(res != PLANE_HIT)
+			{
+				//this can happen rarely due to fp error
+				return	res;
+			}
 
 			if(startDist < radius)
 			{
@@ -310,12 +326,12 @@ int	PM_ClipSweptSphere(const vec4 plane, bool bFront, vec3 start, vec3 end, floa
 			glm_vec3_zero(start);
 			glm_vec3_zero(end);
 
-			return	PLANE_BACK;
+			return	PLANE_FRONT;
 		}
 	}
 }
 
-Winding *PM_ClipWindingBehindPlane(const vec4 plane, const Winding *pW)
+Winding *PM_ClipWindingBehind(const vec4 plane, const Winding *pW)
 {
 	vec3	norm	={	plane[0], plane[1], plane[2]	};
 
@@ -407,6 +423,109 @@ Winding *PM_ClipWindingBehindPlane(const vec4 plane, const Winding *pW)
 	}
 
 	return	pRet;
+}
+
+
+float	PM_Distance(const vec4 plane, const vec3 point)
+{
+	return	glm_vec3_dot(plane, point) - plane[3];
+}
+
+//push slightly to the front side
+void	PM_ReflectMove(const vec4 plane, const vec3 start, const vec3 end, vec3 newPos)
+{
+	float	startDist	=PM_Distance(plane, start);
+	float	dist		=PM_Distance(plane, end);
+
+	//is the direction vector valid to find a collision response?
+	if(startDist <= 0.0f || dist >= DIST_EPSILON)
+	{
+		vec3	scaledNorm;
+		glm_vec3_scale(plane, dist, scaledNorm);
+
+		//place newPos directly on the plane
+		glm_vec3_sub(end, scaledNorm, newPos);
+
+		//adjust it to the front side
+		glm_vec3_scale(plane, DIST_EPSILON, scaledNorm);
+		glm_vec3_add(scaledNorm, newPos, newPos);
+	}
+	else
+	{
+		vec3	scaledNorm;
+		glm_vec3_scale(plane, dist - DIST_EPSILON, scaledNorm);
+		glm_vec3_sub(end, scaledNorm, newPos);
+	}
+}
+
+//adjust a position just off the front side
+void	PM_ReflectPosition(const vec4 plane, vec3 pos)
+{
+	float	dist	=PM_Distance(plane, pos);
+
+	//directly on or off a bit?
+	if(dist >= DIST_EPSILON)
+	{
+		vec3	scaledNorm;
+		glm_vec3_scale(plane, dist, scaledNorm);
+
+		//place newPos directly on the plane
+		glm_vec3_sub(pos, scaledNorm, pos);
+
+		//adjust it to the front side
+		glm_vec3_scale(plane, DIST_EPSILON, scaledNorm);
+		glm_vec3_add(scaledNorm, pos, pos);
+	}
+	else
+	{
+		vec3	scaledNorm;
+		glm_vec3_scale(plane, dist - DIST_EPSILON, scaledNorm);
+		glm_vec3_sub(pos, scaledNorm, pos);
+	}
+}
+
+//adjust a movement vec along the plane
+bool	PM_MoveAlong(const vec4 plane, vec3 moveVec)
+{
+	assert(PM_IsGround(plane));
+
+	if(glm_vec3_eq(moveVec, 0.0f))
+	{
+		return	false;
+	}
+
+	//save length
+	float	len	=glm_vec3_norm(moveVec);
+
+	//normalized move vec
+	vec3	moveNorm;
+	glm_vec3_scale(moveVec, 1.0f / len, moveNorm);
+
+	float	dot	=glm_vec3_dot(plane, moveNorm);
+
+	if(dot < -(1.0f -RAMP_ANGLE) || dot > (1.0f - RAMP_ANGLE))
+	{
+		return	false;	//movement is too perp for alignment
+	}
+
+	vec3	sideVec;
+	glm_vec3_cross(moveVec, plane, sideVec);
+
+	vec3	newVec;
+	glm_vec3_cross(plane, sideVec, newVec);
+
+	glm_vec3_normalize(newVec);
+
+	glm_vec3_scale(newVec, len, moveVec);
+
+	return	true;
+}
+
+bool	PM_IsGround(const vec4 plane)
+{
+	float	dotY	=glm_vec3_dot(plane, UnitY);
+
+	return	(dotY > RAMP_ANGLE);
 }
 
 

@@ -9,6 +9,8 @@
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"../MaterialLib/Material.h"
+#include	"../UtilityLib/ConvexVolume.h"
+#include	"../UtilityLib/PlaneMath.h"
 #include	"QuadTree.h"
 #include	"QuadNode.h"	//for testing splits
 
@@ -508,4 +510,130 @@ int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec
 	assert(glm_vec3_eq_eps(diff, 0.0f));
 
 	return	QT_SweptBoundIntersect(pTer->mpQT, start, end, min, max, intersection, planeHit);
+}
+
+bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
+						const vec3 start, const vec3 end, vec3 finalPos)
+{
+	int	i	=0;
+
+	vec3	newEnd, newStart;
+	glm_vec3_copy(start, newStart);
+	glm_vec3_copy(end, newEnd);
+
+	int	maxIter	=5;
+
+//	List<ZonePlane>	hitPlanes	=new List<ZonePlane>();
+	for(i=0;i < maxIter;i++)
+	{
+//		RayTrace	rt	=new RayTrace(newStart, newEnd);
+//		rt.mBounds		=box;
+		vec3	intersection;
+		vec4	plane;
+
+		int	hit	=Terrain_SweptBoundIntersect(pTer, newStart, newEnd, min, max, intersection, plane);
+		if(hit == VOL_MISS)
+		{
+			break;
+		}
+
+//		ZonePlane	zp	=rt.mCollision.mPlaneHit;
+
+		if(hit == VOL_HIT_INSIDE)
+		{
+			//see if start is exactly plane on
+			float	checkDist	=PM_Distance(plane, newStart);
+			if(checkDist == 0.0f)
+			{
+				PM_ReflectPosition(plane, newStart);
+				continue;
+			}
+			//TODO: report and solve via intersection
+			//can't solve!
+			glm_vec3_copy(start, finalPos);
+			return	false;
+		}
+		else if(hit == VOL_INSIDE)
+		{
+			//started in a solid leaf
+			//cast up
+			vec3	bump	={	0.0f, 1.0f, 0.0f	};
+			vec3	bumpHit;
+			vec4	bumpPlane;
+			glm_vec3_add(newStart, bump, bump);
+
+			int	bumpRet	=Terrain_SweptBoundIntersect(pTer, newStart, bump, min, max, bumpHit, bumpPlane);
+			if(bumpRet == VOL_HIT_VISIBLE)
+			{
+				PM_ReflectPosition(bumpPlane, newStart);
+				continue;
+			}
+			return	false;
+		}
+
+		//reflect off plane hit to new endpoint
+		PM_ReflectMove(plane, newStart, newEnd, newEnd);
+
+		//copy intersect point to start
+		glm_vec3_copy(intersection, newStart);
+
+//		if(!hitPlanes.Contains(zp))
+//		{
+//			hitPlanes.Add(zp);
+//		}
+	}
+
+	glm_vec3_copy(newEnd, finalPos);
+
+/*	if(i == MaxMoveBoxIterations)
+	{
+		//this is usually caused by oblique planes causing
+		//the reflected motion to bounce back and forth
+
+		//get all the collision points along the motion
+		List<Vector3>	contacts	=GetCollisions(hitPlanes, start, end);
+
+		//get distance start to end
+		float	motionDistance	=start.Distance(end);
+
+		//stop at the closest contact to start
+		float	bestDist	=float.MaxValue;
+		Vector3	bestCon		=start;
+		foreach(Vector3 con in contacts)
+		{
+			float	startDist	=con.Distance(start);
+			float	endDist		=con.Distance(end);
+
+			if(endDist > motionDistance)
+			{
+				//this contact is in front of the start!
+				//this can only mean the starting position
+				//was in solid
+				finalPos	=start;
+				return	false;
+			}
+
+			if(startDist < bestDist)
+			{
+				bestDist	=startDist;
+				bestCon		=con;
+			}
+		}
+
+		if(bestCon.Distance(start) <= Mathery.VCompareEpsilon)
+		{
+			//so close might as well use the start position
+			finalPos	=start;
+			return	true;
+		}
+		//push back along the vector a bit
+		Vector3	motionVec	=end - start;
+
+		motionVec	/=motionDistance;
+		motionVec	*=Mathery.VCompareEpsilon;
+
+		finalPos	=bestCon - motionVec;
+		return	true;
+	}*/
+	return	true;
 }

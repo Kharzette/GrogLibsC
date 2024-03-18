@@ -72,6 +72,7 @@ typedef struct	TestStuff_t
 	GameCamera		*mpCam;
 	PrimObject		*mpManyRays;
 	PrimObject		*mpManyImpacts;
+	ScreenText		*mpST;
 
 	//toggles
 	bool	mbDrawTerNodes;
@@ -79,11 +80,13 @@ typedef struct	TestStuff_t
 	bool	mbDrawManyImpacts;
 	bool	mbMouseLooking;
 	bool	mbRunning;
+	bool	mbFlyMode;
 
 	//misc data
 	vec3	mDanglyForce;
 	vec3	mLightDir;
 	vec3	mEyePos;
+	vec3	mPlayerPos;
 	float	mDeltaYaw, mDeltaPitch;
 
 	//single ray cast vars
@@ -96,9 +99,11 @@ typedef struct	TestStuff_t
 static void	TestManyRays(const Terrain *pTer);
 static void	PrintRandomPointInTerrain(const Terrain *pTer);
 static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
+static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane);
 static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
 static void	SetupKeyBinds(Input *pInp);
 static void	SetupRastVP(GraphicsDevice *pGD);
+static void SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK);
 
 //material setups
 static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
@@ -120,6 +125,7 @@ static void	CastManyRaysEH(void *pContext, const SDL_Event *pEvt);
 static void	ToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt);
 static void	ToggleDrawManyRaysEH(void *pContext, const SDL_Event *pEvt);
 static void	ToggleDrawManyImpactsEH(void *pContext, const SDL_Event *pEvt);
+static void	ToggleFlyModeEH(void *pContext, const SDL_Event *pEvt);
 static void	LeftMouseDownEH(void *pContext, const SDL_Event *pEvt);
 static void	LeftMouseUpEH(void *pContext, const SDL_Event *pEvt);
 static void	RightMouseDownEH(void *pContext, const SDL_Event *pEvt);
@@ -146,6 +152,9 @@ int main(void)
 	//for ref/modifying by input handlers
 	TestStuff	*pTS	=malloc(sizeof(TestStuff));
 	memset(pTS, 0, sizeof(TestStuff));
+
+	//start in fly mode
+	pTS->mbFlyMode	=true;
 
 	//input and key / mouse bindings
 	Input	*pInp	=INP_CreateInput();
@@ -200,6 +209,8 @@ int main(void)
 	CBKeeper	*pCBK	=CBK_Create(pTS->mpGD);
 	PostProcess	*pPP	=PP_Create(pTS->mpGD, pSK, pCBK);
 
+	SetupDebugStrings(pTS, pSK);
+
 	//set sky gradient
 	{
 		vec3	skyHorizon	={	0.0f, 0.5f, 1.0f	};
@@ -243,15 +254,6 @@ int main(void)
 
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
-
-	//debug screen text
-	ScreenText	*pST	=ST_Create(pTS->mpGD, pSK, MAX_ST_CHARS, "CGA", "CGA");
-
-	ST_AddString(pST, "Timing thing", 69, ZAxisCol, GLM_VEC2_ONE, GLM_VEC2_ONE);
-	{
-		vec2	embiggen	={	2.0f, 2.0f	};
-		ST_ModifyStringScale(pST, 69, embiggen);
-	}
 
 	//materials
 	Material	*pSphereMat	=MakeSphereMat(pTS, pSK);
@@ -335,10 +337,10 @@ int main(void)
 
 			sprintf(timeStr, "maxDT: %f", maxDT);
 
-			ST_ModifyStringText(pST, 69, timeStr);
+			ST_ModifyStringText(pTS->mpST, 69, timeStr);
 		}
 
-		ST_Update(pST, pTS->mpGD);
+		ST_Update(pTS->mpST, pTS->mpGD);
 
 		animTime	+=dt;
 //		AnimLib_Animate(pALib, "DocuBaseBlenderCoords", animTime);
@@ -460,6 +462,7 @@ int main(void)
 		Terrain_DrawMat(pTS->mpTer, pTS->mpGD, pCBK, pTerMat);
 
 		//set mesh draw stuff
+		glm_translate_make(charMat, pTS->mPlayerPos);
 		MAT_SetWorld(pCharMat, charMat);
 		MAT_SetDanglyForce(pCharMat, pTS->mDanglyForce);
 		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
@@ -476,7 +479,7 @@ int main(void)
 		CBK_SetProjection(pCBK, textProj);
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
-		ST_Draw(pST, pTS->mpGD, pCBK);
+		ST_Draw(pTS->mpST, pTS->mpGD, pCBK);
 
 		//change back to 3D
 		CBK_SetProjection(pCBK, camProj);
@@ -622,6 +625,20 @@ static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 ey
 	return	res;
 }
 
+static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane)
+{
+	//test a simple move vector with a bound
+	vec3	start	={	45.665318f, 3.499443f, 54.451221f	};	//move straight x
+	vec3	end		={	49.756111f, 3.303342f, 50.492950f	};	//3 units and down
+
+	//invalidate hit point
+	glm_vec3_fill(hitPos, FLT_MAX);
+
+	bool	bGood	=Terrain_MoveBox(pTer, sTestBoxMin, sTestBoxMax, start, end, hitPos);
+
+	return	VOL_HIT_VISIBLE;
+}
+
 //event handlers (eh)
 static void	RandLightEH(void *pContext, const SDL_Event *pEvt)
 {
@@ -656,7 +673,8 @@ static void	CastOneRayEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	pTS->mDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
+//	pTS->mDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
+	pTS->mDrawHit	=TestOneMove(pTS->mpTer, pTS->mHitPos, pTS->mHitPlane);
 }
 
 static void	PrintRandomEH(void *pContext, const SDL_Event *pEvt)
@@ -703,6 +721,15 @@ static void	ToggleDrawManyImpactsEH(void *pContext, const SDL_Event *pEvt)
 	assert(pTS);
 
 	pTS->mbDrawManyImpacts	=!pTS->mbDrawManyImpacts;
+}
+
+static void	ToggleFlyModeEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mbFlyMode	=!pTS->mbFlyMode;
 }
 
 static void	LeftMouseDownEH(void *pContext, const SDL_Event *pEvt)
@@ -764,7 +791,34 @@ static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 	GameCam_GetForwardVec(pTS->mpCam, forward);
 	glm_vec3_scale(forward, MOVE_RATE, forward);
 
-	glm_vec3_sub(pTS->mEyePos, forward, pTS->mEyePos);
+	if(pTS->mbFlyMode)
+	{
+		glm_vec3_sub(pTS->mEyePos, forward, pTS->mEyePos);
+	}
+	else
+	{
+		vec3	end, newPos;
+		glm_vec3_add(pTS->mPlayerPos, forward, end);
+		if(Terrain_MoveBox(pTS->mpTer, sTestBoxMin, sTestBoxMax, pTS->mPlayerPos, end, newPos))
+		{
+			//watch for a glitchy move
+			float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);
+			if(dist > 10.0f)
+			{
+				printf("Glitchy Move: %f %f %f to %f %f %f\n",
+					pTS->mPlayerPos[0], pTS->mPlayerPos[1], pTS->mPlayerPos[2], 
+					end[0], end[1], end[2]);
+			}
+
+			glm_vec3_copy(newPos, pTS->mPlayerPos);
+
+			ST_ModifyStringText(pTS->mpST, 70, "Moved!");
+		}
+		else
+		{
+			ST_ModifyStringText(pTS->mpST, 70, "Move error!");
+		}
+	}
 }
 
 static void	KeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
@@ -1037,6 +1091,7 @@ static void	SetupKeyBinds(Input *pInp)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, ToggleDrawTerNodesEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_m, ToggleDrawManyRaysEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_b, ToggleDrawManyImpactsEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_f, ToggleFlyModeEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, EscEH);
 
 	//held bindings
@@ -1093,4 +1148,28 @@ static void	SetupRastVP(GraphicsDevice *pGD)
 	GD_RSSetViewPort(pGD, &vp);
 	GD_RSSetState(pGD, pRast);
 	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
+
+static void SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	//debug screen text
+	pTS->mpST	=ST_Create(pTS->mpGD, pSK, MAX_ST_CHARS, "CGA", "CGA");
+
+	vec2	embiggen	={	2.0f, 2.0f	};
+	vec2	topLeftPos	={	5.0f, 5.0f	};
+	vec2	nextLine	={	0.0f, 20.0f	};
+	vec4	red			={	1.0f, 0.0f, 0.0f, 1.0f	};
+	vec4	blue		={	0.0f, 0.0f, 1.0f, 1.0f	};
+	vec4	green		={	0.0f, 1.0f, 0.0f, 1.0f	};
+	vec4	magenta		={	1.0f, 0.0f, 1.0f, 1.0f	};
+	vec4	cyan		={	0.0f, 1.0f, 1.0f, 1.0f	};
+
+
+	ST_AddString(pTS->mpST, "Timing thing", 69, green, topLeftPos, embiggen);
+
+	glm_vec2_add(topLeftPos, nextLine, topLeftPos);
+	ST_AddString(pTS->mpST, "Movestuff", 70, red, topLeftPos, embiggen);
+
+	glm_vec2_add(topLeftPos, nextLine, topLeftPos);
+	ST_AddString(pTS->mpST, "Pos Storage", 71, magenta, topLeftPos, embiggen);
 }

@@ -1554,7 +1554,7 @@ PrimObject	*PF_CreateCV(const ConvexVolume *pCV, GraphicsDevice *pGD)
 	LL_FOREACH(pWinds, pCur)
 	{
 		vec4	plane;
-		PM_PlaneFromVerts(pCur->mpVerts, pCur->mNumVerts, plane);
+		PM_FromVerts(pCur->mpVerts, pCur->mNumVerts, plane);
 
 		int	idx	=cur;
 		for(int i=0;i < pCur->mNumVerts;i++)

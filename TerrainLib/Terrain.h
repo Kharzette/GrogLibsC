@@ -37,3 +37,7 @@ int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const ve
 int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 								const vec3 min, const vec3 max,
 								vec3 intersection, vec4 planeHit);
+
+//movement
+bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
+						const vec3 start, const vec3 end, vec3 finalPos);

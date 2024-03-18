@@ -62,7 +62,7 @@ int	CV_GenerateWindings(const ConvexVolume *pCV, Winding **ppWL)
 	{
 		vec3	wind[4];
 
-		PM_VertsFromPlane(pCV->mpPlanes[i], wind);
+		PM_ToVerts(pCV->mpPlanes[i], wind);
 
 		Winding	*pA	=malloc(sizeof(Winding));
 
@@ -83,7 +83,7 @@ int	CV_GenerateWindings(const ConvexVolume *pCV, Winding **ppWL)
 				continue;
 			}
 
-			Winding	*pNewW	=PM_ClipWindingBehindPlane(pCV->mpPlanes[j], pA);
+			Winding	*pNewW	=PM_ClipWindingBehind(pCV->mpPlanes[j], pA);
 
 			if(pNewW == NULL)
 			{
@@ -118,7 +118,7 @@ ConvexVolume *CV_MakeFromTri(const vec3 tri[3], float bottomY)
 {
 	//top Y plane
 	vec4	triPlane;
-	PM_PlaneFromTri(tri[0], tri[1], tri[2], triPlane);
+	PM_FromTri(tri[0], tri[1], tri[2], triPlane);
 
 	//edge plane 0 -> 1
 	vec3	edgeVec;
@@ -197,7 +197,7 @@ int	CV_LineIntersectVolume(const ConvexVolume *pVol, const vec3 start, const vec
 			bStartInside	=false;
 		}
 
-		int	res	=PM_ClipLineToPlane(pVol->mpPlanes[i], false, backStart, backEnd);
+		int	res	=PM_ClipLine(pVol->mpPlanes[i], false, backStart, backEnd);
 		if(res == PLANE_BACK)
 		{
 			continue;
@@ -373,6 +373,9 @@ int	CV_SweptBoundIntersect(const ConvexVolume *pVol, const vec3 start, const vec
 	//see if the entire segment is inside
 	bool	bAllInside		=true;
 
+	//see if the first plane clips the bound
+	bool	bFirstPlane		=false;
+
 	glm_vec3_copy(start, backStart);
 	glm_vec3_copy(end, backEnd);
 
@@ -381,7 +384,8 @@ int	CV_SweptBoundIntersect(const ConvexVolume *pVol, const vec3 start, const vec
 		//check the start point
 		float	startDist	=glm_vec3_dot(pVol->mpPlanes[i], start) - pVol->mpPlanes[i][3];
 
-		float	radius	=Misc_BoundDistanceForNormal(pVol->mpPlanes[i], min, max);
+		//shift the first plane only
+		float	radius	=(i == 0)?	Misc_BoundDistanceForNormal(pVol->mpPlanes[i], min, max) : 0.0f;
 
 		if(startDist > radius)
 		{
@@ -398,6 +402,10 @@ int	CV_SweptBoundIntersect(const ConvexVolume *pVol, const vec3 start, const vec
 			return	VOL_MISS;
 		}
 		bAllInside	=false;
+		if(i == 0)
+		{
+			bFirstPlane	=true;
+		}
 	}
 
 	if(bStartInside)
@@ -416,43 +424,12 @@ int	CV_SweptBoundIntersect(const ConvexVolume *pVol, const vec3 start, const vec
 		return	VOL_INSIDE;
 	}
 
-	//see which plane was hit
-	int		hitPIdx	=-1;
-	float	nearest	=FLT_MAX;
-	for(int i=0;i < pVol->mNumPlanes;i++)
+	if(bFirstPlane)
 	{
-		float	hitDist	=glm_vec3_dot(pVol->mpPlanes[i], intersection) - pVol->mpPlanes[i][3];
-
-		float	radius	=Misc_BoundDistanceForNormal(pVol->mpPlanes[i], min, max);
-		
-		hitDist	-=radius;
-		hitDist	=fabs(hitDist);
-
-		if(hitDist < nearest)
-		{
-			hitPIdx	=i;
-			nearest	=hitDist;
-		}
-	}
-
-	assert(hitPIdx != -1);
-
-	glm_vec4_copy(pVol->mpPlanes[hitPIdx], hitPlane);
-
-	if(bStartInside)
-	{
-		if(hitPIdx == 0)
-		{
-			return	VOL_HIT_INSIDE | VOL_HIT_VISIBLE;
-		}
-		else
-		{
-			return	VOL_HIT_INSIDE;
-		}
-	}
-	if(hitPIdx == 0)
-	{
-		return	VOL_HIT | VOL_HIT_VISIBLE;
+		//kind of a terrain hack
+		glm_vec4_copy(pVol->mpPlanes[0], hitPlane);
+		hitPlane[3]	+=Misc_BoundDistanceForNormal(pVol->mpPlanes[0], min, max);
+		return	VOL_HIT_VISIBLE;
 	}
 	else
 	{

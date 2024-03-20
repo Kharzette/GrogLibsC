@@ -346,8 +346,7 @@ void CBK_SetView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
 {
 	glm_mat4_transpose_to(view, pCBK->mpPerFrame->mView);
 
-	//negate into viewspace
-	glm_vec3_flipsign_to(eyePos, pCBK->mpPerFrame->mEyePos);
+	glm_vec3_copy(eyePos, pCBK->mpPerFrame->mEyePos);
 }
 
 void	CBK_SetFogVars(CBKeeper *pCBK, float start, float end, bool bOn)
@@ -367,8 +366,7 @@ void CBK_SetTransposedView(CBKeeper *pCBK, const mat4 view, const vec3 eyePos)
 {
 	glm_mat4_copy(view, pCBK->mpPerFrame->mView);
 
-	//negate into viewspace
-	glm_vec3_flipsign_to(eyePos, pCBK->mpPerFrame->mEyePos);
+	glm_vec3_copy(eyePos, pCBK->mpPerFrame->mEyePos);
 }
 
 void CBK_SetTransposedLightViewProj(CBKeeper *pCBK, const mat4 lvp)

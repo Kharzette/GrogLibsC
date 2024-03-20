@@ -117,11 +117,11 @@ uint64_t UpdateTimer_GetUpdateDeltaTics(const UpdateTimer *pUT)
 		//I think maybe the best thing to do is see if the remainder
 		//is nearer to a fixed time slice than zero, and if so, spend
 		//a fixed time slice and go negative, otherwise spend it next frame
-		int64_t	halfStep	=pUT->mStep / 2;
-		if(pUT->mFullUpdateTime >= halfStep)
-		{
-			return	pUT->mStep;
-		}
+//		int64_t	halfStep	=pUT->mStep / 2;
+//		if(pUT->mFullUpdateTime >= halfStep)
+//		{
+//			return	pUT->mStep;
+//		}
 		return	0L;
 	}
 	else

@@ -1,5 +1,7 @@
 CC=gcc
 CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c -fpic -shared	\
+	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
+	-DCGLM_FORCE_LEFT_HANDED	\
 	-I../SDL/include	\
 	-I../uthash/include	\
 	-I../cglm/include	\

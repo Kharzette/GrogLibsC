@@ -190,7 +190,7 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, bool bFlipped, Graphi
 	uint16_t	idx, indexes[36];
 	for(int i=idx=0;i < 36;i+=6)
 	{
-		if(bFlipped)
+		if(!bFlipped)
 		{
 			indexes[i]		=idx + 0;
 			indexes[i + 1]	=idx + 2;
@@ -403,11 +403,11 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 			int	indBox	=i * 36;
 
 			inds[indBox + j]		=idx + 0;
-			inds[indBox + j + 1]	=idx + 1;
-			inds[indBox + j + 2]	=idx + 2;
+			inds[indBox + j + 1]	=idx + 2;
+			inds[indBox + j + 2]	=idx + 1;
 			inds[indBox + j + 3]	=idx + 0;
-			inds[indBox + j + 4]	=idx + 2;
-			inds[indBox + j + 5]	=idx + 3;
+			inds[indBox + j + 4]	=idx + 3;
+			inds[indBox + j + 5]	=idx + 2;
 
 			idx	+=4;
 		}
@@ -574,11 +574,11 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 			int	indBox	=i * 36;
 
 			inds[indBox + j]		=idx + 0;
-			inds[indBox + j + 1]	=idx + 1;
-			inds[indBox + j + 2]	=idx + 2;
+			inds[indBox + j + 1]	=idx + 2;
+			inds[indBox + j + 2]	=idx + 1;
 			inds[indBox + j + 3]	=idx + 0;
-			inds[indBox + j + 4]	=idx + 2;
-			inds[indBox + j + 5]	=idx + 3;
+			inds[indBox + j + 4]	=idx + 3;
+			inds[indBox + j + 5]	=idx + 2;
 
 			idx	+=4;
 		}
@@ -765,11 +765,11 @@ PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4
 			int	indBox	=i * 36;
 
 			inds[indBox + j]		=idx + 0;
-			inds[indBox + j + 1]	=idx + 2;
-			inds[indBox + j + 2]	=idx + 1;
+			inds[indBox + j + 1]	=idx + 1;
+			inds[indBox + j + 2]	=idx + 2;
 			inds[indBox + j + 3]	=idx + 0;
-			inds[indBox + j + 4]	=idx + 3;
-			inds[indBox + j + 5]	=idx + 2;
+			inds[indBox + j + 4]	=idx + 2;
+			inds[indBox + j + 5]	=idx + 3;
 
 			idx	+=4;
 		}
@@ -882,43 +882,43 @@ PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD)
 
 	//top upper left face
 	glm_vec3_copy(topPoint, vpn[0].Position);
-	glm_vec3_copy(left, vpn[2].Position);
-	glm_vec3_copy(top, vpn[1].Position);
+	glm_vec3_copy(left, vpn[1].Position);
+	glm_vec3_copy(top, vpn[2].Position);
 
 	//top upper right face
 	glm_vec3_copy(topPoint, vpn[3].Position);
-	glm_vec3_copy(top, vpn[5].Position);
-	glm_vec3_copy(right, vpn[4].Position);
+	glm_vec3_copy(top, vpn[4].Position);
+	glm_vec3_copy(right, vpn[5].Position);
 
 	//top lower left face
 	glm_vec3_copy(topPoint, vpn[6].Position);
-	glm_vec3_copy(bottom, vpn[8].Position);
-	glm_vec3_copy(left, vpn[7].Position);
+	glm_vec3_copy(bottom, vpn[7].Position);
+	glm_vec3_copy(left, vpn[8].Position);
 
 	//top lower right face
 	glm_vec3_copy(topPoint, vpn[9].Position);
-	glm_vec3_copy(right, vpn[11].Position);
-	glm_vec3_copy(bottom, vpn[10].Position);
+	glm_vec3_copy(right, vpn[10].Position);
+	glm_vec3_copy(bottom, vpn[11].Position);
 
 	//bottom upper left face
 	glm_vec3_copy(bottomPoint, vpn[12].Position);
-	glm_vec3_copy(top, vpn[14].Position);
-	glm_vec3_copy(left, vpn[13].Position);
+	glm_vec3_copy(top, vpn[13].Position);
+	glm_vec3_copy(left, vpn[14].Position);
 
 	//bottom upper right face
 	glm_vec3_copy(bottomPoint, vpn[15].Position);
-	glm_vec3_copy(right, vpn[17].Position);
-	glm_vec3_copy(top, vpn[16].Position);
+	glm_vec3_copy(right, vpn[16].Position);
+	glm_vec3_copy(top, vpn[17].Position);
 
 	//bottom lower left face
 	glm_vec3_copy(bottomPoint, vpn[18].Position);
-	glm_vec3_copy(left, vpn[20].Position);
-	glm_vec3_copy(bottom, vpn[19].Position);
+	glm_vec3_copy(left, vpn[19].Position);
+	glm_vec3_copy(bottom, vpn[20].Position);
 
 	//bottom lower right face
 	glm_vec3_copy(bottomPoint, vpn[21].Position);
-	glm_vec3_copy(bottom, vpn[23].Position);
-	glm_vec3_copy(right, vpn[22].Position);
+	glm_vec3_copy(bottom, vpn[22].Position);
+	glm_vec3_copy(right, vpn[23].Position);
 
 	//just reference in order, no verts shared
 	uint16_t	idx, indexes[24];
@@ -1028,31 +1028,31 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 
 	//top upper left face
 	glm_vec3_copy(topPoint, vpnt[0].Position);
-	glm_vec3_copy(left, vpnt[1].Position);
-	glm_vec3_copy(top, vpnt[2].Position);
+	glm_vec3_copy(left, vpnt[2].Position);
+	glm_vec3_copy(top, vpnt[1].Position);
 
 	//top upper right face
 	glm_vec3_copy(topPoint, vpnt[3].Position);
-	glm_vec3_copy(top, vpnt[4].Position);
-	glm_vec3_copy(right, vpnt[5].Position);
+	glm_vec3_copy(top, vpnt[5].Position);
+	glm_vec3_copy(right, vpnt[4].Position);
 
 	//top lower left face
 	glm_vec3_copy(topPoint, vpnt[6].Position);
-	glm_vec3_copy(bottom, vpnt[7].Position);
-	glm_vec3_copy(left, vpnt[8].Position);
+	glm_vec3_copy(bottom, vpnt[8].Position);
+	glm_vec3_copy(left, vpnt[7].Position);
 
 	//top lower right face
 	glm_vec3_copy(topPoint, vpnt[9].Position);
-	glm_vec3_copy(right, vpnt[10].Position);
-	glm_vec3_copy(bottom, vpnt[11].Position);
+	glm_vec3_copy(right, vpnt[11].Position);
+	glm_vec3_copy(bottom, vpnt[10].Position);
 
 	//bottom face (2 triangles)
 	glm_vec3_copy(top, vpnt[12].Position);
-	glm_vec3_copy(bottom, vpnt[13].Position);
-	glm_vec3_copy(right, vpnt[14].Position);
+	glm_vec3_copy(bottom, vpnt[14].Position);
+	glm_vec3_copy(right, vpnt[13].Position);
 	glm_vec3_copy(top, vpnt[15].Position);
-	glm_vec3_copy(left, vpnt[16].Position);
-	glm_vec3_copy(bottom, vpnt[17].Position);
+	glm_vec3_copy(left, vpnt[17].Position);
+	glm_vec3_copy(bottom, vpnt[16].Position);
 
 	//just reference in order, no verts shared
 	uint16_t	idx, indexes[18];
@@ -1569,8 +1569,8 @@ PrimObject	*PF_CreateCV(const ConvexVolume *pCV, GraphicsDevice *pGD)
 		for(int i=1;i < pCur->mNumVerts - 1;i++)
 		{
 			pInds[curIdx++]	=idx;
-			pInds[curIdx++]	=idx + ((i + 1) % pCur->mNumVerts);
 			pInds[curIdx++]	=idx + i;
+			pInds[curIdx++]	=idx + ((i + 1) % pCur->mNumVerts);
 		}
 	}
 

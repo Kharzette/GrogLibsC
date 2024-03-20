@@ -67,21 +67,6 @@ const char *sTypeNames[110]	={
 	"VPosNormTex04Tex14Tex24Color0", "VPosNormBoneTanTex0Col0", "VPosNormTex04F", "VPosNormTex0Col0F", "VPosNormTex04Tex14Tex24Color0F"
 };
 
-//reverse triangle winding
-static void FlipIndexs(uint16_t *pInds, int numIdx)
-{
-	assert((numIdx % 3) == 0);
-
-	for(uint16_t i=0;i < numIdx;i+=3)
-	{
-		uint16_t	ind0	=pInds[i];
-		uint16_t	ind2	=pInds[i + 2];
-
-		pInds[i]		=ind2;
-		pInds[i + 2]	=ind0;
-	}
-}
-
 static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {
 	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
@@ -183,9 +168,6 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName)
 		uint16_t	*pInds	=malloc(numIdx * sizeof(uint16_t));
 
 		fread(pInds, numIdx * sizeof(uint16_t), 1, f);
-
-		//winding order is different in linux I guess
-		FlipIndexs(pInds, numIdx);
 
 		MakeIBDesc(&bufDesc, numIdx * sizeof(uint16_t));
 		pMesh->mpIndexs	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);

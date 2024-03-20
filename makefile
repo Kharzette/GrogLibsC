@@ -1,5 +1,7 @@
 CC=gcc
 CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c	\
+	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
+	-DCGLM_FORCE_LEFT_HANDED	\
 	-ISDL/include	\
 	-Iuthash/include	\
 	-Idxvk-native/include/native/windows	\

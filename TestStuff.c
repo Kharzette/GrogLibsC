@@ -45,6 +45,9 @@
 #define	NUM_RAYS		1000
 #define	MOUSE_TO_ANG	0.001f
 #define	MAX_ST_CHARS	256
+#define	START_CAM_DIST	5.0f
+#define	MAX_CAM_DIST	25.0f
+#define	MIN_CAM_DIST	0.25f
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES		55
@@ -82,12 +85,15 @@ typedef struct	TestStuff_t
 	bool	mbRunning;
 	bool	mbFlyMode;
 
+	//character movement
+	vec3	mCharMoveVec;
+
 	//misc data
 	vec3	mDanglyForce;
 	vec3	mLightDir;
 	vec3	mEyePos;
 	vec3	mPlayerPos;
-	float	mDeltaYaw, mDeltaPitch;
+	float	mDeltaYaw, mDeltaPitch, mCamDist;
 
 	//single ray cast vars
 	int		mDrawHit;
@@ -155,6 +161,10 @@ int main(void)
 
 	//start in fly mode
 	pTS->mbFlyMode	=true;
+	pTS->mCamDist	=START_CAM_DIST;
+	
+	//set player on corner near origin
+	glm_vec3_scale(GLM_VEC3_ONE, 3.0f, pTS->mPlayerPos);
 
 	//input and key / mouse bindings
 	Input	*pInp	=INP_CreateInput();
@@ -230,7 +240,7 @@ int main(void)
 	pTS->mEyePos[1]	=0.6f;
 	pTS->mEyePos[2]	=4.5f;
 
-	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 30.0f);
+	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
 
 	//3D Projection
 	mat4	camProj;
@@ -272,8 +282,8 @@ int main(void)
 
 	mat4	bones[MAX_BONES];
 
-	float	animTime	=0.0f;
-	float	maxDT		=0.0f;
+	float	animTime		=0.0f;
+	float	maxDT			=0.0f;
 
 	pTS->mbRunning	=true;
 	while(pTS->mbRunning)
@@ -284,6 +294,9 @@ int main(void)
 		UpdateTimer_Stamp(pUT);
 		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
 		{
+			//zero out charmove
+			glm_vec3_zero(pTS->mCharMoveVec);
+
 			//do input here
 			//move turn etc
 			INP_Update(pInp, pTS);
@@ -327,6 +340,22 @@ int main(void)
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
+		//player moving?
+		float	moving	=glm_vec3_norm(pTS->mCharMoveVec);
+
+		if(moving > 0.0f)
+		{
+			animTime	+=dt * moving * 100.0f;
+			AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
+		}
+		else
+		{
+			animTime	+=dt;
+			AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
+		}
+
+		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
+
 		{
 			if(dt > maxDT)
 			{
@@ -335,38 +364,56 @@ int main(void)
 
 			char	timeStr[32];
 
-			sprintf(timeStr, "maxDT: %f", maxDT);
+//			sprintf(timeStr, "maxDT: %f", maxDT);
+			sprintf(timeStr, "animTime: %f", animTime);
 
 			ST_ModifyStringText(pTS->mpST, 69, timeStr);
 		}
 
+		//update strings
 		ST_Update(pTS->mpST, pTS->mpGD);
-
-		animTime	+=dt;
-//		AnimLib_Animate(pALib, "DocuBaseBlenderCoords", animTime);
-		AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
-//		AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
-		
-		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
 
 		//set no blend, I think post processing turns it on maybe
 		GD_OMSetBlendState(pTS->mpGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
 		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
 
 		//camera update
-		GameCam_Update(pTS->mpCam, pTS->mEyePos, pTS->mDeltaPitch, pTS->mDeltaYaw, 0.0f);
+		if(pTS->mbFlyMode)
+		{
+			GameCam_UpdateRotation(pTS->mpCam, pTS->mEyePos, pTS->mDeltaPitch,
+									pTS->mDeltaYaw, 0.0f);
+		}
+		else
+		{
+			glm_vec3_copy(pTS->mPlayerPos, pTS->mEyePos);
+			GameCam_UpdateRotationSecondary(pTS->mpCam, pTS->mPlayerPos, dt,
+											pTS->mDeltaPitch, pTS->mDeltaYaw, 0.0f,
+											(moving > 0)? true : false);
+		}
 
 		//set CB view
 		{
 			mat4	viewMat;
-			vec4	viewQuat;
-			vec3	negPos;
+			if(pTS->mbFlyMode)
+			{
+				GameCam_GetViewMatrixFly(pTS->mpCam, viewMat, pTS->mEyePos);
+			}
+			else
+			{
+				GameCam_GetViewMatrixThird(pTS->mpCam, viewMat, pTS->mEyePos);
 
-			GameCam_GetViewMatrixFly(pTS->mpCam, viewMat, pTS->mEyePos, viewQuat);
+				mat4	headMat, guraMat;
+				GameCam_GetLookMatrix(pTS->mpCam, headMat);
+				GameCam_GetFlatLookMatrix(pTS->mpCam, guraMat);
 
-			glm_vec3_negate_to(pTS->mEyePos, negPos);
+				//drop mesh to ground
+				vec3	feetToCenter	={	0.0f, sTestBoxMin[1], 0.0f	};
+				glm_translate(guraMat, feetToCenter);
 
-			CBK_SetView(pCBK, viewMat, negPos);
+				MAT_SetWorld(pCharMat, guraMat);
+			}
+
+			CBK_SetView(pCBK, viewMat, pTS->mEyePos);
 
 			//set the skybox world mat to match eye pos
 			glm_translate_make(viewMat, pTS->mEyePos);
@@ -462,8 +509,11 @@ int main(void)
 		Terrain_DrawMat(pTS->mpTer, pTS->mpGD, pCBK, pTerMat);
 
 		//set mesh draw stuff
-		glm_translate_make(charMat, pTS->mPlayerPos);
-		MAT_SetWorld(pCharMat, charMat);
+		if(pTS->mbFlyMode)
+		{
+			glm_translate_make(charMat, pTS->mPlayerPos);
+			MAT_SetWorld(pCharMat, charMat);
+		}
 		MAT_SetDanglyForce(pCharMat, pTS->mDanglyForce);
 		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
@@ -595,7 +645,7 @@ static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 ey
 	GameCam_GetRightVec(pCam, right);
 	GameCam_GetUpVec(pCam, up);
 
-	glm_vec3_scale(forward, -RAY_LEN, endRay);
+	glm_vec3_scale(forward, RAY_LEN, endRay);
 	glm_vec3_add(eyePos, endRay, endRay);
 
 	//invalidate hit point
@@ -776,8 +826,8 @@ static void	MouseMoveEH(void *pContext, const SDL_Event *pEvt)
 
 	if(pTS->mbMouseLooking)
 	{
-		pTS->mDeltaYaw		-=(pEvt->motion.xrel * MOUSE_TO_ANG);
-		pTS->mDeltaPitch	-=(pEvt->motion.yrel * MOUSE_TO_ANG);
+		pTS->mDeltaYaw		+=(pEvt->motion.xrel * MOUSE_TO_ANG);
+		pTS->mDeltaPitch	+=(pEvt->motion.yrel * MOUSE_TO_ANG);
 	}
 }
 
@@ -791,9 +841,12 @@ static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 	GameCam_GetForwardVec(pTS->mpCam, forward);
 	glm_vec3_scale(forward, MOVE_RATE, forward);
 
+	//accumulate movement
+	glm_vec3_add(forward, pTS->mCharMoveVec, pTS->mCharMoveVec);
+
 	if(pTS->mbFlyMode)
 	{
-		glm_vec3_sub(pTS->mEyePos, forward, pTS->mEyePos);
+		glm_vec3_add(pTS->mEyePos, forward, pTS->mEyePos);
 	}
 	else
 	{
@@ -829,7 +882,10 @@ static void	KeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
 
 	vec3	forward;
 	GameCam_GetForwardVec(pTS->mpCam, forward);
-	glm_vec3_scale(forward, MOVE_RATE, forward);
+	glm_vec3_scale(forward, -MOVE_RATE, forward);
+
+	//accumulate movement
+	glm_vec3_add(forward, pTS->mCharMoveVec, pTS->mCharMoveVec);
 
 	glm_vec3_add(pTS->mEyePos, forward, pTS->mEyePos);
 }
@@ -842,9 +898,12 @@ static void	KeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
 
 	vec3	right;
 	GameCam_GetRightVec(pTS->mpCam, right);
-	glm_vec3_scale(right, MOVE_RATE, right);
+	glm_vec3_scale(right, -MOVE_RATE, right);
 
-	glm_vec3_sub(pTS->mEyePos, right, pTS->mEyePos);
+	//accumulate movement
+	glm_vec3_add(right, pTS->mCharMoveVec, pTS->mCharMoveVec);
+
+	glm_vec3_add(pTS->mEyePos, right, pTS->mEyePos);
 }
 
 static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
@@ -856,6 +915,9 @@ static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
 	vec3	right;
 	GameCam_GetRightVec(pTS->mpCam, right);
 	glm_vec3_scale(right, MOVE_RATE, right);
+
+	//accumulate movement
+	glm_vec3_add(right, pTS->mCharMoveVec, pTS->mCharMoveVec);
 
 	glm_vec3_add(pTS->mEyePos, right, pTS->mEyePos);
 }
@@ -892,7 +954,7 @@ static void	KeyTurnLeftEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	pTS->mDeltaYaw	+=KEYTURN_RATE;
+	pTS->mDeltaYaw	-=KEYTURN_RATE;
 }
 
 static void	KeyTurnRightEH(void *pContext, const SDL_Event *pEvt)
@@ -901,7 +963,7 @@ static void	KeyTurnRightEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	pTS->mDeltaYaw	-=KEYTURN_RATE;
+	pTS->mDeltaYaw	+=KEYTURN_RATE;
 }
 
 static void	KeyTurnUpEH(void *pContext, const SDL_Event *pEvt)
@@ -1172,4 +1234,9 @@ static void SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK)
 
 	glm_vec2_add(topLeftPos, nextLine, topLeftPos);
 	ST_AddString(pTS->mpST, "Pos Storage", 71, magenta, topLeftPos, embiggen);
+}
+
+static void	SetThirdPersonCam(TestStuff *pTS, GameCamera *pGC)
+{
+//	GCam
 }

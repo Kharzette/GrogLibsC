@@ -216,13 +216,13 @@ static void	VBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts, uint32_t w, uin
 
 			//tri 0
 			pIndexes[curIdx++]	=idx + w;
-			pIndexes[curIdx++]	=idx + 1;
 			pIndexes[curIdx++]	=idx;
+			pIndexes[curIdx++]	=idx + 1;
 
 			//tri1
 			pIndexes[curIdx++]	=idx + w;
-			pIndexes[curIdx++]	=idx + 1 + w;
 			pIndexes[curIdx++]	=idx + 1;
+			pIndexes[curIdx++]	=idx + 1 + w;
 		}
 	}
 

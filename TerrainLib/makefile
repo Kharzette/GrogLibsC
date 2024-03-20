@@ -1,5 +1,7 @@
 CC=gcc
-CFLAGS=-std=c17 -g -march=x86-64 -msse4.2 -fpic -shared	\
+CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c -fpic -shared	\
+	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
+	-DCGLM_FORCE_LEFT_HANDED	\
 	-I../dxvk-native/include/native/directx \
 	-I../dxvk-native/include/native/windows	\
 	-I../uthash/include	\

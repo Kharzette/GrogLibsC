@@ -1,6 +1,12 @@
 CC=gcc
 #CFLAGS=-std=c17 -g -I../vcpkg/packages/xaudio2redist_x64-mingw-static/include
-CFLAGS=-std=c17 -g -march=x86-64 -IFAudio/include#-Xlinker --verbose
+CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c -fpic -shared	\
+	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
+	-DCGLM_FORCE_LEFT_HANDED	\
+	-Icglm/include	\
+	-IFAudio/include	\
+	-Wall				\
+	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
 #LDFLAGS=-L../vcpkg/packages/xaudio2redist_x64-mingw-static/lib
 #LDFLAGS=-LFAudio/build/
 #LDFLAGS=-L../SDL/build
@@ -9,7 +15,8 @@ CFLAGS=-std=c17 -g -march=x86-64 -IFAudio/include#-Xlinker --verbose
 #LIBS=-lSDL3
 SOURCES=$(wildcard tinywav/tinywav.c) $(wildcard *.c)
 
-all: Timey
+all: AudioLib
 
-Timey: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o AudioLib $(LIBS) FAudio/build/libFAudio.a ../SDL/build/libSDL3.a -lm
+AudioLib: $(SOURCES)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libAudioLib.so $(LIBS) \
+	FAudio/build/libFAudio.a ../SDL/build/libSDL3.so -lm

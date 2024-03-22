@@ -4,7 +4,7 @@ CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c -fpic -shared	\
 	-DCGLM_FORCE_LEFT_HANDED	\
 	-I../dxvk-native/include/native/directx \
 	-I../dxvk-native/include/native/windows	\
-	-I../uthash/include	\
+	-I../uthash/src		\
 	-I../cglm/include	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs

@@ -7,7 +7,7 @@ CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -fpic -shared	\
 	-I../libpng/build/include	\
 	-I../dxvk-native/include/native/windows	\
 	-I../dxvk-native/include/native	\
-	-I../uthash/include	\
+	-I../uthash/src		\
 	-I../cglm/include	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs

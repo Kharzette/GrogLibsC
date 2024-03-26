@@ -20,7 +20,21 @@ struct DeviceStuff
 //wierd 16 bit strings
 //I fought with this for hours trying to go through proper channels
 //in the end I gave up and just wrote a byte skip
-void convert_goofy(const uint16_t *pGoofy, char *pConverted, int len)
+static void convert_goofy(const uint16_t *pGoofy, char *pConverted, int len)
+{
+	//NONE of the usual string conversions work on whatever this is
+	for(int i=0;i < len;i++)
+	{
+		pConverted[i]	=pGoofy[i] & 0xFF;
+
+		if(!pConverted[i])
+		{
+			break;
+		}
+	}
+}
+
+static void convert_goofySigned(const int16_t *pGoofy, char *pConverted, int len)
 {
 	//NONE of the usual string conversions work on whatever this is
 	for(int i=0;i < len;i++)
@@ -164,10 +178,10 @@ int	main(void)
 
 		char	buf[256];
 
-		convert_goofy(pFADD.DeviceID, buf, 255);
+		convert_goofySigned(pFADD.DeviceID, buf, 255);
 		printf(" and DeviceID: %s", buf);
 
-		convert_goofy(pFADD.DisplayName, buf, 255);
+		convert_goofySigned(pFADD.DisplayName, buf, 255);
 		printf(" and DisplayName: %s\n", buf);
 
 		PrintSpeakerStuff(pFADD.OutputFormat.dwChannelMask);

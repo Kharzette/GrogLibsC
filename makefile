@@ -3,7 +3,7 @@ CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c	\
 	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
 	-DCGLM_FORCE_LEFT_HANDED	\
 	-ISDL/include	\
-	-Iuthash/include	\
+	-Iuthash/src	\
 	-Idxvk-native/include/native/windows	\
 	-Idxvk-native/include/native/directx \
 	-Icglm/include	\
@@ -19,5 +19,6 @@ all: TestStuff
 TestStuff: $(SOURCES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o TestStuff -lm $(LIBS)	\
 	SDL/build/libSDL3.so	\
+	libpng/build/libpng.so	\
 	dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_dxgi.so	\
 	dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so

@@ -4,13 +4,10 @@ Goals
 	Integrate with pathing for generating navmesh data
 	Raycast routines needed
 		Ray
-		RayRadius
-		RayCapsule
-		RayAxialBox
-		RayOrientedBox
-		For swept shapes, can probably do the node checks with AABB or sphere to decide
-			if deeper recursion is required, then just do the real shapes at leafs
-		Maybe just plane shift the node boxes a bit
+		RayRadius (swept sphere)
+		RayCapsule (two spheres good enough)
+		RayAxialBox? (tricksy with leafs)
+		RayOrientedBox (very tricksy with leafs)
 	TextureAtlas based shading
 		Test textures
 			Grassland
@@ -22,30 +19,22 @@ Goals
 			Cracked mud?
 			Black rock?
 	Editing
-		Scale factor of each atlas piece
+		UV Scale factor of each atlas piece
 		Vertical texturing for steep walls?
 			Certain atlas parts could be reserved for vertical
 
 Collision
-	QuadTree for basic convex
-	Octree for volumey / diggy diggy
-	AABB for nodes
+	Initial non moving resolve into empty space
+		Establish footing and do rotation
+	AABB quadtree for nodes
 		Fast reject, no accuracy needed
+		Could do all 4 child nodes at once
 	Leaf Nodes
-		Concave stuff often (depends on leaf node size)
-			Per poly collision?
-				How to plane shift this for swept shapes?
-			Build into a list of convex volumes?
-				Use old bsp heuristic for picking split plane?
-				Complicates runtime editing and diggery
-				Much easier to collide with though
-				For QuadTree this would be the polygons for Y+ side
-					then the volume underneath made up of node bounds
-					with -Y being the bottom bound plane
-				Bonus of this is start inside conditions easier to detect
-				Downside is collisions might report from the side planes
-					In theory closer hits would make this ok
-				For convex terrain, know it is convex in Y
-					Can use edge planes to split
-			2D bsp?
-				faces might get split
+		Big Tri collision best for current terrain
+			Not so great if do diggery later
+		Convex volumes
+			Extra hits on fake side planes
+			Complicates runtime editing and diggery
+		2D bsp?
+			faces might get split
+	Octree for volumey / diggy diggy

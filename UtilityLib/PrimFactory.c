@@ -1606,3 +1606,42 @@ PrimObject	*PF_CreateCV(const ConvexVolume *pCV, GraphicsDevice *pGD)
 
 	return	pObj;
 }
+
+//a single triangle
+PrimObject	*PF_CreateTri(const vec3 tri[3], GraphicsDevice *pGD)
+{
+	VPosNorm	verts[3];
+	uint16_t	inds[3];
+
+	vec4	plane;
+	PM_FromTri(tri[0], tri[1], tri[2], plane);
+
+	int	curIdx	=0;
+	for(int i=0;i < 3;i++)
+	{
+		glm_vec3_copy(tri[i], verts[i].Position);
+
+		Misc_ConvertVec4ToF16(plane, verts[i].Normal);
+
+		inds[i]	=i;
+	}
+
+	//return object
+	PrimObject	*pObj	=malloc(sizeof(PrimObject));
+
+	pObj->mVertCount	=3;
+	pObj->mIndexCount	=3;
+
+	//make vertex buffer
+	D3D11_BUFFER_DESC	bufDesc;
+	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * 3);
+	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, verts, bufDesc.ByteWidth);
+
+	//make index buffer
+	MakeIBDesc(&bufDesc, 3 * 2);
+	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, inds, bufDesc.ByteWidth);
+
+	pObj->mVertSize	=sizeof(VPosNorm);
+
+	return	pObj;
+}

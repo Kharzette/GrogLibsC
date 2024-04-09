@@ -331,6 +331,89 @@ int	PM_ClipSweptSphere(const vec4 plane, bool bFront, vec3 start, vec3 end, floa
 	}
 }
 
+int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3 end, float radius,
+								 vec3 hit, vec4 hitPlane)
+{
+	//plane of the triangle
+	vec4	triPlane;
+	PM_FromTri(tri[0], tri[1], tri[2], triPlane);
+
+	//expand by radius
+	triPlane[3]	+=radius;
+
+	vec3	intersection;
+	int	res	=PM_LineIntersectPlane(triPlane, start, end, intersection);
+	if(res == PLANE_FRONT)
+	{
+		//short of impact
+		return	MISS;
+	}
+	else if(res == PLANE_BACK)
+	{
+		//start and end both behind triangle
+		//this is sort of an invalid state
+		return	INSIDE;
+	}
+
+	//edge plane 0 -> 1
+	vec3	edgeVec;
+	glm_vec3_sub(tri[0], tri[1], edgeVec);
+
+	vec3	upVec	={	0.0f, 1.0f, 0.0f	};
+
+	vec3	norm;
+	glm_vec3_cross(edgeVec, upVec, norm);
+	glm_vec3_normalize(norm);
+
+	vec4	plane01	={	norm[0], norm[1], norm[2], 0.0f	};
+
+	plane01[3]	=glm_vec3_dot(norm, tri[0]);
+
+	///edge plane 0 -> 2
+	glm_vec3_sub(tri[0], tri[2], edgeVec);
+
+	glm_vec3_cross(upVec, edgeVec, norm);
+	glm_vec3_normalize(norm);
+
+	vec4	plane02	={	norm[0], norm[1], norm[2], 0.0f	};
+
+	plane02[3]	=glm_vec3_dot(norm, tri[0]);
+
+	///edge plane 1 -> 2
+	glm_vec3_sub(tri[1], tri[2], edgeVec);
+
+	glm_vec3_cross(edgeVec, upVec, norm);
+	glm_vec3_normalize(norm);
+
+	vec4	plane12	={	norm[0], norm[1], norm[2], 0.0f	};
+
+	plane12[3]	=glm_vec3_dot(norm, tri[1]);
+
+	//get intersection distance to edge planes
+	float	dist01	=PM_Distance(plane01, intersection);
+	float	dist02	=PM_Distance(plane02, intersection);
+	float	dist12	=PM_Distance(plane12, intersection);
+
+	if(dist01 > radius || dist02 > radius || dist12 > radius)
+	{
+		return	MISS;
+	}
+
+	//direct plane hit
+	if(dist01 <= 0.0f && dist02 <= 0.0f && dist12 <= 0.0f)
+	{
+		glm_vec4_copy(triPlane, hitPlane);
+		glm_vec3_copy(intersection, hit);
+
+		return	INTERSECT;
+	}
+
+	//For closed meshes I THINK this is enough...
+	//For free floating triangles I think additional checks for
+	//edge and vertex collisions would need to be done here.
+	return	MISS;
+}
+
 Winding *PM_ClipWindingBehind(const vec4 plane, const Winding *pW)
 {
 	vec3	norm	={	plane[0], plane[1], plane[2]	};

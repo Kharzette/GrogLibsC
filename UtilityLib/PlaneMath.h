@@ -10,6 +10,8 @@ void	PM_ToVerts(const vec4 plane, vec3 verts[4]);
 
 //collides
 int	PM_LineIntersectPlane(const vec4 plane, const vec3 start, const vec3 end, vec3 intersection);
+int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3 end, float radius,
+								 vec3 hit, vec4 hitPlane);
 
 //chops
 int		PM_ClipLine(const vec4 plane, bool bFront, vec3 start, vec3 end);

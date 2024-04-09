@@ -24,6 +24,7 @@
 #include	"UtilityLib/DictionaryStuff.h"
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
+#include	"UtilityLib/PlaneMath.h"
 #include	"TerrainLib/Terrain.h"
 #include	"MeshLib/Mesh.h"
 #include	"MeshLib/AnimLib.h"
@@ -63,8 +64,8 @@ static int	sNumRayImpacts;
 static vec3	sTestBoxMin	={	-0.25f, -0.85f, -0.25f	};
 static vec3	sTestBoxMax	={	0.25f, 0.85f, 0.25f		};
 
-//drawing convex volume for debug stuff
-static ConvexVolume	*spTestVol;
+//test triangle
+static vec3	sTestTri[3]	={	{5, 5, 5}, {9, 5, 5}, {9, 5, 9}	};
 
 
 //input context, stuff input handlers will need
@@ -192,27 +193,16 @@ int main(void)
 
 	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
 
-	//create a test convex volume from tri
-	{
-		vec3	tri[3]	={
-			{5, 5, 5},
-			{9, 5, 5},
-			{9, 5, 9}
-		};
-
-		spTestVol	=CV_MakeFromTri(tri, 3.0f);
-	}
-
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
 	vec4	YAxisCol	={	0.0f, 0.0f, 1.0f, 1.0f	};
 	vec4	ZAxisCol	={	0.0f, 1.0f, 0.0f, 1.0f	};
 
 	//test prims
-	PrimObject	*pSphere	=PF_CreateSphere(GLM_VEC3_ZERO, 0.5f, pTS->mpGD);
+	PrimObject	*pSphere	=PF_CreateSphere(GLM_VEC3_ZERO, 0.25f, pTS->mpGD);
 	PrimObject	*pCube		=PF_CreateCubeFromBounds(sTestBoxMin, sTestBoxMax, pTS->mpGD);
 	PrimObject	*pSkyCube	=PF_CreateCube(10.0f, true, pTS->mpGD);
-	PrimObject	*pCVPO		=PF_CreateCV(spTestVol, pTS->mpGD);
+	PrimObject	*pPOTri		=PF_CreateTri(sTestTri, pTS->mpGD);
 	LightRay	*pLR		=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pSK);
 	AxisXYZ		*pAxis		=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
 
@@ -301,21 +291,21 @@ int main(void)
 			//move turn etc
 			INP_Update(pInp, pTS);
 
-			if(pTS->mDrawHit == VOL_INSIDE)
+			if(pTS->mDrawHit == INSIDE)
 			{
 				MAT_SetSolidColour(pCubeMat, ZAxisCol);
 			}
-			else if(pTS->mDrawHit != VOL_MISS)
+			else if(pTS->mDrawHit != MISS)
 			{
 				glm_translate_make(hitSphereMat, pTS->mHitPos);
 
 				MAT_SetWorld(pCubeMat, hitSphereMat);
 
-				if(pTS->mDrawHit & VOL_HIT)
+				if(pTS->mDrawHit & INTERSECT)
 				{
 					MAT_SetSolidColour(pCubeMat, XAxisCol);
 				}
-				if(pTS->mDrawHit & VOL_HIT_INSIDE)
+				if(pTS->mDrawHit & INSIDE_INTERSECT)
 				{
 					MAT_SetSolidColour(pCubeMat, YAxisCol);
 				}
@@ -448,26 +438,26 @@ int main(void)
 			CP_DrawLightRay(pLR, pTS->mLightDir, lightRayCol, rayLoc, pCBK, pTS->mpGD);
 		}
 
-		//draw test volume
+		//draw test tri
 		{
-			GD_IASetVertexBuffers(pTS->mpGD, pCVPO->mpVB, pCVPO->mVertSize, 0);
-			GD_IASetIndexBuffers(pTS->mpGD, pCVPO->mpIB, DXGI_FORMAT_R16_UINT, 0);
+			GD_IASetVertexBuffers(pTS->mpGD, pPOTri->mpVB, pPOTri->mVertSize, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pPOTri->mpIB, DXGI_FORMAT_R16_UINT, 0);
 			MAT_Apply(pHitsMat, pCBK, pTS->mpGD);
-			GD_DrawIndexed(pTS->mpGD, pCVPO->mIndexCount, 0, 0);
+			GD_DrawIndexed(pTS->mpGD, pPOTri->mIndexCount, 0, 0);
 		}
 
 		//draw xyz axis
 		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
 
 		//draw test cube
-		GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, pCube->mVertSize, 0);
-		GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+//		GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, pCube->mVertSize, 0);
+//		GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
-		MAT_Apply(pCubeMat, pCBK, pTS->mpGD);
-		GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
+//		MAT_Apply(pCubeMat, pCBK, pTS->mpGD);
+//		GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
 
 		//impact sphere VB/IB etc
-		if(pTS->mDrawHit & VOL_HIT || pTS->mDrawHit & VOL_HIT_INSIDE)
+		if(pTS->mDrawHit != MISS)
 		{
 			MAT_SetWorld(pSphereMat, hitSphereMat);
 
@@ -670,7 +660,8 @@ static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 ey
 //	bool	bHit	=Terrain_CapsuleIntersect(pTer, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	bool	bHit	=Misc_CapsuleIntersectBounds(sTestBoxMin, sTestBoxMax, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	int	res	=CV_SweptSphereIntersect(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
-	int	res	=Terrain_SweptBoundIntersect(pTer, eyePos, endRay, sTestBoxMin, sTestBoxMax, hitPos, hitPlane);
+//	int	res	=Terrain_SweptBoundIntersect(pTer, eyePos, endRay, sTestBoxMin, sTestBoxMax, hitPos, hitPlane);
+	int	res	=PM_SweptSphereToTriIntersect(sTestTri, eyePos, endRay, 0.25f, hitPos, hitPlane);
 
 	return	res;
 }
@@ -723,8 +714,8 @@ static void	CastOneRayEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	pTS->mDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
-	pTS->mDrawHit	=TestOneMove(pTS->mpTer, pTS->mHitPos, pTS->mHitPlane);
+	pTS->mDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
+//	pTS->mDrawHit	=TestOneMove(pTS->mpTer, pTS->mHitPos, pTS->mHitPlane);
 }
 
 static void	PrintRandomEH(void *pContext, const SDL_Event *pEvt)
@@ -1221,9 +1212,11 @@ static void SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK)
 	vec2	topLeftPos	={	5.0f, 5.0f	};
 	vec2	nextLine	={	0.0f, 20.0f	};
 	vec4	red			={	1.0f, 0.0f, 0.0f, 1.0f	};
+	__attribute_maybe_unused__
 	vec4	blue		={	0.0f, 0.0f, 1.0f, 1.0f	};
 	vec4	green		={	0.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	magenta		={	1.0f, 0.0f, 1.0f, 1.0f	};
+	__attribute_maybe_unused__
 	vec4	cyan		={	0.0f, 1.0f, 1.0f, 1.0f	};
 
 

@@ -14,6 +14,9 @@ typedef struct	PrimObject_t
 	int				mVertSize;		//size in bytes of vert format in use
 }	PrimObject;
 
+//a single triangle
+PrimObject	*PF_CreateTri(const vec3 tri[3], GraphicsDevice *pGD);
+
 //cubes
 PrimObject	*PF_CreateCubeFromBounds(const vec3 min, const vec3 max, GraphicsDevice *pGD);
 PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, bool bFlipped, GraphicsDevice *pGD);

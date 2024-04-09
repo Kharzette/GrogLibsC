@@ -1616,7 +1616,6 @@ PrimObject	*PF_CreateTri(const vec3 tri[3], GraphicsDevice *pGD)
 	vec4	plane;
 	PM_FromTri(tri[0], tri[1], tri[2], plane);
 
-	int	curIdx	=0;
 	for(int i=0;i < 3;i++)
 	{
 		glm_vec3_copy(tri[i], verts[i].Position);

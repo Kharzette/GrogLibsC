@@ -1,6 +1,4 @@
 #include	<stdint.h>
-#include	<utstring.h>
-#include	<utlist.h>
 #include	<cglm/call.h>
 #include	<stdio.h>
 #include	<string.h>
@@ -8,7 +6,6 @@
 #include	"../UtilityLib/FileStuff.h"
 #include	"../UtilityLib/MiscStuff.h"
 #include	"../UtilityLib/PlaneMath.h"
-#include	"../UtilityLib/ConvexVolume.h"
 #include	"QuadNode.h"
 #include	"Terrain.h"
 
@@ -16,14 +13,18 @@
 #define	NODE_SIZE	2		//size in meters
 #define	LEAF_QUADS	(NODE_SIZE * NODE_SIZE)
 #define	LEAF_TRIS	LEAF_QUADS * 2
+#define	LEAF_VERTS	(NODE_SIZE + 1) * (NODE_SIZE + 1)
+#define	LEAF_INDS	LEAF_TRIS * 3
 
-typedef struct	CVList_t
+typedef struct	QuadLeafData_t
 {
-	ConvexVolume	*mpCV;
+	vec3		mCollisionVerts[LEAF_VERTS];
+	uint16_t	mCollisionIndexes[LEAF_INDS];
+}	QuadLeafData;
 
-	struct CVList_t	*next;
-}	CVList;
-
+//TODO could probably save some space...
+//Maybe make nodes indexes into big arrays
+//and have negative indexes for leafs
 typedef struct	QuadNode_t
 {
 	vec3	mMins, mMaxs;		//bounds
@@ -34,8 +35,8 @@ typedef struct	QuadNode_t
 	QuadNode	*mpChildC;
 	QuadNode	*mpChildD;
 
-	//convex volumes for leafs
-	CVList		*mpCVs;
+	//Collision data, null in normal nodes
+	QuadLeafData	*mpQLD;
 }	QuadNode;
 
 
@@ -96,15 +97,15 @@ static void	SplitBound(const vec3 mins, const vec3 maxs,
 	bMaxs[2]	=middle[2];
 }
 
+/*
 static int	LineIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end,
 									vec3 intersection, vec4 planeHit)
 {
-	assert(pQN->mpCVs);
+	assert(pQN->mpQLD);
 
 	//invalidate
 	glm_vec3_fill(intersection, FLT_MAX);
 
-	CVList	*pCur	=NULL;
 	int		ret		=-1;
 
 	LL_FOREACH(pQN->mpCVs, pCur)
@@ -138,52 +139,52 @@ static int	LineIntersectLeafNode(const QuadNode *pQN, const vec3 start, const ve
 		}
 	}
 	return	ret;
-}
+}*/
 
 static int	SweptSphereIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end,
 										float radius, vec3 intersection, vec4 planeHit)
 {
-	assert(pQN->mpCVs);
+	assert(pQN->mpQLD);
 
 	//invalidate
 	glm_vec3_fill(intersection, FLT_MAX);
 
-	CVList	*pCur	=NULL;
 	int		ret		=-1;
 
-	LL_FOREACH(pQN->mpCVs, pCur)
+	for(int i=0;i < LEAF_TRIS;i++)
 	{
 		vec3	hit;
 		vec4	hitPlane;
 
-		int	res	=CV_SweptSphereIntersect(pCur->mpCV, start, end, radius, hit, hitPlane);
-		if(res == VOL_MISS)
+		vec3	tri[3];
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[i * 3]], tri[0]);
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[(i * 3) + 1]], tri[1]);
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[(i * 3) + 2]], tri[2]);
+
+		int	res	=PM_SweptSphereToTriIntersect(tri, start, end, radius, hit, hitPlane);
+		if(res == MISS)
 		{
 			continue;
 		}
 
-		//completely contained within one volume?
-		if(res == VOL_INSIDE)
+		if(res == INSIDE)
 		{
-			return	VOL_INSIDE;
+			return	TER_INSIDE;
 		}
 
-		//favour visible surface hits
-		if(res & VOL_HIT_VISIBLE)
+		float	hitDist		=glm_vec3_distance2(start, hit);
+		float	prevHitDist	=glm_vec3_distance2(start, intersection);
+		if(hitDist < prevHitDist)
 		{
-			float	hitDist		=glm_vec3_distance2(start, hit);
-			float	prevHitDist	=glm_vec3_distance2(start, intersection);
-			if(hitDist < prevHitDist)
-			{
-				glm_vec3_copy(hit, intersection);
-				glm_vec4_copy(hitPlane, planeHit);
-				ret	=res;
-			}
+			glm_vec3_copy(hit, intersection);
+			glm_vec4_copy(hitPlane, planeHit);
+			ret	=res;
 		}
 	}
 	return	ret;
 }
 
+/*
 static int	SweptBoundIntersectLeafNode(const QuadNode *pQN, const vec3 start, const vec3 end,
 										const vec3 min, const vec3 max,
 										vec3 intersection, vec4 planeHit)
@@ -227,12 +228,12 @@ static int	SweptBoundIntersectLeafNode(const QuadNode *pQN, const vec3 start, co
 		}
 	}
 	return	ret;
-}
+}*/
 
 
 static void	MakeLeafVolumes(QuadNode *pQN, const float *pHeights, int w, int h)
 {
-	pQN->mpCVs	=NULL;
+	pQN->mpQLD	=malloc(sizeof(QuadLeafData));
 
 	int	xSize	=Misc_SSE_RoundFToI(pQN->mMaxs[0] - pQN->mMins[0]);
 	int	zSize	=Misc_SSE_RoundFToI(pQN->mMaxs[2] - pQN->mMins[2]);
@@ -257,10 +258,6 @@ static void	MakeLeafVolumes(QuadNode *pQN, const float *pHeights, int w, int h)
 	//make sure 8 bits is good enough
 	assert((numTris * 3) < 256);
 
-	//height triangles
-	vec3	lvArray[xSize * zSize];
-	int		inds[numTris * 3];
-
 	//watch height values while copying
 	float	minHeight	=FLT_MAX;
 	float	maxHeight	=-FLT_MAX;
@@ -275,9 +272,9 @@ static void	MakeLeafVolumes(QuadNode *pQN, const float *pHeights, int w, int h)
 
 			float	height	=pHeights[ofs];
 
-			lvArray[curDest][0]	=x;
-			lvArray[curDest][1]	=height;
-			lvArray[curDest][2]	=z;
+			pQN->mpQLD->mCollisionVerts[curDest][0]	=x;
+			pQN->mpQLD->mCollisionVerts[curDest][1]	=height;
+			pQN->mpQLD->mCollisionVerts[curDest][2]	=z;
 
 			curDest++;
 
@@ -314,13 +311,13 @@ static void	MakeLeafVolumes(QuadNode *pQN, const float *pHeights, int w, int h)
 	int	vIdx	=0;
 	for(int i=0;i < numQuads;i++)
 	{
-		inds[curIdx++]	=vIdx;
-		inds[curIdx++]	=vIdx + 1;
-		inds[curIdx++]	=vIdx + xSize;
+		pQN->mpQLD->mCollisionIndexes[curIdx++]	=vIdx;
+		pQN->mpQLD->mCollisionIndexes[curIdx++]	=vIdx + 1;
+		pQN->mpQLD->mCollisionIndexes[curIdx++]	=vIdx + xSize;
 
-		inds[curIdx++]	=vIdx + 1;
-		inds[curIdx++]	=vIdx + xSize + 1;
-		inds[curIdx++]	=vIdx + xSize;
+		pQN->mpQLD->mCollisionIndexes[curIdx++]	=vIdx + 1;
+		pQN->mpQLD->mCollisionIndexes[curIdx++]	=vIdx + xSize + 1;
+		pQN->mpQLD->mCollisionIndexes[curIdx++]	=vIdx + xSize;
 
 		//watch for quad boundary
 		if(vIdx == (xSize - 2))
@@ -330,27 +327,6 @@ static void	MakeLeafVolumes(QuadNode *pQN, const float *pHeights, int w, int h)
 		else
 		{
 			vIdx++;
-		}
-	}
-
-	//build a volume from each triangle
-	for(int i=0;i < curIdx;i+=3)
-	{
-		vec3	tri[3];
-
-		glm_vec3_copy(lvArray[inds[i + 0]], tri[0]);
-		glm_vec3_copy(lvArray[inds[i + 1]], tri[1]);
-		glm_vec3_copy(lvArray[inds[i + 2]], tri[2]);
-
-		ConvexVolume	*pCV	=CV_MakeFromTri(tri, minHeight);
-		if(pCV != NULL)
-		{
-			CVList	*pCVL	=malloc(sizeof(CVList));
-
-			pCVL->mpCV	=pCV;
-			pCVL->next	=NULL;
-
-			LL_PREPEND(pQN->mpCVs, pCVL);
 		}
 	}
 }
@@ -391,7 +367,7 @@ QuadNode	*QN_Build(float *pHeights, int w, int h, const vec3 mins, const vec3 ma
 
 void	QN_CountLeafBounds(const QuadNode *pQN, int *pNumBounds)
 {
-	if(pQN->mpCVs)
+	if(pQN->mpQLD)
 	{
 		(*pNumBounds)++;
 		return;
@@ -406,7 +382,7 @@ void	QN_CountLeafBounds(const QuadNode *pQN, int *pNumBounds)
 
 void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIndex)
 {
-	if(pQN->mpCVs)
+	if(pQN->mpQLD)
 	{
 		glm_vec3_copy(pQN->mMins, pMins[*pIndex]);
 		glm_vec3_copy(pQN->mMaxs, pMaxs[*pIndex]);
@@ -420,7 +396,7 @@ void	QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIn
 	QN_GatherLeafBounds(pQN->mpChildD, pMins, pMaxs, pIndex);
 }
 
-
+/*
 //invDir should be 1 divided by the unit direction vector
 int	QN_LineIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 						const vec3 invDir, const float rayLen,
@@ -509,7 +485,7 @@ int	QN_LineIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 	}
 
 	return	ret;
-}
+}*/
 
 //invDir should be 1 divided by the direction vector
 //This is a swept sphere around a ray
@@ -536,22 +512,22 @@ int	QN_SweptSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 	//don't need plane hit or point returned, just a yes or no
 	if(!Misc_RayIntersectBounds(rayStart, invDir, rayLen, bounds))
 	{
-		return	VOL_MISS;
+		return	TER_MISS;
 	}
 
-	if(pQN->mpCVs)	//leaf?
+	if(pQN->mpQLD)	//leaf?
 	{
 		vec3	hit;
 		vec4	hitPlane;
 		int	res	=SweptSphereIntersectLeafNode(pQN, rayStart, end, radius, hit, hitPlane);
 
-		if(res == VOL_INSIDE)
+		if(res == TER_INSIDE)
 		{
 			//line fully contained in solid space
-			return	VOL_INSIDE;
+			return	TER_INSIDE;
 		}
 
-		if(res != VOL_MISS)
+		if(res != TER_MISS)
 		{
 			//can check squared distance for comparison
 			float	curDist	=glm_vec3_distance2(rayStart, intersection);
@@ -565,41 +541,41 @@ int	QN_SweptSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 				return	res;	//some form of hit
 			}
 		}
-		return	VOL_MISS;	//too distant
+		return	TER_MISS;	//too distant
 	}
 
 	int	ret	=QN_SweptSphereIntersect(pQN->mpChildA, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
-	if(ret == VOL_INSIDE)	//early exit check
+	if(ret == TER_INSIDE)	//early exit check
 	{
-		return	VOL_INSIDE;
+		return	TER_INSIDE;
 	}
 
 	int	ret2	=QN_SweptSphereIntersect(pQN->mpChildB, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
-	if(ret2 == VOL_INSIDE)	//early exit check
+	if(ret2 == TER_INSIDE)	//early exit check
 	{
-		return	VOL_INSIDE;
+		return	TER_INSIDE;
 	}
-	else if(ret2 != VOL_MISS)
+	else if(ret2 != TER_MISS)
 	{
 		ret	=ret2;	//newer hits supercede old
 	}
 
 	ret2	=QN_SweptSphereIntersect(pQN->mpChildC, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
-	if(ret2 == VOL_INSIDE)	//early exit check
+	if(ret2 == TER_INSIDE)	//early exit check
 	{
-		return	VOL_INSIDE;
+		return	TER_INSIDE;
 	}
-	else if(ret2 != VOL_MISS)
+	else if(ret2 != TER_MISS)
 	{
 		ret	=ret2;	//newer hits supercede old
 	}
 
 	ret2	=QN_SweptSphereIntersect(pQN->mpChildD, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
-	if(ret2 == VOL_INSIDE)	//early exit check
+	if(ret2 == TER_INSIDE)	//early exit check
 	{
-		return	VOL_INSIDE;
+		return	TER_INSIDE;
 	}
-	else if(ret2 != VOL_MISS)
+	else if(ret2 != TER_MISS)
 	{
 		ret	=ret2;	//newer hits supercede old
 	}
@@ -611,6 +587,7 @@ int	QN_SweptSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 //This is a swept sphere around a ray
 //see https://www.gamedeveloper.com/programming/bsp-collision-detection-as-used-in-mdk2-and-neverwinter-nights
 //for problems related to corners
+/*
 int	QN_SweptBoundIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 							const vec3 invDir, float rayLen,
 							const vec3 min, const vec3 max,
@@ -702,4 +679,4 @@ int	QN_SweptBoundIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 
 	}
 
 	return	ret;
-}
+}*/

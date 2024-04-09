@@ -11,13 +11,13 @@ void		QN_CountLeafBounds(const QuadNode *pQN, int *pNumBounds);
 void		QN_GatherLeafBounds(const QuadNode *pQN, vec3 *pMins, vec3 *pMaxs, int *pIndex);
 
 //collision
-int	QN_LineIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
-					const vec3 invDir, const float rayLen,
-					vec3 intersection, vec4 planeHit);
+//int	QN_LineIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+//					const vec3 invDir, const float rayLen,
+//					vec3 intersection, vec4 planeHit);
 int	QN_SweptSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
 							const vec3 invDir, float radius, float rayLen,
 							vec3 intersection, vec4 planeHit);
-int	QN_SweptBoundIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
-							const vec3 invDir, float rayLen,
-							const vec3 min, const vec3 max,
-							vec3 intersection, vec4 planeHit);
+//int	QN_SweptBoundIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+//							const vec3 invDir, float rayLen,
+//							const vec3 min, const vec3 max,
+//							vec3 intersection, vec4 planeHit);

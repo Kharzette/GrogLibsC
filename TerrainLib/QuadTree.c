@@ -102,6 +102,7 @@ void	QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int 
 //Only a new intersection closer to the start point would result
 //in a hit.  This could be used to mix collision with statics or
 //mobiles or bsps or whatever
+/*
 int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 					vec3 intersection, vec4 planeHit)
 {
@@ -118,7 +119,7 @@ int	QT_LineIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 	Misc_SSE_ReciprocalVec3(rayDir, invDir);
 
 	return	QN_LineIntersect(pQT->mpRoot, start, end, invDir, rayLen, intersection, planeHit);
-}
+}*/
 
 //Note that a previous intersection might be passed in here.
 //Only a new intersection closer to the start point would result
@@ -146,6 +147,7 @@ int	QT_SweptSphereIntersect(const QuadTree *pQT, const vec3 start, const vec3 en
 //Only a new intersection closer to the start point would result
 //in a hit.  This could be used to mix collision with statics or
 //mobiles or bsps or whatever
+/*
 int	QT_SweptBoundIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 							const vec3 min, const vec3 max,
 							vec3 intersection, vec4 planeHit)
@@ -163,4 +165,4 @@ int	QT_SweptBoundIntersect(const QuadTree *pQT, const vec3 start, const vec3 end
 	Misc_SSE_ReciprocalVec3(rayDir, invDir);
 
 	return	QN_SweptBoundIntersect(pQT->mpRoot, start, end, invDir, rayLen, min, max, intersection, planeHit);
-}
+}*/

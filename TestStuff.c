@@ -291,21 +291,21 @@ int main(void)
 			//move turn etc
 			INP_Update(pInp, pTS);
 
-			if(pTS->mDrawHit == INSIDE)
+			if(pTS->mDrawHit == TER_INSIDE)
 			{
 				MAT_SetSolidColour(pCubeMat, ZAxisCol);
 			}
-			else if(pTS->mDrawHit != MISS)
+			else if(pTS->mDrawHit != TER_MISS)
 			{
 				glm_translate_make(hitSphereMat, pTS->mHitPos);
 
 				MAT_SetWorld(pCubeMat, hitSphereMat);
 
-				if(pTS->mDrawHit & INTERSECT)
+				if(pTS->mDrawHit == TER_HIT)
 				{
 					MAT_SetSolidColour(pCubeMat, XAxisCol);
 				}
-				if(pTS->mDrawHit & INSIDE_INTERSECT)
+				if(pTS->mDrawHit == TER_HIT_INSIDE)
 				{
 					MAT_SetSolidColour(pCubeMat, YAxisCol);
 				}
@@ -604,7 +604,7 @@ static void	TestManyRays(const Terrain *pTer)
 
 		//invalidate hit point
 		glm_vec3_fill(hit, FLT_MAX);
-
+/*
 		if(Terrain_LineIntersect(pTer, start, end, hit, hitPlane))
 		{
 			glm_vec4_copy(hitCol, sRayResults[i]);
@@ -615,7 +615,7 @@ static void	TestManyRays(const Terrain *pTer)
 		else
 		{
 			glm_vec4_copy(missCol, sRayResults[i]);
-		}
+		}*/
 	}
 
 	__uint128_t	endTime	=__rdtsc();
@@ -661,7 +661,8 @@ static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 ey
 //	bool	bHit	=Misc_CapsuleIntersectBounds(sTestBoxMin, sTestBoxMax, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	int	res	=CV_SweptSphereIntersect(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	int	res	=Terrain_SweptBoundIntersect(pTer, eyePos, endRay, sTestBoxMin, sTestBoxMax, hitPos, hitPlane);
-	int	res	=PM_SweptSphereToTriIntersect(sTestTri, eyePos, endRay, 0.25f, hitPos, hitPlane);
+//	int	res	=PM_SweptSphereToTriIntersect(sTestTri, eyePos, endRay, 0.25f, hitPos, hitPlane);
+	int	res	=Terrain_SweptSphereIntersect(pTer, eyePos, endRay, 0.25f, hitPos, hitPlane);
 
 	return	res;
 }
@@ -675,7 +676,7 @@ static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane)
 	//invalidate hit point
 	glm_vec3_fill(hitPos, FLT_MAX);
 
-	bool	bGood	=Terrain_MoveBox(pTer, sTestBoxMin, sTestBoxMax, start, end, hitPos);
+//	bool	bGood	=Terrain_MoveBox(pTer, sTestBoxMin, sTestBoxMax, start, end, hitPos);
 
 	return	VOL_HIT_VISIBLE;
 }
@@ -843,7 +844,7 @@ static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 	{
 		vec3	end, newPos;
 		glm_vec3_add(pTS->mPlayerPos, forward, end);
-		if(Terrain_MoveBox(pTS->mpTer, sTestBoxMin, sTestBoxMax, pTS->mPlayerPos, end, newPos))
+/*		if(Terrain_MoveBox(pTS->mpTer, sTestBoxMin, sTestBoxMax, pTS->mPlayerPos, end, newPos))
 		{
 			//watch for a glitchy move
 			float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);
@@ -858,7 +859,7 @@ static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 
 			ST_ModifyStringText(pTS->mpST, 70, "Moved!");
 		}
-		else
+		else*/
 		{
 			ST_ModifyStringText(pTS->mpST, 70, "Move error!");
 		}

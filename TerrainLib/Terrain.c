@@ -487,11 +487,12 @@ void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, i
 	QT_GatherLeafBounds(pTer->mpQT, ppMins, ppMaxs, pNumBounds);
 }
 
+/*
 int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 							vec3 intersection, vec4 planeHit)
 {
 	return	QT_LineIntersect(pTer->mpQT, start, end, intersection, planeHit);
-}
+}*/
 
 int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 									float radius, vec3 intersection, vec4 planeHit)
@@ -499,6 +500,7 @@ int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const ve
 	return	QT_SweptSphereIntersect(pTer->mpQT, start, end, radius, intersection, planeHit);
 }
 
+/*
 int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 								const vec3 min, const vec3 max,
 								vec3 intersection, vec4 planeHit)
@@ -510,8 +512,9 @@ int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec
 	assert(glm_vec3_eq_eps(diff, 0.0f));
 
 	return	QT_SweptBoundIntersect(pTer->mpQT, start, end, min, max, intersection, planeHit);
-}
+}*/
 
+/*
 bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
 						const vec3 start, const vec3 end, vec3 finalPos)
 {
@@ -584,7 +587,7 @@ bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
 	}
 
 	glm_vec3_copy(newEnd, finalPos);
-
+*/
 /*	if(i == MaxMoveBoxIterations)
 	{
 		//this is usually caused by oblique planes causing
@@ -635,5 +638,5 @@ bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
 		finalPos	=bestCon - motionVec;
 		return	true;
 	}*/
-	return	true;
-}
+//	return	true;
+//}

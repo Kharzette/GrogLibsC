@@ -1,6 +1,11 @@
 #pragma once
 #include	<cglm/call.h>
 
+#define	TER_MISS		0
+#define	TER_HIT			1	//start outside hit
+#define	TER_INSIDE		2	//whole line segment inside
+#define	TER_HIT_INSIDE	4	//start inside hit
+
 typedef struct	Terrain_t			Terrain;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	StuffKeeper_t		StuffKeeper;
@@ -30,14 +35,14 @@ void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, i
 void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs);
 
 //collision
-int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-							vec3 intersection, vec4 planeHit);
+//int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
+//							vec3 intersection, vec4 planeHit);
 int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 									float radius, vec3 intersection, vec4 planeHit);
-int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-								const vec3 min, const vec3 max,
-								vec3 intersection, vec4 planeHit);
+//int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
+//								const vec3 min, const vec3 max,
+//								vec3 intersection, vec4 planeHit);
 
 //movement
-bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
-						const vec3 start, const vec3 end, vec3 finalPos);
+//bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
+//						const vec3 start, const vec3 end, vec3 finalPos);

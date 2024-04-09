@@ -351,8 +351,8 @@ int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3
 	else if(res == PLANE_BACK)
 	{
 		//start and end both behind triangle
-		//this is sort of an invalid state
-		return	INSIDE;
+		//This could early out in a volumetric dataset
+//		return	INSIDE;
 	}
 
 	//edge plane 0 -> 1

@@ -9,10 +9,10 @@
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"../MaterialLib/Material.h"
-#include	"../UtilityLib/ConvexVolume.h"
 #include	"../UtilityLib/PlaneMath.h"
 #include	"QuadTree.h"
 #include	"QuadNode.h"	//for testing splits
+#include	"Terrain.h"
 
 
 typedef struct	Terrain_t
@@ -25,17 +25,6 @@ typedef struct	Terrain_t
 
 	QuadTree	*mpQT;
 }	Terrain;
-
-typedef struct	TerrainVert_t
-{
-	vec3		mPosition;
-	uint16_t	mNormal[4];		//16 bit float4
-
-	//these are percentages of each texture in the 8 way atlas
-	uint16_t	mTexFactor0[4];	//16 bit float4
-	uint16_t	mTexFactor1[4];	//16 bit float4
-
-}	TerrainVert;
 
 
 static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
@@ -500,6 +489,11 @@ int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const ve
 	return	QT_SweptSphereIntersect(pTer->mpQT, start, end, radius, intersection, planeHit);
 }
 
+int	Terrain_SphereIntersect(const Terrain *pTer, const vec3 pos, float radius, vec4 planeHit)
+{
+	return	QT_SphereIntersect(pTer->mpQT, pos, radius, planeHit);
+}
+
 /*
 int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 								const vec3 min, const vec3 max,
@@ -514,9 +508,9 @@ int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec
 	return	QT_SweptBoundIntersect(pTer->mpQT, start, end, min, max, intersection, planeHit);
 }*/
 
-/*
-bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
-						const vec3 start, const vec3 end, vec3 finalPos)
+
+bool	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
+						   float radius, vec3 finalPos)
 {
 	int	i	=0;
 
@@ -526,117 +520,47 @@ bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
 
 	int	maxIter	=5;
 
-//	List<ZonePlane>	hitPlanes	=new List<ZonePlane>();
 	for(i=0;i < maxIter;i++)
 	{
-//		RayTrace	rt	=new RayTrace(newStart, newEnd);
-//		rt.mBounds		=box;
 		vec3	intersection;
 		vec4	plane;
 
-		int	hit	=Terrain_SweptBoundIntersect(pTer, newStart, newEnd, min, max, intersection, plane);
-		if(hit == VOL_MISS)
+		glm_vec3_fill(intersection, FLT_MAX);
+
+		//make sure the start point is valid
+		int	startHit	=Terrain_SphereIntersect(pTer, newStart, radius, plane);
+		if(startHit != TER_MISS)
+		{
+			PM_ReflectSphere(plane, radius, newStart);
+			float	check	=PM_Distance(plane, newStart);
+			continue;
+		}
+
+		int	hit	=Terrain_SweptSphereIntersect(pTer, newStart, newEnd, radius, intersection, plane);
+		if(hit == TER_MISS)
 		{
 			break;
 		}
 
-//		ZonePlane	zp	=rt.mCollision.mPlaneHit;
-
-		if(hit == VOL_HIT_INSIDE)
-		{
-			//see if start is exactly plane on
-			float	checkDist	=PM_Distance(plane, newStart);
-			if(checkDist == 0.0f)
-			{
-				PM_ReflectPosition(plane, newStart);
-				continue;
-			}
-			//TODO: report and solve via intersection
-			//can't solve!
-			glm_vec3_copy(start, finalPos);
-			return	false;
-		}
-		else if(hit == VOL_INSIDE)
+		if(hit == TER_HIT_INSIDE || hit == TER_INSIDE)
 		{
 			//started in a solid leaf
-			//cast up
-			vec3	bump	={	0.0f, 1.0f, 0.0f	};
-			vec3	bumpHit;
-			vec4	bumpPlane;
-			glm_vec3_add(newStart, bump, bump);
-
-			int	bumpRet	=Terrain_SweptBoundIntersect(pTer, newStart, bump, min, max, bumpHit, bumpPlane);
-			if(bumpRet == VOL_HIT_VISIBLE)
-			{
-				PM_ReflectPosition(bumpPlane, newStart);
-				continue;
-			}
-			return	false;
+			PM_ReflectSphere(plane, radius, newStart);
+			float	check	=PM_Distance(plane, newStart);
+			continue;
 		}
+
+		//move slightly off hit plane
+		PM_ReflectPosition(plane, intersection);
 
 		//reflect off plane hit to new endpoint
 		PM_ReflectMove(plane, newStart, newEnd, newEnd);
 
 		//copy intersect point to start
 		glm_vec3_copy(intersection, newStart);
-
-//		if(!hitPlanes.Contains(zp))
-//		{
-//			hitPlanes.Add(zp);
-//		}
 	}
 
 	glm_vec3_copy(newEnd, finalPos);
-*/
-/*	if(i == MaxMoveBoxIterations)
-	{
-		//this is usually caused by oblique planes causing
-		//the reflected motion to bounce back and forth
 
-		//get all the collision points along the motion
-		List<Vector3>	contacts	=GetCollisions(hitPlanes, start, end);
-
-		//get distance start to end
-		float	motionDistance	=start.Distance(end);
-
-		//stop at the closest contact to start
-		float	bestDist	=float.MaxValue;
-		Vector3	bestCon		=start;
-		foreach(Vector3 con in contacts)
-		{
-			float	startDist	=con.Distance(start);
-			float	endDist		=con.Distance(end);
-
-			if(endDist > motionDistance)
-			{
-				//this contact is in front of the start!
-				//this can only mean the starting position
-				//was in solid
-				finalPos	=start;
-				return	false;
-			}
-
-			if(startDist < bestDist)
-			{
-				bestDist	=startDist;
-				bestCon		=con;
-			}
-		}
-
-		if(bestCon.Distance(start) <= Mathery.VCompareEpsilon)
-		{
-			//so close might as well use the start position
-			finalPos	=start;
-			return	true;
-		}
-		//push back along the vector a bit
-		Vector3	motionVec	=end - start;
-
-		motionVec	/=motionDistance;
-		motionVec	*=Mathery.VCompareEpsilon;
-
-		finalPos	=bestCon - motionVec;
-		return	true;
-	}*/
-//	return	true;
-//}
+	return	true;
+}

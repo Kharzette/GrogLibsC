@@ -10,7 +10,7 @@
 #define	MISS				0	//no intersection
 #define	INTERSECT			1	//intersection with bound from outside
 #define	INSIDE				2	//segment fully inside
-#define	INSIDE_INTERSECT	3	//start point inside but segment intersects
+#define	INSIDE_INTERSECT	4	//start point inside but segment intersects
 
 //simd stuff
 extern void	Misc_Convert4ToF16(float f0, float f1, float f2, float f3, uint16_t *pDest);
@@ -40,4 +40,5 @@ extern float	Misc_ComputeAngleSum(const vec3 pointOnPlane, const vec3 *pVerts, i
 //collision stuff
 extern bool	Misc_CheckTwoAABBOverlap(const vec3 aMin, const vec3 aMax, const vec3 bMin, const vec3 bMax);
 extern bool	Misc_IsPointInBounds(const vec3 min, const vec3 max, const vec3 pnt);
+extern bool	Misc_SphereIntersectBounds(const vec3 pos, float radius, const vec3 bounds[2]);
 extern bool	Misc_RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float rayLen, const vec3 bounds[2]);

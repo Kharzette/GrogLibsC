@@ -15,6 +15,7 @@ void		QT_GatherLeafBounds(const QuadTree *pQT, vec3 **ppMins, vec3 **ppMaxs, int
 //						vec3 intersection, vec4 planeHit);
 int	QT_SweptSphereIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 							float radius, vec3 intersection, vec4 planeHit);
+int	QT_SphereIntersect(const QuadTree *pQT, const vec3 pos, float radius, vec4 planeHit);							
 //int	QT_SweptBoundIntersect(const QuadTree *pQT, const vec3 start, const vec3 end,
 //							const vec3 min, const vec3 max,
 //							vec3 intersection, vec4 planeHit);

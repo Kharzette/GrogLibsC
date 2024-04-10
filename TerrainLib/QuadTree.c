@@ -143,6 +143,11 @@ int	QT_SweptSphereIntersect(const QuadTree *pQT, const vec3 start, const vec3 en
 	return	QN_SweptSphereIntersect(pQT->mpRoot, start, end, invDir, radius, rayLen, intersection, planeHit);
 }
 
+int	QT_SphereIntersect(const QuadTree *pQT, const vec3 pos, float radius, vec4 planeHit)
+{
+	return	QN_SphereIntersect(pQT->mpRoot, pos, radius, planeHit);
+}
+
 //Note that a previous intersection might be passed in here.
 //Only a new intersection closer to the start point would result
 //in a hit.  This could be used to mix collision with statics or

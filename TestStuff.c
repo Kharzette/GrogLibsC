@@ -397,7 +397,7 @@ int main(void)
 				GameCam_GetFlatLookMatrix(pTS->mpCam, guraMat);
 
 				//drop mesh to ground
-				vec3	feetToCenter	={	0.0f, sTestBoxMin[1], 0.0f	};
+				vec3	feetToCenter	={	0.0f, -0.25f, 0.0f	};
 				glm_translate(guraMat, feetToCenter);
 
 				MAT_SetWorld(pCharMat, guraMat);
@@ -676,7 +676,7 @@ static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane)
 	//invalidate hit point
 	glm_vec3_fill(hitPos, FLT_MAX);
 
-//	bool	bGood	=Terrain_MoveBox(pTer, sTestBoxMin, sTestBoxMax, start, end, hitPos);
+	bool	bGood	=Terrain_MoveSphere(pTer, sTestBoxMin, sTestBoxMax, 0.25f, hitPos);
 
 	return	VOL_HIT_VISIBLE;
 }
@@ -844,7 +844,7 @@ static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 	{
 		vec3	end, newPos;
 		glm_vec3_add(pTS->mPlayerPos, forward, end);
-/*		if(Terrain_MoveBox(pTS->mpTer, sTestBoxMin, sTestBoxMax, pTS->mPlayerPos, end, newPos))
+		if(Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos))
 		{
 			//watch for a glitchy move
 			float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);
@@ -859,7 +859,7 @@ static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 
 			ST_ModifyStringText(pTS->mpST, 70, "Moved!");
 		}
-		else*/
+		else
 		{
 			ST_ModifyStringText(pTS->mpST, 70, "Move error!");
 		}

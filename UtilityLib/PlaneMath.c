@@ -342,6 +342,7 @@ int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3
 	triPlane[3]	+=radius;
 
 	vec3	intersection;
+	bool	bInside	=false;
 	int	res	=PM_LineIntersectPlane(triPlane, start, end, intersection);
 	if(res == PLANE_FRONT)
 	{
@@ -352,7 +353,7 @@ int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3
 	{
 		//start and end both behind triangle
 		//This could early out in a volumetric dataset
-//		return	INSIDE;
+		bInside	=true;
 	}
 
 	//edge plane 0 -> 1
@@ -404,6 +405,99 @@ int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3
 	{
 		glm_vec4_copy(triPlane, hitPlane);
 		glm_vec3_copy(intersection, hit);
+
+		if(bInside)
+		{
+			return	INSIDE_INTERSECT;
+		}
+
+		return	INTERSECT;
+	}
+
+	//For closed meshes I THINK this is enough...
+	//For free floating triangles I think additional checks for
+	//edge and vertex collisions would need to be done here.
+	return	MISS;
+}
+
+int	PM_SphereToTriIntersect(const vec3 tri[3], const vec3 pos, float radius, vec4 hitPlane)
+{
+	//plane of the triangle
+	vec4	triPlane;
+	PM_FromTri(tri[0], tri[1], tri[2], triPlane);
+
+	bool	bInside	=false;
+	float	dist	=PM_Distance(triPlane, pos);
+	if(dist > radius)
+	{
+		return	MISS;
+	}
+	else
+	{
+		//start and end both behind triangle
+		//This could early out in a volumetric dataset
+		bInside	=true;
+	}
+
+	vec3	planePos;
+	glm_vec3_copy(pos, planePos);
+
+	//project sphere above triplane
+	PM_ReflectSphere(triPlane, radius, planePos);
+
+	//edge plane 0 -> 1
+	vec3	edgeVec;
+	glm_vec3_sub(tri[0], tri[1], edgeVec);
+
+	vec3	upVec	={	0.0f, 1.0f, 0.0f	};
+
+	vec3	norm;
+	glm_vec3_cross(edgeVec, upVec, norm);
+	glm_vec3_normalize(norm);
+
+	vec4	plane01	={	norm[0], norm[1], norm[2], 0.0f	};
+
+	plane01[3]	=glm_vec3_dot(norm, tri[0]);
+
+	///edge plane 0 -> 2
+	glm_vec3_sub(tri[0], tri[2], edgeVec);
+
+	glm_vec3_cross(upVec, edgeVec, norm);
+	glm_vec3_normalize(norm);
+
+	vec4	plane02	={	norm[0], norm[1], norm[2], 0.0f	};
+
+	plane02[3]	=glm_vec3_dot(norm, tri[0]);
+
+	///edge plane 1 -> 2
+	glm_vec3_sub(tri[1], tri[2], edgeVec);
+
+	glm_vec3_cross(edgeVec, upVec, norm);
+	glm_vec3_normalize(norm);
+
+	vec4	plane12	={	norm[0], norm[1], norm[2], 0.0f	};
+
+	plane12[3]	=glm_vec3_dot(norm, tri[1]);
+
+	//get intersection distance to edge planes
+	float	dist01	=PM_Distance(plane01, planePos);
+	float	dist02	=PM_Distance(plane02, planePos);
+	float	dist12	=PM_Distance(plane12, planePos);
+
+	if(dist01 > radius || dist02 > radius || dist12 > radius)
+	{
+		return	MISS;
+	}
+
+	//direct plane hit
+	if(dist01 <= 0.0f && dist02 <= 0.0f && dist12 <= 0.0f)
+	{
+		glm_vec4_copy(triPlane, hitPlane);
+
+		if(bInside)
+		{
+			return	INSIDE_INTERSECT;
+		}
 
 		return	INTERSECT;
 	}
@@ -565,6 +659,22 @@ void	PM_ReflectPosition(const vec4 plane, vec3 pos)
 		glm_vec3_scale(plane, dist - DIST_EPSILON, scaledNorm);
 		glm_vec3_sub(pos, scaledNorm, pos);
 	}
+}
+
+//adjust a sphere just off the front side
+void	PM_ReflectSphere(const vec4 plane, float radius, vec3 pos)
+{
+	float	dist	=PM_Distance(plane, pos);
+
+	vec3	scaledNorm;
+	glm_vec3_scale(plane, dist, scaledNorm);
+
+	//place newPos directly on the plane
+	glm_vec3_sub(pos, scaledNorm, pos);
+
+	//adjust it to the front side
+	glm_vec3_scale(plane, DIST_EPSILON + radius, scaledNorm);
+	glm_vec3_add(scaledNorm, pos, pos);
 }
 
 //adjust a movement vec along the plane

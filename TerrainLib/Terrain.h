@@ -39,10 +39,11 @@ void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs);
 //							vec3 intersection, vec4 planeHit);
 int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 									float radius, vec3 intersection, vec4 planeHit);
+int	Terrain_SphereIntersect(const Terrain *pTer, const vec3 pos, float radius, vec4 planeHit);
 //int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
 //								const vec3 min, const vec3 max,
 //								vec3 intersection, vec4 planeHit);
 
 //movement
-//bool	Terrain_MoveBox(const Terrain *pTer, const vec3 min, const vec3 max,
-//						const vec3 start, const vec3 end, vec3 finalPos);
+bool	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
+						   float radius, vec3 finalPos);

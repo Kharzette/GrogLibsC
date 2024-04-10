@@ -331,6 +331,23 @@ bool	Misc_RayIntersectBounds(const vec3 rayStart, const vec3 invDir, const float
 	return	false;
 }
 
+//non moving sphere
+bool	Misc_SphereIntersectBounds(const vec3 pos, float radius, const vec3 bounds[2])
+{
+	for(int i=0;i < 3;i++)
+	{
+		if(pos[i] < (bounds[0][i] - radius))
+		{
+			return	false;
+		}
+		if(pos[i] > (bounds[1][i] + radius))
+		{
+			return	false;
+		}
+	}
+	return	true;
+}
+
 bool	Misc_CheckTwoAABBOverlap(const vec3 aMin, const vec3 aMax, const vec3 bMin, const vec3 bMax)
 {
 	return	aMin[0] <= bMax[0] && aMax[0] >= bMin[0] &&

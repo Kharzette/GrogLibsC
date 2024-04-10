@@ -149,7 +149,7 @@ static int	SweptSphereIntersectLeafNode(const QuadNode *pQN, const vec3 start, c
 	//invalidate
 	glm_vec3_fill(intersection, FLT_MAX);
 
-	int		ret		=-1;
+	int	ret	=TER_MISS;
 
 	for(int i=0;i < LEAF_TRIS;i++)
 	{
@@ -180,6 +180,39 @@ static int	SweptSphereIntersectLeafNode(const QuadNode *pQN, const vec3 start, c
 			glm_vec4_copy(hitPlane, planeHit);
 			ret	=res;
 		}
+	}
+	return	ret;
+}
+
+static int	SphereIntersectLeafNode(const QuadNode *pQN, const vec3 pos, float radius,
+									vec4 planeHit)
+{
+	assert(pQN->mpQLD);
+
+	int	ret	=TER_MISS;
+	for(int i=0;i < LEAF_TRIS;i++)
+	{
+		vec3	hit;
+		vec4	hitPlane;
+
+		vec3	tri[3];
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[i * 3]], tri[0]);
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[(i * 3) + 1]], tri[1]);
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[(i * 3) + 2]], tri[2]);
+
+		int	res	=PM_SphereToTriIntersect(tri, pos, radius, hitPlane);
+		if(res == MISS)
+		{
+			continue;
+		}
+
+		if(res == INSIDE)
+		{
+			return	TER_INSIDE;
+		}
+
+		glm_vec4_copy(hitPlane, planeHit);
+		return	res;
 	}
 	return	ret;
 }
@@ -571,6 +604,82 @@ int	QN_SweptSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 	}
 
 	ret2	=QN_SweptSphereIntersect(pQN->mpChildD, rayStart, end, invDir, radius, rayLen, intersection, planeHit);
+	if(ret2 == TER_INSIDE)	//early exit check
+	{
+		return	TER_INSIDE;
+	}
+	else if(ret2 != TER_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
+
+	return	ret;
+}
+
+//non moving sphere intersect
+int	QN_SphereIntersect(const QuadNode *pQN, const vec3 pos, float radius, vec4 planeHit)
+{
+	vec3	bounds[2];
+	glm_vec3_copy(pQN->mMins, bounds[0]);
+	glm_vec3_copy(pQN->mMaxs, bounds[1]);
+
+	//expand by radius
+	Misc_ExpandBounds(bounds[0], bounds[1], radius);
+
+	//fast intersect check for nodes
+	//don't need plane hit or point returned, just a yes or no
+	if(!Misc_IsPointInBounds(bounds[0], bounds[1], pos))
+	{
+		return	TER_MISS;
+	}
+
+	if(pQN->mpQLD)	//leaf?
+	{
+		vec3	hit;
+		vec4	hitPlane;
+		int	res	=SphereIntersectLeafNode(pQN, pos, radius, hitPlane);
+
+		if(res == TER_INSIDE)
+		{
+			//line fully contained in solid space
+			return	TER_INSIDE;
+		}
+
+		if(res != TER_MISS)
+		{
+			glm_vec4_copy(hitPlane, planeHit);
+			return	res;	//some form of hit
+		}
+		return	TER_MISS;	//too distant
+	}
+
+	int	ret	=QN_SphereIntersect(pQN->mpChildA, pos, radius, planeHit);
+	if(ret == TER_INSIDE)	//early exit check
+	{
+		return	TER_INSIDE;
+	}
+
+	int	ret2	=QN_SphereIntersect(pQN->mpChildB, pos, radius, planeHit);
+	if(ret2 == TER_INSIDE)	//early exit check
+	{
+		return	TER_INSIDE;
+	}
+	else if(ret2 != TER_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
+
+	ret2	=QN_SphereIntersect(pQN->mpChildC, pos, radius, planeHit);
+	if(ret2 == TER_INSIDE)	//early exit check
+	{
+		return	TER_INSIDE;
+	}
+	else if(ret2 != TER_MISS)
+	{
+		ret	=ret2;	//newer hits supercede old
+	}
+
+	ret2	=QN_SphereIntersect(pQN->mpChildD, pos, radius, planeHit);
 	if(ret2 == TER_INSIDE)	//early exit check
 	{
 		return	TER_INSIDE;

@@ -14,6 +14,8 @@
 #include	"QuadNode.h"	//for testing splits
 #include	"Terrain.h"
 
+#define	FOOT_CHECK	0.2f
+
 
 typedef struct	Terrain_t
 {
@@ -508,9 +510,44 @@ int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec
 	return	QT_SweptBoundIntersect(pTer->mpQT, start, end, min, max, intersection, planeHit);
 }*/
 
+//return 1 if on ground, 0 for in air, 2 for bad footing
+static int	FootCheck(const Terrain *pTer, const vec3 pos, float radius)
+{
+	vec4	plane;
+	int	res	=Terrain_SphereIntersect(pTer, pos, radius, plane);
+	if(res == TER_HIT || TER_HIT_INSIDE)
+	{
+		//probably shouldn't be hitting, but whateva
+		if(PM_IsGround(plane))
+		{
+			return	1;
+		}
+	}
+	else if(res == TER_INSIDE)
+	{
+		return	2;
+	}
 
-bool	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
-						   float radius, vec3 finalPos)
+	//if in air, expand the radius slightly to
+	//check if the sphere is just off the ground
+	res	=Terrain_SphereIntersect(pTer, pos, radius + FOOT_CHECK, plane);
+	if(res == TER_HIT || TER_HIT_INSIDE)
+	{
+		if(PM_IsGround(plane))
+		{
+			return	1;
+		}
+	}
+	else if(res == TER_INSIDE)
+	{
+		return	2;
+	}
+	return	0;
+}
+
+
+int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
+					   float radius, vec3 finalPos)
 {
 	int	i	=0;
 
@@ -562,5 +599,5 @@ bool	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
 
 	glm_vec3_copy(newEnd, finalPos);
 
-	return	true;
+	return	FootCheck(pTer, finalPos, radius);
 }

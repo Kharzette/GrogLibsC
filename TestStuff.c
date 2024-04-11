@@ -31,6 +31,7 @@
 #include	"MeshLib/Character.h"
 #include	"MeshLib/CommonPrims.h"
 #include	"InputLib/Input.h"
+#include	"UtilityLib/BipedMover.h"
 
 
 #define	RESX			800
@@ -77,6 +78,7 @@ typedef struct	TestStuff_t
 	PrimObject		*mpManyRays;
 	PrimObject		*mpManyImpacts;
 	ScreenText		*mpST;
+	BipedMover		*mpBPM;
 
 	//toggles
 	bool	mbDrawTerNodes;
@@ -111,6 +113,7 @@ static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDe
 static void	SetupKeyBinds(Input *pInp);
 static void	SetupRastVP(GraphicsDevice *pGD);
 static void SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK);
+static void	MoveCharacter(TestStuff *pTS, const vec3 moveVec);
 
 //material setups
 static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
@@ -143,6 +146,7 @@ static void	KeyMoveLeftEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyMoveUpEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyMoveDownEH(void *pContext, const SDL_Event *pEvt);
+static void	KeyMoveJumpEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyTurnLeftEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyTurnRightEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyTurnUpEH(void *pContext, const SDL_Event *pEvt);
@@ -160,8 +164,8 @@ int main(void)
 	TestStuff	*pTS	=malloc(sizeof(TestStuff));
 	memset(pTS, 0, sizeof(TestStuff));
 
-	//start in fly mode
-	pTS->mbFlyMode	=true;
+	//start in fly mode?
+	pTS->mbFlyMode	=false;
 	pTS->mCamDist	=START_CAM_DIST;
 	
 	//set player on corner near origin
@@ -230,7 +234,11 @@ int main(void)
 	pTS->mEyePos[1]	=0.6f;
 	pTS->mEyePos[2]	=4.5f;
 
+	//game camera
 	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
+
+	//biped mover
+	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
 	//3D Projection
 	mat4	camProj;
@@ -282,7 +290,9 @@ int main(void)
 		pTS->mDeltaPitch	=0.0f;
 
 		UpdateTimer_Stamp(pUT);
-		while(UpdateTimer_GetUpdateDeltaSeconds(pUT) > 0.0f)
+		for(float secDelta =UpdateTimer_GetUpdateDeltaSeconds(pUT);
+			secDelta > 0.0f;
+			secDelta =UpdateTimer_GetUpdateDeltaSeconds(pUT))
 		{
 			//zero out charmove
 			glm_vec3_zero(pTS->mCharMoveVec);
@@ -290,6 +300,10 @@ int main(void)
 			//do input here
 			//move turn etc
 			INP_Update(pInp, pTS);
+
+			BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+
+			MoveCharacter(pTS, pTS->mCharMoveVec);
 
 			if(pTS->mDrawHit == TER_INSIDE)
 			{
@@ -358,6 +372,11 @@ int main(void)
 			sprintf(timeStr, "animTime: %f", animTime);
 
 			ST_ModifyStringText(pTS->mpST, 69, timeStr);
+
+			sprintf(timeStr, "charMove: %2.2f %2.2f %2.2f",
+				pTS->mCharMoveVec[0], pTS->mCharMoveVec[1], pTS->mCharMoveVec[2]);
+
+			ST_ModifyStringText(pTS->mpST, 70, timeStr);
 		}
 
 		//update strings
@@ -676,7 +695,7 @@ static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane)
 	//invalidate hit point
 	glm_vec3_fill(hitPos, FLT_MAX);
 
-	bool	bGood	=Terrain_MoveSphere(pTer, sTestBoxMin, sTestBoxMax, 0.25f, hitPos);
+	int		footing	=Terrain_MoveSphere(pTer, sTestBoxMin, sTestBoxMax, 0.25f, hitPos);
 
 	return	VOL_HIT_VISIBLE;
 }
@@ -829,41 +848,7 @@ static void	KeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	vec3	forward;
-	GameCam_GetForwardVec(pTS->mpCam, forward);
-	glm_vec3_scale(forward, MOVE_RATE, forward);
-
-	//accumulate movement
-	glm_vec3_add(forward, pTS->mCharMoveVec, pTS->mCharMoveVec);
-
-	if(pTS->mbFlyMode)
-	{
-		glm_vec3_add(pTS->mEyePos, forward, pTS->mEyePos);
-	}
-	else
-	{
-		vec3	end, newPos;
-		glm_vec3_add(pTS->mPlayerPos, forward, end);
-		if(Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos))
-		{
-			//watch for a glitchy move
-			float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);
-			if(dist > 10.0f)
-			{
-				printf("Glitchy Move: %f %f %f to %f %f %f\n",
-					pTS->mPlayerPos[0], pTS->mPlayerPos[1], pTS->mPlayerPos[2], 
-					end[0], end[1], end[2]);
-			}
-
-			glm_vec3_copy(newPos, pTS->mPlayerPos);
-
-			ST_ModifyStringText(pTS->mpST, 70, "Moved!");
-		}
-		else
-		{
-			ST_ModifyStringText(pTS->mpST, 70, "Move error!");
-		}
-	}
+	BPM_InputForward(pTS->mpBPM);
 }
 
 static void	KeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
@@ -872,6 +857,8 @@ static void	KeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
+	BPM_InputBack(pTS->mpBPM);
+/*
 	vec3	forward;
 	GameCam_GetForwardVec(pTS->mpCam, forward);
 	glm_vec3_scale(forward, -MOVE_RATE, forward);
@@ -880,6 +867,7 @@ static void	KeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
 	glm_vec3_add(forward, pTS->mCharMoveVec, pTS->mCharMoveVec);
 
 	glm_vec3_add(pTS->mEyePos, forward, pTS->mEyePos);
+*/
 }
 
 static void	KeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
@@ -888,6 +876,8 @@ static void	KeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
+	BPM_InputLeft(pTS->mpBPM);
+/*
 	vec3	right;
 	GameCam_GetRightVec(pTS->mpCam, right);
 	glm_vec3_scale(right, -MOVE_RATE, right);
@@ -896,6 +886,7 @@ static void	KeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
 	glm_vec3_add(right, pTS->mCharMoveVec, pTS->mCharMoveVec);
 
 	glm_vec3_add(pTS->mEyePos, right, pTS->mEyePos);
+*/
 }
 
 static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
@@ -904,6 +895,8 @@ static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
+	BPM_InputRight(pTS->mpBPM);
+/*
 	vec3	right;
 	GameCam_GetRightVec(pTS->mpCam, right);
 	glm_vec3_scale(right, MOVE_RATE, right);
@@ -912,6 +905,7 @@ static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
 	glm_vec3_add(right, pTS->mCharMoveVec, pTS->mCharMoveVec);
 
 	glm_vec3_add(pTS->mEyePos, right, pTS->mEyePos);
+*/
 }
 
 static void	KeyMoveUpEH(void *pContext, const SDL_Event *pEvt)
@@ -920,11 +914,14 @@ static void	KeyMoveUpEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
+	BPM_InputUp(pTS->mpBPM);
+/*
 	vec3	up;
 	GameCam_GetUpVec(pTS->mpCam, up);
 	glm_vec3_scale(up, MOVE_RATE, up);
 
 	glm_vec3_add(pTS->mEyePos, up, pTS->mEyePos);
+*/
 }
 
 static void	KeyMoveDownEH(void *pContext, const SDL_Event *pEvt)
@@ -933,11 +930,23 @@ static void	KeyMoveDownEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
+	BPM_InputDown(pTS->mpBPM);
+/*
 	vec3	up;
 	GameCam_GetUpVec(pTS->mpCam, up);
 	glm_vec3_scale(up, MOVE_RATE, up);
 
 	glm_vec3_sub(pTS->mEyePos, up, pTS->mEyePos);
+*/
+}
+
+static void	KeyMoveJumpEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	BPM_InputJump(pTS->mpBPM);
 }
 
 static void	KeyTurnLeftEH(void *pContext, const SDL_Event *pEvt)
@@ -1156,6 +1165,7 @@ static void	SetupKeyBinds(Input *pInp)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_d, KeyMoveRightEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_c, KeyMoveUpEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_z, KeyMoveDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_SPACE, KeyMoveJumpEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_LEFT, DangleDownEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_RIGHT, DangleUpEH);
 
@@ -1233,4 +1243,34 @@ static void SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK)
 static void	SetThirdPersonCam(TestStuff *pTS, GameCamera *pGC)
 {
 //	GCam
+}
+
+static void	MoveCharacter(TestStuff *pTS, const vec3 moveVec)
+{
+	if(pTS->mbFlyMode)
+	{
+		glm_vec3_add(pTS->mEyePos, moveVec, pTS->mEyePos);
+	}
+	else
+	{
+		vec3	end, newPos;
+		glm_vec3_add(pTS->mPlayerPos, moveVec, end);
+
+		int	footing	=Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos);
+		
+		BPM_SetFooting(pTS->mpBPM, footing);
+
+		//watch for a glitchy move
+		float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);
+		if(dist > 10.0f)
+		{
+			printf("Glitchy Move: %f %f %f to %f %f %f\n",
+				pTS->mPlayerPos[0], pTS->mPlayerPos[1], pTS->mPlayerPos[2], 
+				end[0], end[1], end[2]);
+		}
+
+		glm_vec3_copy(newPos, pTS->mPlayerPos);
+
+		ST_ModifyStringText(pTS->mpST, 70, "Moved!");
+	}
 }

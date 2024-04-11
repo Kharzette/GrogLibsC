@@ -45,5 +45,6 @@ int	Terrain_SphereIntersect(const Terrain *pTer, const vec3 pos, float radius, v
 //								vec3 intersection, vec4 planeHit);
 
 //movement
-bool	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
-						   float radius, vec3 finalPos);
+//return footing
+int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
+					   float radius, vec3 finalPos);

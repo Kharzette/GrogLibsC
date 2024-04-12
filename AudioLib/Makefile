@@ -3,7 +3,7 @@ CC=gcc
 CFLAGS=-std=gnu2x -g -O0 -march=native -fpic -shared	\
 	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
 	-DCGLM_FORCE_LEFT_HANDED	\
-	-Icglm/include	\
+	-I../cglm/include	\
 	-IFAudio/include	\
 	-Wall				\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs

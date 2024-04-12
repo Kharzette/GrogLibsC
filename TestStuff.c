@@ -245,7 +245,7 @@ __attribute_maybe_unused__
 	//biped mover
 	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
-	SoundEffectPlay("SpawnIn");
+	SoundEffectPlay("SpawnIn", pTS->mPlayerPos);
 
 	//3D Projection
 	mat4	camProj;
@@ -311,7 +311,7 @@ __attribute_maybe_unused__
 			bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
 			if(bJumped)
 			{
-				SoundEffectPlay("PowerUp3");
+				SoundEffectPlay("PowerUp3", pTS->mPlayerPos);
 			}
 
 			MoveCharacter(pTS, pTS->mCharMoveVec);
@@ -354,6 +354,9 @@ __attribute_maybe_unused__
 
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
+
+		//update audio
+		Audio_Update(pAud, pTS->mPlayerPos, pTS->mCharMoveVec);
 
 		//player moving?
 		float	moving	=glm_vec3_norm(pTS->mCharMoveVec);

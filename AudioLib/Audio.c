@@ -1,6 +1,7 @@
 #include	<stdint.h>
 #include	<stdio.h>
 #include	<stdlib.h>
+#include	<cglm/call.h>
 #include	<unistd.h>
 #include	<assert.h>
 #include	<string.h>
@@ -18,11 +19,13 @@ typedef struct DeviceStuff_t
 
 typedef struct	Audio_t
 {
-	FAudio	*mpFA;
+	FAudio			*mpFA;
+	F3DAUDIO_HANDLE	m3D;
 
 	//audio config stuff
 	uint32_t	mDeviceCount;
 	DeviceStuff	*mpDevices;
+	uint32_t	mChosenDevice;
 
 	//3d audio
 	FAudioMasteringVoice	*mpFAMV;
@@ -145,6 +148,11 @@ void	PrintSpeakerStuff(uint32_t channelMask)
 	printf("\n");
 }
 
+static void	Init3D(Audio *pAud)
+{
+	F3DAudioInitialize(pAud->mpDevices[pAud->mChosenDevice].mChanMask, 343, pAud->m3D);
+}
+
 
 Audio	*Audio_Create(int deviceIndex)
 {
@@ -240,6 +248,8 @@ Audio	*Audio_Create(int deviceIndex)
 		return	NULL;
 	}
 
+	pRet->mChosenDevice	=deviceIndex;
+
 	pRet->mListener.OrientFront.x	=0.0f;
 	pRet->mListener.OrientFront.y	=0.0f;
 	pRet->mListener.OrientFront.z	=1.0f;
@@ -254,8 +264,11 @@ Audio	*Audio_Create(int deviceIndex)
 	pRet->mListener.Position.z		=0.0f;
 
 	pRet->mListener.Velocity	=pRet->mListener.Position;
+
+	Init3D(pRet);
 	
-	pRet->mNumSFXLoaded	=SoundEffectLoadAllInPath("Audio", pRet->mpFA);
+	pRet->mNumSFXLoaded	=SoundEffectLoadAllInPath("Audio", pRet->mpFA,
+							pRet->mpDevices[deviceIndex].mNumChannels);
 
 	if(pRet->mNumSFXLoaded <= 0)
 	{
@@ -383,6 +396,8 @@ Audio	*Audio_CreateInteractive(void)
 		return	NULL;
 	}
 
+	pRet->mChosenDevice	=chosenIndex;
+
 	pRet->mListener.OrientFront.x	=0.0f;
 	pRet->mListener.OrientFront.y	=0.0f;
 	pRet->mListener.OrientFront.z	=1.0f;
@@ -397,8 +412,11 @@ Audio	*Audio_CreateInteractive(void)
 	pRet->mListener.Position.z		=0.0f;
 
 	pRet->mListener.Velocity	=pRet->mListener.Position;
+
+	Init3D(pRet);
 	
-	pRet->mNumSFXLoaded	=SoundEffectLoadAllInPath("Audio", pRet->mpFA);
+	pRet->mNumSFXLoaded	=SoundEffectLoadAllInPath("Audio", pRet->mpFA,
+							pRet->mpDevices[chosenIndex].mNumChannels);
 
 	if(pRet->mNumSFXLoaded <= 0)
 	{
@@ -419,6 +437,19 @@ Audio	*Audio_CreateInteractive(void)
 	}
 
 	return	pRet;
+}
+
+void	Audio_Update(Audio *pAud, vec3 position, vec3 velocity)
+{
+	pAud->mListener.Position.x	=position[0];
+	pAud->mListener.Position.y	=position[1];
+	pAud->mListener.Position.z	=position[2];
+
+	pAud->mListener.Velocity.x	=velocity[0];
+	pAud->mListener.Velocity.y	=velocity[1];
+	pAud->mListener.Velocity.z	=velocity[2];
+
+	SoundEffectUpdateEmitters(pAud->m3D, &pAud->mListener, pAud->mpFAMV);
 }
 
 
@@ -531,7 +562,7 @@ int	main(void)
 
 	printf("Current Dir: %s\n", pathBuf);
 
-	int	numLoaded	=SoundEffectLoadAllInPath("Audio", pFA);
+	int	numLoaded	=SoundEffectLoadAllInPath("Audio", pFA, devices[chosenIndex].mNumChannels);
 
 	if(numLoaded <= 0)
 	{
@@ -544,7 +575,10 @@ int	main(void)
 	res	=FAudio_StartEngine(pFA);
 	assert(!res);
 
-	if(!SoundEffectPlay("JumpIdle"))
+	vec3	zvec;
+	glm_vec3_zero(zvec);
+
+	if(!SoundEffectPlay("JumpIdle", zvec))
 	{
 		printf("Error playing sound!.\n");
 	}

@@ -2,26 +2,39 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<unistd.h>
+#include	<cglm/call.h>
 #include	<dirent.h>
 #include	<errno.h>
 #include	<sys/stat.h>
 #include	<assert.h>
 #include	<string.h>
 #include	<FAudio.h>
+#include	<F3DAudio.h>
 #include	"tinywav/tinywav.h"
 #include	"SoundEffect.h"
 
 
-#define	SFX_NAME_LEN	32
-#define	SFX_MAX_COUNT	64
+#define	SFX_NAME_LEN		32
+#define	SFX_MAX_COUNT		64
+#define	SRC_VOICE_CHANNELS	32
 
 //lazy data
 typedef struct
 {
+	char	mszName[SFX_NAME_LEN];
+
+	//faudio stuff
 	FAudioSourceVoice	*mpSrcVoice;
 	FAudioBuffer		mBuffer;
 	FAudioVoiceCallback	mCB;
-	char				mszName[SFX_NAME_LEN];
+
+	//3d stuff
+	F3DAUDIO_EMITTER		mEmitter;
+	F3DAUDIO_DSP_SETTINGS	mDSP;
+
+	//state stuff, api is very confusing
+	bool	mbPlaying;
+	bool	mbPlayedOnce;
 }	SoundEffect;
 
 typedef struct
@@ -42,6 +55,11 @@ uint32_t	sNumSFX	=0;
 
 static void FAUDIOCALL OnBufferEnd(FAudioVoiceCallback *pCB, void *pContext)
 {
+	SoundEffect	*pSFX	=(SoundEffect *)pContext;
+
+//	printf("Buffer end!\n");
+
+	pSFX->mbPlaying	=false;
 }
 
 static void FAUDIOCALL OnBufferStart(FAudioVoiceCallback *pCB, void *pContext)
@@ -54,6 +72,7 @@ static void FAUDIOCALL OnLoopEnd(FAudioVoiceCallback *pCB, void *pContext)
 
 static void FAUDIOCALL OnStreamEnd(FAudioVoiceCallback *pCB)
 {
+	printf("Stream end!\n");
 }
 
 static void FAUDIOCALL OnVoiceError(FAudioVoiceCallback *pCB, void *pContext, uint32_t Error)
@@ -146,7 +165,8 @@ void	SoundEffectDestroyAll(void)
 
 
 //loadup a sound effect (non streamed)
-bool    SoundEffectCreate(const char *szName, const char *szPath, FAudio *pFA)
+bool    SoundEffectCreate(const char *szName, const char *szPath,
+							FAudio *pFA, uint32_t numChannels)
 {
 	if(sNumSFX == SFX_MAX_COUNT)
 	{
@@ -202,7 +222,21 @@ bool    SoundEffectCreate(const char *szName, const char *szPath, FAudio *pFA)
 		printf("Error creating source voice for %s\n", szPath);
 		return	false;
 	}
-	
+
+	//init emitter
+	memset(&pCur->mEmitter, 0, sizeof(F3DAUDIO_EMITTER));
+
+	//always mono for 3d sounds
+	pCur->mEmitter.OrientFront.z	=1;
+	pCur->mEmitter.OrientTop.y		=1;
+	pCur->mEmitter.ChannelCount		=1;
+
+	//init dsp stuff
+	memset(&pCur->mDSP, 0, sizeof(F3DAUDIO_DSP_SETTINGS));
+
+	pCur->mDSP.pMatrixCoefficients	=malloc(sizeof(float) * numChannels);
+	pCur->mDSP.SrcChannelCount		=1;	//default
+	pCur->mDSP.DstChannelCount		=numChannels;
 
 	//for the callbacks
 	pAB->pContext	=&sSoundFX[sNumSFX];
@@ -264,7 +298,8 @@ void	StripExtension(const char *szFileName, char *extLess, size_t retBufSize)
 
 
 //return how many sounds loaded
-int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA)
+//numChannels is how many speakers on the output device
+int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA, uint32_t numChannels)
 {
 	DIR	*pDir	=opendir(szDir);
 	if(pDir == NULL)
@@ -302,7 +337,7 @@ int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA)
 		{
 			StripExtension(pEnt->d_name, nameBuf, 255);
 
-			if(SoundEffectCreate(nameBuf, pathBuf, pFA))
+			if(SoundEffectCreate(nameBuf, pathBuf, pFA, numChannels))
 			{
 				count++;
 			}
@@ -311,9 +346,8 @@ int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA)
 	return	count;
 }
 
-
 //think about returning indexes to save on string compares?
-bool	SoundEffectPlay(const char *szName)
+bool	SoundEffectPlay(const char *szName, vec3 position)
 {
 	int	idx	=GetIndex(szName);
 	if(idx == -1)
@@ -321,9 +355,60 @@ bool	SoundEffectPlay(const char *szName)
 		return	false;
 	}
 
-	FAudioSourceVoice_Stop(sSoundFX[idx].mpSrcVoice, 0, FAUDIO_COMMIT_NOW);
+	SoundEffect	*pSFX	=&sSoundFX[idx];
 
-	uint32_t	res	=FAudioSourceVoice_Start(sSoundFX[idx].mpSrcVoice, 0, FAUDIO_COMMIT_NOW);
+	if(pSFX->mbPlaying)
+	{
+		return	false;
+	}
+	
+	uint32_t	res;
+	if(!pSFX->mbPlayedOnce)
+	{
+		res	=FAudioSourceVoice_Start(pSFX->mpSrcVoice, 0, FAUDIO_COMMIT_NOW);
+	}
+	else
+	{
+		res	=FAudioSourceVoice_SubmitSourceBuffer(pSFX->mpSrcVoice, &pSFX->mBuffer, NULL);
+	}
+
+	pSFX->mbPlaying		=true;
+	pSFX->mbPlayedOnce	=true;
+
+	pSFX->mEmitter.Position.x	=position[0];
+	pSFX->mEmitter.Position.y	=position[1];
+	pSFX->mEmitter.Position.z	=position[2];
 
 	return	(res == 0);
+}
+
+
+void	SoundEffectUpdateEmitters(F3DAUDIO_HANDLE h3d,
+									const F3DAUDIO_LISTENER *pList,
+									FAudioVoice *pMaster)
+{
+	return;
+
+	//none of this crap works right now and I don't have time to fix it
+	for(int i=0;i < sNumSFX;i++)
+	{
+		SoundEffect	*pSFX	=&sSoundFX[i];
+
+		if(!pSFX->mbPlaying)
+		{
+			continue;
+		}
+
+		F3DAudioCalculate(h3d, pList, &pSFX->mEmitter,
+				F3DAUDIO_CALCULATE_MATRIX | F3DAUDIO_CALCULATE_DOPPLER |
+				F3DAUDIO_CALCULATE_LPF_DIRECT | F3DAUDIO_CALCULATE_REVERB,
+				&pSFX->mDSP);
+
+		FAudioVoice_SetOutputMatrix(pSFX->mpSrcVoice, pMaster, 1,
+			pSFX->mDSP.DstChannelCount,
+			pSFX->mDSP.pMatrixCoefficients, FAUDIO_COMMIT_NOW);
+
+		FAudioSourceVoice_SetFrequencyRatio(pSFX->mpSrcVoice,
+			pSFX->mDSP.DopplerFactor, FAUDIO_COMMIT_NOW);
+	}
 }

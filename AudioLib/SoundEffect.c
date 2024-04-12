@@ -111,10 +111,6 @@ static int	GetIndex(const char *szName)
 
 	for(int i=0;i < sNumSFX;i++)
 	{
-		if(sSoundFX[i].mszName == NULL)
-		{
-			continue;
-		}
 		if(0 == strncmp(sSoundFX[i].mszName, szName, SFX_NAME_LEN))
 		{
 			return	i;
@@ -324,6 +320,8 @@ bool	SoundEffectPlay(const char *szName)
 	{
 		return	false;
 	}
+
+	FAudioSourceVoice_Stop(sSoundFX[idx].mpSrcVoice, 0, FAUDIO_COMMIT_NOW);
 
 	uint32_t	res	=FAudioSourceVoice_Start(sSoundFX[idx].mpSrcVoice, 0, FAUDIO_COMMIT_NOW);
 

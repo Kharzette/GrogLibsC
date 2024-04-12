@@ -10,7 +10,7 @@ typedef struct  GameCamera_t    GameCamera;
 BipedMover	*BPM_Create(GameCamera *pGC);
 
 //update
-void	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec);
+bool	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec);
 
 //set footing
 void    BPM_SetFooting(BipedMover *pBPM, int footing);

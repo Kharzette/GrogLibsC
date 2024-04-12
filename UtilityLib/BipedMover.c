@@ -257,8 +257,9 @@ static bool	UpdateWalking(BipedMover *pBPM, float secDelta, vec3 move)
 
 	if(pBPM->mbJump && pBPM->mbOnGround)
 	{
-		bJumped		=true;
-		friction	=AIR_FRICTION;
+		bJumped				=true;
+		friction			=AIR_FRICTION;
+		pBPM->mbOnGround	=false;
 	}
 
 	vec3	forward, right, up, moveVec;
@@ -319,13 +320,12 @@ static bool	UpdateWalking(BipedMover *pBPM, float secDelta, vec3 move)
 }
 
 
-void	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec)
+bool	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec)
 {
 	pBPM->mbMovedThisFrame	=false;
 
 	glm_vec3_zero(moveVec);
 
-	__attribute_maybe_unused__
 	bool	bJumped	=false;
 
 	if(pBPM->mMoveMethod == MOVE_FLY)
@@ -346,7 +346,7 @@ void	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec)
 	}
 
 	float	len	=glm_vec3_norm(moveVec);
-	if(len <= MIN_MOVE_LENGTH)
+	if(len <= MIN_MOVE_LENGTH && pBPM->mbOnGround)
 	{
 		glm_vec3_zero(moveVec);
 	}
@@ -363,6 +363,8 @@ void	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec)
 	pBPM->mbJump	=false;
 
 	pBPM->mbMovedThisFrame	=false;
+
+	return	bJumped;
 }
 
 

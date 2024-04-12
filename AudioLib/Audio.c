@@ -11,15 +11,32 @@
 
 
 //track the vitals of each audio device
-struct DeviceStuff
+typedef struct DeviceStuff_t
 {
 	uint32_t	mIndex, mNumChannels, mSampleRate, mChanMask;
-};
+}	DeviceStuff;
+
+typedef struct	Audio_t
+{
+	FAudio	*mpFA;
+
+	//audio config stuff
+	uint32_t	mDeviceCount;
+	DeviceStuff	*mpDevices;
+
+	//3d audio
+	FAudioMasteringVoice	*mpFAMV;
+	F3DAUDIO_LISTENER		mListener;
+
+	//sound effects
+	int	mNumSFXLoaded;
+}	Audio;
 
 
 //wierd 16 bit strings
 //I fought with this for hours trying to go through proper channels
 //in the end I gave up and just wrote a byte skip
+__attribute_maybe_unused__
 static void convert_goofy(const uint16_t *pGoofy, char *pConverted, int len)
 {
 	//NONE of the usual string conversions work on whatever this is
@@ -129,6 +146,282 @@ void	PrintSpeakerStuff(uint32_t channelMask)
 }
 
 
+Audio	*Audio_Create(int deviceIndex)
+{
+	Audio	*pRet	=malloc(sizeof(Audio));
+
+	uint32_t	res	=FAudioCreate(&pRet->mpFA, 0, FAUDIO_DEFAULT_PROCESSOR);
+	if(res != 0)
+	{
+		printf("Error creating FAudio!\n");
+		free(pRet);
+		return	NULL;
+	}
+
+	res	=FAudio_GetDeviceCount(pRet->mpFA, &pRet->mDeviceCount);
+	if(res != 0)
+	{
+		printf("Error getting audio device count!\n");
+		FAudio_Release(pRet->mpFA);
+		free(pRet);
+		return	NULL;
+	}
+
+	pRet->mpDevices	=malloc(sizeof(DeviceStuff) * pRet->mDeviceCount);
+
+	for(int i=0;i < pRet->mDeviceCount;i++)
+	{
+		FAudioDeviceDetails	fadd;
+
+		res	=FAudio_GetDeviceDetails(pRet->mpFA, i, &fadd);
+		if(res != 0)
+		{
+			printf("Error getting device details for %d\n", i);
+			continue;
+		}
+
+		printf("Device: %d with Role: ", i);
+
+		switch(fadd.Role)
+		{
+			case	FAudioNotDefaultDevice:
+				printf("FAudioNotDefaultDevice");
+				break;
+			case	FAudioDefaultConsoleDevice:
+				printf("FAudioDefaultConsoleDevice");
+				break;
+			case	FAudioDefaultMultimediaDevice:
+				printf("FAudioDefaultMultimediaDevice");
+				break;
+			case	FAudioDefaultCommunicationsDevice:
+				printf("FAudioDefaultCommunicationsDevice");
+				break;
+			case	FAudioDefaultGameDevice:
+				printf("FAudioDefaultGameDevice");
+				break;
+			case	FAudioGlobalDefaultDevice:
+				printf("FAudioGlobalDefaultDevice");
+				break;
+			case	FAudioInvalidDeviceRole:
+				printf("FAudioInvalidDeviceRole");
+				break;
+		}
+
+		char	buf[256];
+
+		convert_goofySigned(fadd.DeviceID, buf, 255);
+		printf(" and DeviceID: %s", buf);
+
+		convert_goofySigned(fadd.DisplayName, buf, 255);
+		printf(" and DisplayName: %s\n", buf);
+
+		PrintSpeakerStuff(fadd.OutputFormat.dwChannelMask);
+
+		printf("Output format-> NumChannels: %d, BitsPerSample %d\n",
+			fadd.OutputFormat.Format.nChannels,
+			fadd.OutputFormat.Format.wBitsPerSample);
+
+		pRet->mpDevices[i].mIndex		=i;
+		pRet->mpDevices[i].mNumChannels	=fadd.OutputFormat.Format.nChannels;
+		pRet->mpDevices[i].mSampleRate	=fadd.OutputFormat.Format.nSamplesPerSec;
+		pRet->mpDevices[i].mChanMask	=fadd.OutputFormat.dwChannelMask;
+	}
+
+	res	=FAudio_CreateMasteringVoice(pRet->mpFA, &pRet->mpFAMV,
+		pRet->mpDevices[deviceIndex].mNumChannels,
+		pRet->mpDevices[deviceIndex].mSampleRate, 0, deviceIndex, NULL);
+
+	if(res != 0)
+	{
+		printf("Error creating mastering voice!\n");
+		FAudio_Release(pRet->mpFA);
+		free(pRet->mpDevices);
+		free(pRet);
+		return	NULL;
+	}
+
+	pRet->mListener.OrientFront.x	=0.0f;
+	pRet->mListener.OrientFront.y	=0.0f;
+	pRet->mListener.OrientFront.z	=1.0f;
+
+	pRet->mListener.OrientTop.x	=0.0f;
+	pRet->mListener.OrientTop.y	=1.0f;
+	pRet->mListener.OrientTop.z	=0.0f;
+
+	pRet->mListener.pCone			=NULL;
+	pRet->mListener.Position.x		=0.0f;
+	pRet->mListener.Position.y		=0.0f;
+	pRet->mListener.Position.z		=0.0f;
+
+	pRet->mListener.Velocity	=pRet->mListener.Position;
+	
+	pRet->mNumSFXLoaded	=SoundEffectLoadAllInPath("Audio", pRet->mpFA);
+
+	if(pRet->mNumSFXLoaded <= 0)
+	{
+		printf("Failed to load sounds...\n");
+		return	0;
+	}
+
+	printf("Loaded up %d sound effects.\n", pRet->mNumSFXLoaded);
+
+	res	=FAudio_StartEngine(pRet->mpFA);
+	if(res != 0)
+	{
+		printf("Error creating mastering voice!\n");
+		FAudio_Release(pRet->mpFA);
+		free(pRet->mpDevices);
+		free(pRet);
+		return	NULL;
+	}
+
+	return	pRet;
+}
+
+Audio	*Audio_CreateInteractive(void)
+{
+	Audio	*pRet	=malloc(sizeof(Audio));
+
+	uint32_t	res	=FAudioCreate(&pRet->mpFA, 0, FAUDIO_DEFAULT_PROCESSOR);
+	if(res != 0)
+	{
+		printf("Error creating FAudio!\n");
+		free(pRet);
+		return	NULL;
+	}
+
+	res	=FAudio_GetDeviceCount(pRet->mpFA, &pRet->mDeviceCount);
+	if(res != 0)
+	{
+		printf("Error getting audio device count!\n");
+		FAudio_Release(pRet->mpFA);
+		free(pRet);
+		return	NULL;
+	}
+
+	pRet->mpDevices	=malloc(sizeof(DeviceStuff) * pRet->mDeviceCount);
+
+	for(int i=0;i < pRet->mDeviceCount;i++)
+	{
+		FAudioDeviceDetails	fadd;
+
+		res	=FAudio_GetDeviceDetails(pRet->mpFA, i, &fadd);
+		if(res != 0)
+		{
+			printf("Error getting device details for %d\n", i);
+			continue;
+		}
+
+		printf("Device: %d with Role: ", i);
+
+		switch(fadd.Role)
+		{
+			case	FAudioNotDefaultDevice:
+				printf("FAudioNotDefaultDevice");
+				break;
+			case	FAudioDefaultConsoleDevice:
+				printf("FAudioDefaultConsoleDevice");
+				break;
+			case	FAudioDefaultMultimediaDevice:
+				printf("FAudioDefaultMultimediaDevice");
+				break;
+			case	FAudioDefaultCommunicationsDevice:
+				printf("FAudioDefaultCommunicationsDevice");
+				break;
+			case	FAudioDefaultGameDevice:
+				printf("FAudioDefaultGameDevice");
+				break;
+			case	FAudioGlobalDefaultDevice:
+				printf("FAudioGlobalDefaultDevice");
+				break;
+			case	FAudioInvalidDeviceRole:
+				printf("FAudioInvalidDeviceRole");
+				break;
+		}
+
+		char	buf[256];
+
+		convert_goofySigned(fadd.DeviceID, buf, 255);
+		printf(" and DeviceID: %s", buf);
+
+		convert_goofySigned(fadd.DisplayName, buf, 255);
+		printf(" and DisplayName: %s\n", buf);
+
+		PrintSpeakerStuff(fadd.OutputFormat.dwChannelMask);
+
+		printf("Output format-> NumChannels: %d, BitsPerSample %d\n",
+			fadd.OutputFormat.Format.nChannels,
+			fadd.OutputFormat.Format.wBitsPerSample);
+
+		pRet->mpDevices[i].mIndex		=i;
+		pRet->mpDevices[i].mNumChannels	=fadd.OutputFormat.Format.nChannels;
+		pRet->mpDevices[i].mSampleRate	=fadd.OutputFormat.Format.nSamplesPerSec;
+		pRet->mpDevices[i].mChanMask	=fadd.OutputFormat.dwChannelMask;
+	}
+
+	printf("\nWhich device would you like to use?\n");
+
+	char	inBuf[32];
+	fgets(inBuf, 31, stdin);
+
+	int	chosenIndex	=atoi(inBuf);
+	if(chosenIndex < 0 || chosenIndex > pRet->mDeviceCount)
+	{
+		chosenIndex	=0;	//default
+	}
+
+	res	=FAudio_CreateMasteringVoice(pRet->mpFA, &pRet->mpFAMV,
+		pRet->mpDevices[chosenIndex].mNumChannels,
+		pRet->mpDevices[chosenIndex].mSampleRate, 0, chosenIndex, NULL);
+
+	if(res != 0)
+	{
+		printf("Error creating mastering voice!\n");
+		FAudio_Release(pRet->mpFA);
+		free(pRet->mpDevices);
+		free(pRet);
+		return	NULL;
+	}
+
+	pRet->mListener.OrientFront.x	=0.0f;
+	pRet->mListener.OrientFront.y	=0.0f;
+	pRet->mListener.OrientFront.z	=1.0f;
+
+	pRet->mListener.OrientTop.x	=0.0f;
+	pRet->mListener.OrientTop.y	=1.0f;
+	pRet->mListener.OrientTop.z	=0.0f;
+
+	pRet->mListener.pCone			=NULL;
+	pRet->mListener.Position.x		=0.0f;
+	pRet->mListener.Position.y		=0.0f;
+	pRet->mListener.Position.z		=0.0f;
+
+	pRet->mListener.Velocity	=pRet->mListener.Position;
+	
+	pRet->mNumSFXLoaded	=SoundEffectLoadAllInPath("Audio", pRet->mpFA);
+
+	if(pRet->mNumSFXLoaded <= 0)
+	{
+		printf("Failed to load sounds...\n");
+		return	0;
+	}
+
+	printf("Loaded up %d sound effects.\n", pRet->mNumSFXLoaded);
+
+	res	=FAudio_StartEngine(pRet->mpFA);
+	if(res != 0)
+	{
+		printf("Error creating mastering voice!\n");
+		FAudio_Release(pRet->mpFA);
+		free(pRet->mpDevices);
+		free(pRet);
+		return	NULL;
+	}
+
+	return	pRet;
+}
+
+
 int	main(void)
 {
 	printf("Blort!  Testing audio stuffs...\n");
@@ -141,7 +434,7 @@ int	main(void)
 
 	res	=FAudio_GetDeviceCount(pFA, &deviceCount);
 
-	struct	DeviceStuff	devices[deviceCount];
+	DeviceStuff	devices[deviceCount];
 
 	for(int i=0;i < deviceCount;i++)
 	{
@@ -266,4 +559,17 @@ int	main(void)
 	FAudio_Release(pFA);
 
 	return	1;
+}
+
+void	Audio_Destroy(Audio **ppAud)
+{
+	Audio	*pAud	=*ppAud;
+
+	SoundEffectDestroyAll();
+
+	FAudioVoice_DestroyVoice(pAud->mpFAMV);
+
+	FAudio_Release(pAud->mpFA);
+
+	*ppAud	=NULL;
 }

@@ -9,7 +9,8 @@
 #include	<SDL3/SDL.h>
 #include	<SDL3/SDL_keycode.h>
 #include	<cglm/call.h>
-//#include	"AudioLib/Audio.h"	audio stuff not ready yet
+#include	"AudioLib/SoundEffect.h"
+#include	"AudioLib/Audio.h"
 #include	"MaterialLib/StuffKeeper.h"
 #include	"MaterialLib/CBKeeper.h"
 #include	"MaterialLib/PostProcess.h"
@@ -160,6 +161,8 @@ int main(void)
 {
 	printf("DirectX on looney loonix!\n");
 
+	Audio	*pAud	=Audio_Create(2);
+
 	//store a bunch of vars in a struct
 	//for ref/modifying by input handlers
 	TestStuff	*pTS	=malloc(sizeof(TestStuff));
@@ -242,6 +245,8 @@ __attribute_maybe_unused__
 	//biped mover
 	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
+	SoundEffectPlay("SpawnIn");
+
 	//3D Projection
 	mat4	camProj;
 	GameCam_GetProjection(pTS->mpCam, camProj);
@@ -303,7 +308,11 @@ __attribute_maybe_unused__
 			//move turn etc
 			INP_Update(pInp, pTS);
 
-			BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+			bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+			if(bJumped)
+			{
+				SoundEffectPlay("PowerUp3");
+			}
 
 			MoveCharacter(pTS, pTS->mCharMoveVec);
 
@@ -557,6 +566,8 @@ __attribute_maybe_unused__
 	}
 
 	GD_Destroy(&pTS->mpGD);
+
+	Audio_Destroy(&pAud);
 
 	return	EXIT_SUCCESS;
 }

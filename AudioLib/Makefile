@@ -1,6 +1,6 @@
 CC=gcc
 #CFLAGS=-std=c17 -g -I../vcpkg/packages/xaudio2redist_x64-mingw-static/include
-CFLAGS=-std=gnu2x -g -O0 -march=x86-64 -msse4.2 -mavx2 -mf16c -fpic -shared	\
+CFLAGS=-std=gnu2x -g -O0 -march=native -fpic -shared	\
 	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
 	-DCGLM_FORCE_LEFT_HANDED	\
 	-Icglm/include	\
@@ -19,4 +19,4 @@ all: AudioLib
 
 AudioLib: $(SOURCES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libAudioLib.so $(LIBS) \
-	FAudio/build/libFAudio.a ../SDL/build/libSDL3.so -lm
+	FAudio/build/libFAudio.so ../SDL/build/libSDL3.so -lm

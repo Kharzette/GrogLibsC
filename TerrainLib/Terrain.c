@@ -555,6 +555,19 @@ int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
 	glm_vec3_copy(start, newStart);
 	glm_vec3_copy(end, newEnd);
 
+	//force newStart to valid
+	for(;;)
+	{
+		vec4	plane;
+		int	hit	=Terrain_SphereIntersect(pTer, newStart, radius, plane);
+		if(hit == TER_MISS)
+		{
+			break;
+		}
+
+		PM_ReflectSphere(plane, radius, newStart);
+	}
+
 	int	maxIter	=5;
 
 	for(i=0;i < maxIter;i++)
@@ -569,6 +582,7 @@ int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
 		if(startHit != TER_MISS)
 		{
 			PM_ReflectSphere(plane, radius, newStart);
+			__attribute_maybe_unused__
 			float	check	=PM_Distance(plane, newStart);
 			continue;
 		}
@@ -583,21 +597,41 @@ int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
 		{
 			//started in a solid leaf
 			PM_ReflectSphere(plane, radius, newStart);
+			__attribute_maybe_unused__
 			float	check	=PM_Distance(plane, newStart);
 			continue;
 		}
 
 		//move slightly off hit plane
-		PM_ReflectPosition(plane, intersection);
+		PM_ReflectSphere(plane, radius, intersection);
 
 		//reflect off plane hit to new endpoint
-		PM_ReflectMove(plane, newStart, newEnd, newEnd);
+		PM_ReflectSphere(plane, radius, newEnd);
+//		PM_ReflectMove(plane, newStart, newEnd, newEnd);
 
 		//copy intersect point to start
 		glm_vec3_copy(intersection, newStart);
 	}
 
+	if(i == maxIter)
+	{
+		printf("Max Iterations!\n");
+	}
+
 	glm_vec3_copy(newEnd, finalPos);
+
+	//force finalPos to valid
+	for(;;)
+	{
+		vec4	plane;
+		int	hit	=Terrain_SphereIntersect(pTer, finalPos, radius, plane);
+		if(hit == TER_MISS)
+		{
+			break;
+		}
+
+		PM_ReflectSphere(plane, radius, finalPos);
+	}
 
 	return	FootCheck(pTer, finalPos, radius);
 }

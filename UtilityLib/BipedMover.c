@@ -22,6 +22,10 @@
 #define	FLY_FRICTION		2.0f	//Frictols
 #define	SWIM_FRICTION		10.0f	//Frictols
 
+//minimum move length
+//this helps to kick in idle animation
+#define	MIN_MOVE_LENGTH	0.01f
+
 //typical character size
 #define	PLAYER_RADIUS	0.5f
 
@@ -59,7 +63,7 @@ typedef struct  BipedMover_t
 }	BipedMover;
 
 
-BipedMover	*BPM_Create(const GameCamera *pGCam)
+BipedMover	*BPM_Create(GameCamera *pGCam)
 {
 	BipedMover	*pRet	=malloc(sizeof(BipedMover));
 
@@ -321,6 +325,7 @@ void	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec)
 
 	glm_vec3_zero(moveVec);
 
+	__attribute_maybe_unused__
 	bool	bJumped	=false;
 
 	if(pBPM->mMoveMethod == MOVE_FLY)
@@ -338,6 +343,12 @@ void	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec)
 	else
 	{
 		assert(false);
+	}
+
+	float	len	=glm_vec3_norm(moveVec);
+	if(len <= MIN_MOVE_LENGTH)
+	{
+		glm_vec3_zero(moveVec);
 	}
 	
 //	glm_vec3_muladds(pBPM->mCamVelocity, secDelta, pos);

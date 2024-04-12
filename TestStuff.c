@@ -108,6 +108,7 @@ typedef struct	TestStuff_t
 static void	TestManyRays(const Terrain *pTer);
 static void	PrintRandomPointInTerrain(const Terrain *pTer);
 static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
+__attribute_maybe_unused__
 static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane);
 static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
 static void	SetupKeyBinds(Input *pInp);
@@ -204,6 +205,7 @@ int main(void)
 
 	//test prims
 	PrimObject	*pSphere	=PF_CreateSphere(GLM_VEC3_ZERO, 0.25f, pTS->mpGD);
+__attribute_maybe_unused__
 	PrimObject	*pCube		=PF_CreateCubeFromBounds(sTestBoxMin, sTestBoxMax, pTS->mpGD);
 	PrimObject	*pSkyCube	=PF_CreateCube(10.0f, true, pTS->mpGD);
 	PrimObject	*pPOTri		=PF_CreateTri(sTestTri, pTS->mpGD);
@@ -603,7 +605,9 @@ static void	TestManyRays(const Terrain *pTer)
 
 	//ray colours for hit and miss
 	//eventually will have start inside as well
+__attribute_maybe_unused__
 	vec4	hitCol	={	1.0f,	0.0f,	0.0f,	1.0f	};
+__attribute_maybe_unused__
 	vec4	missCol	={	0.0f,	1.0f,	0.0f,	1.0f	};
 
 	__uint128_t	startTime	=__rdtsc();
@@ -612,6 +616,7 @@ static void	TestManyRays(const Terrain *pTer)
 	{
 		vec3	start, end;
 		vec3	hit;
+__attribute_maybe_unused__
 		vec4	hitPlane;
 
 		Misc_RandomPointInBound(terMins, terMaxs, start);
@@ -695,7 +700,8 @@ static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane)
 	//invalidate hit point
 	glm_vec3_fill(hitPos, FLT_MAX);
 
-	int		footing	=Terrain_MoveSphere(pTer, sTestBoxMin, sTestBoxMax, 0.25f, hitPos);
+	__attribute_maybe_unused__
+	int		footing	=Terrain_MoveSphere(pTer, start, end, 0.25f, hitPos);
 
 	return	VOL_HIT_VISIBLE;
 }
@@ -1238,11 +1244,6 @@ static void SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK)
 
 	glm_vec2_add(topLeftPos, nextLine, topLeftPos);
 	ST_AddString(pTS->mpST, "Pos Storage", 71, magenta, topLeftPos, embiggen);
-}
-
-static void	SetThirdPersonCam(TestStuff *pTS, GameCamera *pGC)
-{
-//	GCam
 }
 
 static void	MoveCharacter(TestStuff *pTS, const vec3 moveVec)

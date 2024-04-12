@@ -356,6 +356,9 @@ int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3
 		bInside	=true;
 	}
 
+	//return plane back to real value
+	triPlane[3]	-=radius;
+
 	//edge plane 0 -> 1
 	vec3	edgeVec;
 	glm_vec3_sub(tri[0], tri[1], edgeVec);
@@ -401,7 +404,7 @@ int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3
 	}
 
 	//direct plane hit
-	if(dist01 <= 0.0f && dist02 <= 0.0f && dist12 <= 0.0f)
+	if(dist01 <= 0.001f && dist02 <= 0.001f && dist12 <= 0.001f)
 	{
 		glm_vec4_copy(triPlane, hitPlane);
 		glm_vec3_copy(intersection, hit);
@@ -490,7 +493,7 @@ int	PM_SphereToTriIntersect(const vec3 tri[3], const vec3 pos, float radius, vec
 	}
 
 	//direct plane hit
-	if(dist01 <= 0.0f && dist02 <= 0.0f && dist12 <= 0.0f)
+	if(dist01 <= 0.001f && dist02 <= 0.001f && dist12 <= 0.001f)
 	{
 		glm_vec4_copy(triPlane, hitPlane);
 

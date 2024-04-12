@@ -7,7 +7,7 @@ typedef struct  GameCamera_t    GameCamera;
 
 
 //creation
-BipedMover	*BPM_Create(const GameCamera *pGC);
+BipedMover	*BPM_Create(GameCamera *pGC);
 
 //update
 void	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec);

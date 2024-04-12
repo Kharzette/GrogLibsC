@@ -9,6 +9,7 @@
 #include	"QuadNode.h"
 #include	"Terrain.h"
 
+#define	EXTRA_THICC	1.0f	//an attempt at fixing bottom cracks
 #define	TOO_THIN	0.1f	//minimum vertical box thickness?
 #define	NODE_SIZE	2		//size in meters
 #define	LEAF_QUADS	(NODE_SIZE * NODE_SIZE)
@@ -192,7 +193,6 @@ static int	SphereIntersectLeafNode(const QuadNode *pQN, const vec3 pos, float ra
 	int	ret	=TER_MISS;
 	for(int i=0;i < LEAF_TRIS;i++)
 	{
-		vec3	hit;
 		vec4	hitPlane;
 
 		vec3	tri[3];
@@ -338,6 +338,10 @@ static void	MakeLeafVolumes(QuadNode *pQN, const float *pHeights, int w, int h)
 	//fix bound heights
 	pQN->mMins[1]	=minHeight;
 	pQN->mMaxs[1]	=maxHeight;
+
+	//extra padding to help with steep hill fallthru (I hope)
+	//should make it easier to detect INSIDE
+	pQN->mMins[1]	-=EXTRA_THICC;
 
 	//index triangles
 	int	curIdx	=0;
@@ -635,7 +639,6 @@ int	QN_SphereIntersect(const QuadNode *pQN, const vec3 pos, float radius, vec4 p
 
 	if(pQN->mpQLD)	//leaf?
 	{
-		vec3	hit;
 		vec4	hitPlane;
 		int	res	=SphereIntersectLeafNode(pQN, pos, radius, hitPlane);
 

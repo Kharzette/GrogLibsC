@@ -52,6 +52,7 @@ typedef struct  BipedMover_t
 	bool	mbMovedThisFrame;
 	bool	mbOnGround;		//player starts frame on ground?
 	bool	mbBadFooting;	//unstable or steep ground underfoot
+	bool	mbSprint;		//sprinting?
 
 	//single frame inputs
 	bool	mbForward, mbBack;
@@ -70,6 +71,11 @@ BipedMover	*BPM_Create(GameCamera *pGCam)
 	pRet->mpGCam	=pGCam;
 
 	return	pRet;
+}
+
+bool    BPM_IsGoodFooting(const BipedMover *pBPM)
+{
+	return	(pBPM->mbOnGround && !pBPM->mbBadFooting);
 }
 
 void	BPM_SetFooting(BipedMover *pBPM, int footing)
@@ -271,7 +277,14 @@ static bool	UpdateWalking(BipedMover *pBPM, float secDelta, vec3 move)
 
 	if(pBPM->mbOnGround)
 	{
-		glm_vec3_scale(moveVec, JOG_MOVE_FORCE * secDelta, moveVec);
+		if(pBPM->mbSprint)
+		{
+			glm_vec3_scale(moveVec, JOG_MOVE_FORCE * 2.0f * secDelta, moveVec);
+		}
+		else
+		{
+			glm_vec3_scale(moveVec, JOG_MOVE_FORCE * secDelta, moveVec);
+		}
 	}
 	else if(pBPM->mbBadFooting)
 	{
@@ -402,4 +415,9 @@ void	BPM_InputRight(BipedMover *pBPM)
 void	BPM_InputJump(BipedMover *pBPM)
 {
 	pBPM->mbJump	=true;
+}
+
+void	BPM_InputSprint(BipedMover *pBPM)
+{
+	pBPM->mbSprint	=true;
 }

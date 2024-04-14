@@ -35,8 +35,8 @@
 #include	"UtilityLib/BipedMover.h"
 
 
-#define	RESX			800
-#define	RESY			600
+#define	RESX			1280
+#define	RESY			720
 #define	ROT_RATE		10.0f
 #define	UVSCALE_RATE	1.0f
 #define	KEYTURN_RATE	0.01f
@@ -149,6 +149,7 @@ static void	KeyMoveRightEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyMoveUpEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyMoveDownEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyMoveJumpEH(void *pContext, const SDL_Event *pEvt);
+static void	KeySprintEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyTurnLeftEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyTurnRightEH(void *pContext, const SDL_Event *pEvt);
 static void	KeyTurnUpEH(void *pContext, const SDL_Event *pEvt);
@@ -179,7 +180,7 @@ int main(void)
 	Input	*pInp	=INP_CreateInput();
 	SetupKeyBinds(pInp);
 
-	GD_Init(&pTS->mpGD, "Blortallius!", 800, 600, D3D_FEATURE_LEVEL_11_0);
+	GD_Init(&pTS->mpGD, "Blortallius!", RESX, RESY, D3D_FEATURE_LEVEL_11_0);
 
 	SetupRastVP(pTS->mpGD);
 
@@ -245,7 +246,7 @@ __attribute_maybe_unused__
 	//biped mover
 	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
-	SoundEffectPlay("SpawnIn", pTS->mPlayerPos);
+	SoundEffectPlay("synth(4)", pTS->mPlayerPos);
 
 	//3D Projection
 	mat4	camProj;
@@ -363,7 +364,14 @@ __attribute_maybe_unused__
 
 		if(moving > 0.0f)
 		{
-			animTime	+=dt * moving * 100.0f;
+			if(BPM_IsGoodFooting(pTS->mpBPM))
+			{
+				animTime	+=dt * moving * 200.0f;
+			}
+			else
+			{
+				animTime	+=dt * moving * 10.0f;
+			}
 			AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
 		}
 		else
@@ -969,6 +977,15 @@ static void	KeyMoveJumpEH(void *pContext, const SDL_Event *pEvt)
 	BPM_InputJump(pTS->mpBPM);
 }
 
+static void	KeySprintEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	BPM_InputSprint(pTS->mpBPM);
+}
+
 static void	KeyTurnLeftEH(void *pContext, const SDL_Event *pEvt)
 {
 	TestStuff	*pTS	=(TestStuff *)pContext;
@@ -1186,6 +1203,7 @@ static void	SetupKeyBinds(Input *pInp)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_c, KeyMoveUpEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_z, KeyMoveDownEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_SPACE, KeyMoveJumpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_LSHIFT, KeySprintEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_LEFT, DangleDownEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_RIGHT, DangleUpEH);
 

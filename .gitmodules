@@ -19,9 +19,6 @@
 [submodule "GrogHLSLCompileTool"]
 	path = GrogHLSLCompileTool
 	url = git@github.com:Kharzette/GrogHLSLCompileTool.git
-[submodule "libpng"]
-	path = libpng
-	url = git@github.com:glennrp/libpng.git
 [submodule "cglm"]
 	path = cglm
 	url = git@github.com:Kharzette/cglm.git

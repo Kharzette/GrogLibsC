@@ -18,5 +18,5 @@ all: UtilityLib
 UtilityLib: $(SOURCES)
 	$(CC) -o libUtilityLib.so $(SOURCES) $(CFLAGS) $(LDFLAGS) $(LIBS) \
 	../SDL/build/libSDL3.so -lm	\
-	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_dxgi.so	\
-	../dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so
+	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
+	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so

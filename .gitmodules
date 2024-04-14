@@ -25,3 +25,6 @@
 [submodule "ShaderLib"]
 	path = ShaderLib
 	url = git@github.com:Kharzette/ShaderLib.git
+[submodule "libpng"]
+	path = libpng
+	url = git@github.com:pnggroup/libpng.git

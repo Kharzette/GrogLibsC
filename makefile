@@ -21,5 +21,5 @@ TestStuff: $(SOURCES)
 	SDL/build/libSDL3.so	\
 	libpng/build/libpng.so	\
 	AudioLib/FAudio/build/libFAudio.so	\
-	dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_dxgi.so	\
-	dxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu/libdxvk_d3d11.so
+	dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
+	dxvk-native/build/src/d3d11/libdxvk_d3d11.so

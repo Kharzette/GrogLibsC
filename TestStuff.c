@@ -41,7 +41,7 @@
 #define	UVSCALE_RATE	1.0f
 #define	KEYTURN_RATE	0.01f
 #define	MOVE_RATE		0.1f
-#define	HEIGHT_SCALAR	0.5f
+#define	HEIGHT_SCALAR	0.15f
 #define	RAY_LEN			100.0f
 #define	RAY_WIDTH		0.05f
 #define	IMPACT_WIDTH	0.2f
@@ -174,7 +174,7 @@ int main(void)
 	pTS->mCamDist	=START_CAM_DIST;
 	
 	//set player on corner near origin
-	glm_vec3_scale(GLM_VEC3_ONE, 3.0f, pTS->mPlayerPos);
+	glm_vec3_scale(GLM_VEC3_ONE, 13.0f, pTS->mPlayerPos);
 
 	//input and key / mouse bindings
 	Input	*pInp	=INP_CreateInput();
@@ -193,7 +193,7 @@ int main(void)
 	}
 
 	//a terrain chunk
-	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/MZCloud.png", 10, HEIGHT_SCALAR);
+	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/HeightMap.png", 10, HEIGHT_SCALAR);
 
 	//debugdraw quadtree boxes
 	int		numBounds;
@@ -282,9 +282,9 @@ __attribute_maybe_unused__
 	Material	*pSkyBoxMat	=MakeSkyBoxMat(pTS, pSK);
 
 	//character
-	Mesh		*pMesh	=Mesh_Read(pTS->mpGD, pSK, "Characters/Body.mesh");
-	Character	*pChar	=Character_Read("Characters/DocuBlender.Character");
-	AnimLib		*pALib	=AnimLib_Read("Characters/DocuBlender.AnimLib");
+	Mesh		*pMesh	=Mesh_Read(pTS->mpGD, pSK, "Characters/CyliProtag-materialMesh.mesh");
+	Character	*pChar	=Character_Read("Characters/Protag.Character");
+	AnimLib		*pALib	=AnimLib_Read("Characters/Protag.AnimLib");
 
 	mat4	bones[MAX_BONES];
 
@@ -372,12 +372,12 @@ __attribute_maybe_unused__
 			{
 				animTime	+=dt * moving * 10.0f;
 			}
-			AnimLib_Animate(pALib, "DocuWalkBlenderCoords", animTime);
+			AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
 		}
 		else
 		{
 			animTime	+=dt;
-			AnimLib_Animate(pALib, "DocuIdleBlenderCoords", animTime);
+			AnimLib_Animate(pALib, "LD55ProtagIdle", animTime);
 		}
 
 		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
@@ -1119,7 +1119,7 @@ static Material	*MakeCharacterMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetLayout(pRet, "VPosNormBoneTex0", pSK);
 	MAT_SetVShader(pRet, "SkinWNormWPosTex0VS", pSK);
 	MAT_SetPShader(pRet, "TriTex0SpecPS", pSK);
-	MAT_SetSRV0(pRet, "Characters/Docu", pSK);
+	MAT_SetSRV0(pRet, "Characters/LD55ProtagTexd_UVMap_color", pSK);
 
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);

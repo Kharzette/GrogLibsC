@@ -26,4 +26,4 @@ void	BPM_InputRight(BipedMover *pBPM);
 void	BPM_InputUp(BipedMover *pBPM);
 void	BPM_InputDown(BipedMover *pBPM);
 void	BPM_InputJump(BipedMover *pBPM);
-void	BPM_InputSprint(BipedMover *pBPM);
+void	BPM_InputSprint(BipedMover *pBPM, bool bOn);

@@ -417,7 +417,7 @@ void	BPM_InputJump(BipedMover *pBPM)
 	pBPM->mbJump	=true;
 }
 
-void	BPM_InputSprint(BipedMover *pBPM)
+void	BPM_InputSprint(BipedMover *pBPM, bool bOn)
 {
-	pBPM->mbSprint	=true;
+	pBPM->mbSprint	=bOn;
 }

@@ -15,5 +15,5 @@ LDFLAGS=#-LUtilityLib -LMaterialLib -LMeshLib -LTerrainLib -Ldxvk-native/build/d
 all: InputLib
 
 InputLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libInputLib.so $(LIBS)	\
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libInputLib.so $(LIBS)	\
 	../SDL/build/libSDL3.so -lm

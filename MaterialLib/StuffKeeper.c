@@ -926,7 +926,7 @@ void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
 				utstring_clear(pFilePath);
 				utstring_printf(pFilePath, "%s.dat", utstring_body(pExtLess));
 
-				Font	*pFont	=Font_Create(pFilePath);
+				GrogFont	*pFont	=Font_Create(pFilePath);
 				if(pFont == NULL)
 				{
 					printf("Error reading font %s\n", utstring_body(pFilePath));
@@ -1307,7 +1307,7 @@ ID3D11ShaderResourceView	*StuffKeeper_GetSRV(const StuffKeeper *pSK, const char 
 	return	DictSZ_GetValueccp(pSK->mpSRVs, pName);
 }
 
-Font	*StuffKeeper_GetFont(const StuffKeeper *pSK, const char *pName)
+GrogFont	*StuffKeeper_GetFont(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpFonts, pName);
 }

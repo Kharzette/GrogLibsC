@@ -30,7 +30,7 @@ typedef struct	StringData_t
 
 typedef struct	ScreenText_t
 {
-	Font	*mpFont;
+	GrogFont	*mpFont;
 
 	ID3D11Buffer				*mpVB;
 	ID3D11InputLayout			*mpLayout;
@@ -51,7 +51,7 @@ typedef struct	ScreenText_t
 
 
 //statics
-static void	CopyLetters(const Font *pFont, TextVert *pTV, const char *pText);
+static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText);
 static void	ReBuildVB(ScreenText *pST, GraphicsDevice *pGD);
 
 static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
@@ -281,7 +281,7 @@ void	ST_Draw(ScreenText *pST, GraphicsDevice *pGD, CBKeeper *pCBK)
 }
 
 
-static void	CopyLetters(const Font *pFont, TextVert *pTV, const char *pText)
+static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText)
 {
 	int	curWidth	=0;
 	int	szLen		=strlen(pText);

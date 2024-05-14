@@ -14,6 +14,6 @@ SOURCES=$(wildcard *.c)
 all: TerrainLib
 
 TerrainLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libTerrainLib.so -lm $(LIBS) \
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libTerrainLib.so -lm $(LIBS) \
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so

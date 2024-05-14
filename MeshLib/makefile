@@ -14,6 +14,6 @@ SOURCES=$(wildcard *.c)
 all: MeshLib
 
 MeshLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libMeshLib.so -lm $(LIBS) \
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libMeshLib.so -lm $(LIBS) \
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so

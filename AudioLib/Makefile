@@ -18,5 +18,5 @@ SOURCES=$(wildcard tinywav/tinywav.c) $(wildcard *.c)
 all: AudioLib
 
 AudioLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libAudioLib.so $(LIBS) \
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libAudioLib.so $(LIBS) \
 	FAudio/build/libFAudio.so ../SDL/build/libSDL3.so -lm

@@ -16,7 +16,7 @@ LIBS=-lvulkan
 all: UtilityLib
 
 UtilityLib: $(SOURCES)
-	$(CC) -o libUtilityLib.so $(SOURCES) $(CFLAGS) $(LDFLAGS) $(LIBS) \
+	$(CC) -o ../libs/libUtilityLib.so $(SOURCES) $(CFLAGS) $(LDFLAGS) $(LIBS) \
 	../SDL/build/libSDL3.so -lm	\
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so

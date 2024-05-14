@@ -17,7 +17,7 @@ LIBS=-lvulkan
 all: MaterialLib
 
 MaterialLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o libMaterialLib.so $(LIBS) \
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libMaterialLib.so $(LIBS) \
 	../SDL/build/libSDL3.so -lm	\
 	../libpng/build/libpng.so	\
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\

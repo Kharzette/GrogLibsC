@@ -6,17 +6,17 @@
 #include	"utstring.h"
 
 
-typedef struct	Font_t
+typedef struct	GrogFont_t
 {
 	int		mWidth, mHeight;
 	int		mCellWidth, mCellHeight;
 	uint8_t	mStartChar;
 
 	uint8_t	*mpWidths;
-}	Font;
+}	GrogFont;
 
 
-Font	*Font_Create(UT_string *pPath)
+GrogFont	*Font_Create(UT_string *pPath)
 {
 	FILE	*f	=fopen(utstring_body(pPath), "rb");
 	if(f == NULL)
@@ -24,7 +24,7 @@ Font	*Font_Create(UT_string *pPath)
 		return	NULL;
 	}
 
-	Font	*pRet	=malloc(sizeof(Font));
+	GrogFont	*pRet	=malloc(sizeof(GrogFont));
 
 	fread(&pRet->mWidth, sizeof(int), 1, f);
 	fread(&pRet->mHeight, sizeof(int), 1, f);
@@ -41,17 +41,17 @@ Font	*Font_Create(UT_string *pPath)
 	return	pRet;
 }
 
-int	Font_GetCharacterWidth(const Font *pFont, char c)
+int	Font_GetCharacterWidth(const GrogFont *pFont, char c)
 {
 	return	pFont->mpWidths[(int)c];
 }
 
-int	Font_GetCharacterHeight(const Font *pFont)
+int	Font_GetCharacterHeight(const GrogFont *pFont)
 {
 	return	pFont->mCellHeight;
 }
 
-void	Font_GetUV(const Font *pFont, char letter, int triIndex, vec2 uv)
+void	Font_GetUV(const GrogFont *pFont, char letter, int triIndex, vec2 uv)
 {
 	int	posOffset	=letter - pFont->mStartChar;
 	if(posOffset < 0)

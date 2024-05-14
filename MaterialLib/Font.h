@@ -2,10 +2,10 @@
 #include	"utstring.h"
 #include	<cglm/call.h>
 
-typedef struct	Font_t	Font;
+typedef struct	GrogFont_t	GrogFont;
 
-Font	*Font_Create(UT_string *pPath);
+GrogFont	*Font_Create(UT_string *pPath);
 
-int		Font_GetCharacterWidth(const Font *pFont, char c);
-int		Font_GetCharacterHeight(const Font *pFont);
-void	Font_GetUV(const Font *pFont, char letter, int triIndex, vec2 uv);
+int		Font_GetCharacterWidth(const GrogFont *pFont, char c);
+int		Font_GetCharacterHeight(const GrogFont *pFont);
+void	Font_GetUV(const GrogFont *pFont, char letter, int triIndex, vec2 uv);

@@ -30,6 +30,11 @@ extern UT_string	*SZ_GetExtensionUT(const UT_string *pSZ);
 extern UT_string	*SZ_StripExtension(const char *pSZ);
 extern UT_string	*SZ_StripExtensionUT(const UT_string *pSZ);
 
+//remove the filename from the path if there is one
+//Returns a new string or NULL if the input was NULL
+extern UT_string	*SZ_StripFileName(const char *pSZ);
+extern UT_string	*SZ_StripFileNameUT(const UT_string *pSZ);
+
 //convert a path's slashes from \ to / or the other way around
 //returns a new utstring or NULL if pSZ is NULL
 extern UT_string	*SZ_ConvertPathSlashes(const char *pSZ);

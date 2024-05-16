@@ -285,6 +285,42 @@ UT_string	*SZ_StripExtensionUT(const UT_string *pSZ)
 }
 
 
+//remove the filename from the path if there is one
+//Returns a new string or NULL if the input was NULL
+UT_string	*SZ_StripFileName(const char *pSZ)
+{
+	if(pSZ == NULL)
+	{
+		return	NULL;
+	}
+
+	UT_string	*pRet;
+	utstring_new(pRet);
+
+	//copy
+	utstring_printf(pRet, "%s", pSZ);
+
+	int	slashPos	=SZ_LastIndexOf(pSZ, '/');
+	if(slashPos == -1)
+	{
+		return	pRet;
+	}
+
+	//null terminate at .
+	utstring_body(pRet)[slashPos]	=0;
+
+	//set internal length var
+	pRet->i	=strlen(utstring_body(pRet));
+
+	return	pRet;
+}
+
+UT_string	*SZ_StripFileNameUT(const UT_string *pSZ)
+{
+	return	SZ_StripFileName(utstring_body(pSZ));
+}
+
+
 //convert a path's slashes from \ to /, returns a new utstring or NULL if pSZ is NULL
 UT_string	*SZ_ConvertPathSlashes(const char *pSZ)
 {

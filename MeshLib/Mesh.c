@@ -197,7 +197,8 @@ void	Mesh_Draw(Mesh *pMesh, GraphicsDevice *pGD, StuffKeeper *pSK,
 }
 
 //Draw with Material
-void	Mesh_DrawMat(Mesh *pMesh, GraphicsDevice *pGD, CBKeeper *pCBK, Material *pMat)
+void	Mesh_DrawMat(const Mesh *pMesh, GraphicsDevice *pGD,
+					CBKeeper *pCBK, const Material *pMat)
 {
 	GD_IASetVertexBuffers(pGD, pMesh->mpVerts, pMesh->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pMesh->mpIndexs, DXGI_FORMAT_R16_UINT, 0);

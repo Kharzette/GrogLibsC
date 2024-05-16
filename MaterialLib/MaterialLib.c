@@ -2,6 +2,7 @@
 #include	<stdio.h>
 #include	"../UtilityLib/DictionaryStuff.h"
 #include	"../UtilityLib/StringStuff.h"
+#include	"../UtilityLib/ListStuff.h"
 #include	"Material.h"
 #include	"StuffKeeper.h"
 
@@ -15,9 +16,8 @@ typedef struct	MaterialLib_t
 }	MaterialLib;
 
 
-MaterialLib	*MatLib_Read(const char *pFileName, const StuffKeeper *pSK)
+MaterialLib	*MatLib_Read(const char *pFileName, StuffKeeper *pSK)
 {
-	printf("What the hell is going on\n");
 	FILE	*f	=fopen(pFileName, "rb");
 	if(f == NULL)
 	{
@@ -54,4 +54,51 @@ MaterialLib	*MatLib_Read(const char *pFileName, const StuffKeeper *pSK)
 	fclose(f);
 
 	return	pRet;
+}
+
+int	MatLib_GetNumMats(const MaterialLib *pML)
+{
+	return	DictSZ_Count(pML->mpMats);
+}
+
+
+void	MatNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	StringList	**ppSL	=(StringList **)pContext;
+
+	if(ppSL == NULL)
+	{
+		return;
+	}
+
+	SZList_AddUT(ppSL, pKey);
+}
+
+const StringList	*MatLib_GetMatList(const MaterialLib *pML)
+{
+	StringList	*pRet	=SZList_New();
+
+	DictSZ_ForEach(pML->mpMats, MatNamesCB, &pRet);
+
+	return	pRet;
+}
+
+Material	*MatLib_GetMaterial(MaterialLib *pML, const char *szMat)
+{
+	if(!DictSZ_ContainsKeyccp(pML->mpMats, szMat))
+	{
+		return	NULL;
+	}
+
+	return	DictSZ_GetValueccp(pML->mpMats, szMat);
+}
+
+const Material	*MatLib_GetConstMaterial(const MaterialLib *pML, const char *szMat)
+{
+	if(!DictSZ_ContainsKeyccp(pML->mpMats, szMat))
+	{
+		return	NULL;
+	}
+
+	return	DictSZ_GetValueccp(pML->mpMats, szMat);
 }

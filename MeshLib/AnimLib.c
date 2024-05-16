@@ -1,6 +1,7 @@
 #include	<stdint.h>
 #include	<stdio.h>
 #include	"../UtilityLib/DictionaryStuff.h"
+#include	"../UtilityLib/ListStuff.h"
 #include	"Skeleton.h"
 #include	"Anim.h"
 
@@ -75,7 +76,35 @@ void	AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones)
 }
 
 
-Skeleton	*AnimLib_GetSkeleton(AnimLib *pAL)
+const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL)
 {
 	return	pAL->mpSkeleton;
+}
+
+
+int	AnimLib_GetNumAnims(const AnimLib *pAL)
+{
+	return	DictSZ_Count(pAL->mpAnims);
+}
+
+
+void	AnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	StringList	**ppSL	=(StringList **)pContext;
+
+	if(ppSL == NULL)
+	{
+		return;
+	}
+
+	SZList_AddUT(ppSL, pKey);
+}
+
+const StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
+{
+	StringList	*pRet	=SZList_New();
+
+	DictSZ_ForEach(pAL->mpAnims, AnimNamesCB, &pRet);
+
+	return	pRet;
 }

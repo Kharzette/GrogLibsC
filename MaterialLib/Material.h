@@ -13,7 +13,6 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK);
 
 void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD);
 
-bool	MAT_SetLayout(Material *pMat, const char *szLayName, const StuffKeeper *pSK);
 bool	MAT_SetVShader(Material *pMat, const char *szVSName, const StuffKeeper *pSK);
 bool	MAT_SetPShader(Material *pMat, const char *szPSName, const StuffKeeper *pSK);
 bool	MAT_SetSRV0(Material *pMat, const char *szTex, const StuffKeeper *pSK);

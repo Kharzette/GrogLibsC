@@ -11,7 +11,7 @@ typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	CBKeeper_t			CBKeeper;
 
 Character			*Character_Read(const char *szFileName);
-void				Character_FillBoneArray(const Character *pChar, const Skeleton *pSkel, mat4 *pBones);
+void				Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatName);
 int					Character_GetNumParts(const Character *pChar);
 const StringList	*Character_GetPartList(const Character *pChar);
 

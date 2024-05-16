@@ -12,7 +12,6 @@ typedef struct	Material_t
 {
 	mat4	mWorld;
 
-	ID3D11InputLayout			*mpLayout;
 	ID3D11VertexShader			*mpVShader;
 	ID3D11PixelShader			*mpPShader;
 	ID3D11ShaderResourceView	*mpSRV0;
@@ -63,7 +62,6 @@ Material	*MAT_Create(GraphicsDevice *pGD)
 void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//gpu stuff
-	GD_IASetInputLayout(pGD, pMat->mpLayout);
 	GD_VSSetShader(pGD, pMat->mpVShader);
 	GD_PSSetShader(pGD, pMat->mpPShader);
 	GD_PSSetSRV(pGD, pMat->mpSRV0, 0);
@@ -86,13 +84,6 @@ void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD)
 	CBK_UpdateObject(pCBK, pGD);
 }
 
-
-bool	MAT_SetLayout(Material *pMat, const char *szLayName, const StuffKeeper *pSK)
-{
-	pMat->mpLayout	=StuffKeeper_GetInputLayout(pSK, szLayName);
-
-	return	(pMat->mpLayout != NULL);
-}
 
 bool	MAT_SetVShader(Material *pMat, const char *szVSName, const StuffKeeper *pSK)
 {
@@ -181,19 +172,19 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 	//haven't done these in C yet
 	//depth stencil state
 	szStuff	=SZ_ReadString(f);
-	printf("Depth stencil state in matlib: %s", utstring_body(szStuff));
+	printf("Depth stencil state in matlib: %s\n", utstring_body(szStuff));
 	utstring_clear(szStuff);
 
 	szStuff	=SZ_ReadString(f);
-	printf("Blend state in matlib: %s", utstring_body(szStuff));
+	printf("Blend state in matlib: %s\n", utstring_body(szStuff));
 	utstring_clear(szStuff);
 
 	szStuff	=SZ_ReadString(f);
-	printf("Samp0 state in matlib: %s", utstring_body(szStuff));
+	printf("Samp0 state in matlib: %s\n", utstring_body(szStuff));
 	utstring_clear(szStuff);
 
 	szStuff	=SZ_ReadString(f);
-	printf("Samp1 state in matlib: %s", utstring_body(szStuff));
+	printf("Samp1 state in matlib: %s\n", utstring_body(szStuff));
 	utstring_clear(szStuff);
 
 	fread(&pRet->mMaterialID, sizeof(int), 1, f);
@@ -249,6 +240,8 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 
 	utstring_done(szStuff);
 	utstring_done(szConv);
+
+	glm_mat4_identity(pRet->mWorld);
 
 	return	pRet;
 }

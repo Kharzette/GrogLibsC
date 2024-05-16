@@ -132,3 +132,12 @@ const StringList	*Character_GetPartList(const Character *pChar)
 
 	return	pRet;
 }
+
+void	Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatName)
+{
+	assert(partIndex < pChar->mNumParts);
+
+	utstring_clear(pChar->mpParts[partIndex].mpMatName);
+
+	utstring_printf(pChar->mpParts[partIndex].mpMatName, "%s", pMatName);
+}

@@ -202,6 +202,7 @@ void	Mesh_DrawMat(const Mesh *pMesh, GraphicsDevice *pGD,
 {
 	GD_IASetVertexBuffers(pGD, pMesh->mpVerts, pMesh->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pMesh->mpIndexs, DXGI_FORMAT_R16_UINT, 0);
+	GD_IASetInputLayout(pGD, pMesh->mpLayout);
 
 	MAT_Apply(pMat, pCBK, pGD);
 

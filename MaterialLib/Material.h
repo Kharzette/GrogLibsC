@@ -9,6 +9,7 @@ typedef struct	CBKeeper_t			CBKeeper;
 
 
 Material	*MAT_Create(GraphicsDevice *pGD);
+Material	*MAT_Read(FILE *f, const StuffKeeper *pSK);
 
 void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD);
 

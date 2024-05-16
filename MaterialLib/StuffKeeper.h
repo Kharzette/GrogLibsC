@@ -1,5 +1,6 @@
 #pragma once
 #include	<stdint.h>
+#include	"d3d11.h"
 
 //forward struct decs
 typedef struct	StuffKeeper_t		StuffKeeper;

@@ -155,7 +155,7 @@ void	DictSZ_New(DictSZ **ppHead)
 }
 
 
-bool	DictSZ_ContainsKey(const DictSZ *pHead, UT_string *pKey)
+bool	DictSZ_ContainsKey(const DictSZ *pHead, const UT_string *pKey)
 {
 	return	(DictSZ_GetValue(pHead, pKey) != NULL);
 }

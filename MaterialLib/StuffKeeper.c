@@ -83,6 +83,27 @@ typedef enum	ShaderEntryType_t
 }	ShaderEntryType;
 
 
+const StringList	*StuffKeeper_GetVSEntryList(const StuffKeeper *pSK, const UT_string *szKey)
+{
+	if(!DictSZ_ContainsKey(pSK->mpVSEntryPoints, szKey))
+	{
+		return	NULL;
+	}
+
+	return	DictSZ_GetValue(pSK->mpVSEntryPoints, szKey);
+}
+
+const StringList	*StuffKeeper_GetPSEntryList(const StuffKeeper *pSK, const UT_string *szKey)
+{
+	if(!DictSZ_ContainsKey(pSK->mpPSEntryPoints, szKey))
+	{
+		return	NULL;
+	}
+
+	return	DictSZ_GetValue(pSK->mpPSEntryPoints, szKey);
+}
+
+
 DictSZ	*ReadEntryPoints(FILE *f)
 {
 	DictSZ	*pRet;
@@ -289,6 +310,8 @@ void	PrintEntryPointsCB(const UT_string *pKey, const void *pValue, void *pContex
 {
 	const StringList	*pList	=pValue;
 	const StringList	*pCur	=SZList_Iterate(pList);
+
+	printf("%s\n", utstring_body(pKey));
 
 	while(pCur != NULL)
 	{
@@ -1318,7 +1341,7 @@ ID3D11ShaderResourceView	*StuffKeeper_GetFontSRV(const StuffKeeper *pSK, const c
 }
 
 
-int main(void)
+void	TestSKStuff(void)
 {
 	printf("StuffKeeper testing...\n");
 

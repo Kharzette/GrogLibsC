@@ -7,7 +7,6 @@
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../UtilityLib/StringStuff.h"
 
-
 typedef struct	Material_t
 {
 	mat4	mWorld;
@@ -157,7 +156,11 @@ void	MAT_SetWorld(Material *pMat, const mat4 world)
 
 Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 {
-	Material	*pRet	=malloc(sizeof(Material));
+#ifdef	__AVX__
+	Material	*pRet	=aligned_alloc(32, sizeof(Material));
+#else
+	Material	*pRet	=aligned_alloc(16, sizeof(Material));
+#endif
 
 	//vertex shader
 	UT_string	*szStuff	=SZ_ReadString(f);
@@ -244,4 +247,49 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 	glm_mat4_identity(pRet->mWorld);
 
 	return	pRet;
+}
+
+//get functions for gui etc
+const ID3D11VertexShader	*MAT_GetVShader(const Material *pMat)
+{
+	return	pMat->mpVShader;
+}
+
+const ID3D11PixelShader	*MAT_GetPShader(const Material *pMat)
+{
+	return	pMat->mpPShader;
+}
+
+const ID3D11ShaderResourceView	*MAT_GetSRV0(const Material *pMat)
+{
+	return	pMat->mpSRV0;
+}
+
+const ID3D11ShaderResourceView	*MAT_GetSRV1(const Material *pMat)
+{
+	return	pMat->mpSRV1;
+}
+
+void	MAT_GetTrilight(const Material *pMat, vec3 t0, vec3 t1, vec3 t2)
+{
+	glm_vec3_copy(pMat->mTrilight0, t0);
+	glm_vec3_copy(pMat->mTrilight1, t1);
+	glm_vec3_copy(pMat->mTrilight2, t2);
+}
+
+void	MAT_GetLightDir(const Material *pMat, vec3 lightDir)
+{
+	glm_vec3_copy(pMat->mLightDirection, lightDir);
+}
+
+void	MAT_GetSolidColour(const Material *pMat, vec4 sc)
+{
+	glm_vec4_copy(pMat->mSolidColour, sc);
+}
+
+void	MAT_GetSpecular(const Material *pMat, vec4 spec)
+{
+	glm_vec3_copy(pMat->mSpecular, spec);
+
+	spec[3]	=pMat->mSpecPower;
 }

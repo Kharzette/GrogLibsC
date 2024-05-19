@@ -17,6 +17,17 @@ static const vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
 __attribute_maybe_unused__
 static const vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
 
+//for converting colours
+__attribute_maybe_unused__
+__attribute__((aligned(16)))	static const float	byteRecip[4]	=
+{
+	1.0f / 255.0f, 1.0f / 255.0f, 1.0f / 255.0f, 1.0f / 255.0f
+};
+__attribute__((aligned(16)))	static const float	byteMul[4]	=
+{
+	255.0f, 255.0f, 255.0f, 255.0f
+};
+
 
 static __m128i	Convert4F32ToF16m128i(float f0, float f1, float f2, float f3)
 {
@@ -92,6 +103,26 @@ int	Misc_SSE_RoundFToI(float val)
 
 	return	res;
 }
+
+uint32_t	Misc_SSE_Vec3ToRGBA(const vec3 v)
+{
+	__attribute__((aligned(16)))	float	vec[4]	={ v[0], v[1], v[2], 1 };
+
+	__m128	arg	=_mm_load_ps(vec);
+
+	__m128	bRec	=_mm_load_ps(byteMul);
+
+	//scale by 255
+	arg	=_mm_mul_ps(bRec, arg);
+
+	//convert down
+	__m128i	gg	=_mm_cvtps_epi32(arg);
+	gg	=_mm_packus_epi32(gg, gg);
+	gg	=_mm_packus_epi16(gg, gg);
+
+	return	_mm_cvtsi128_si32(gg);
+}
+
 
 void	Misc_ClearBounds(vec3 min, vec3 max)
 {

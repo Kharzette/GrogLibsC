@@ -449,7 +449,8 @@ void	Audio_Update(Audio *pAud, vec3 position, vec3 velocity)
 	pAud->mListener.Velocity.y	=velocity[1];
 	pAud->mListener.Velocity.z	=velocity[2];
 
-	SoundEffectUpdateEmitters(pAud->m3D, &pAud->mListener, pAud->mpFAMV);
+	//this is broken and needs fixing TODO
+	//SoundEffectUpdateEmitters(pAud->m3D, &pAud->mListener, pAud->mpFAMV);
 }
 
 

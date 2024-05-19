@@ -1340,6 +1340,50 @@ ID3D11ShaderResourceView	*StuffKeeper_GetFontSRV(const StuffKeeper *pSK, const c
 	return	DictSZ_GetValueccp(pSK->mpFontSRVs, pName);
 }
 
+typedef struct	PointerSearch_t
+{
+	const UT_string	*mpFoundKey;
+	const void		*mpPointer;
+}	PointerSearch;
+
+void	SearchPointersCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	PointerSearch	*pPS	=(PointerSearch *)pContext;
+	if(pPS == NULL)
+	{
+		return;
+	}
+
+	if(pValue == pPS->mpPointer)
+	{
+		pPS->mpFoundKey	=pKey;
+	}
+}
+
+const UT_string	*StuffKeeper_GetVSName(const StuffKeeper *pSK,
+								const ID3D11VertexShader *pVS)
+{
+	PointerSearch	ps;
+	ps.mpFoundKey	=NULL;
+	ps.mpPointer	=pVS;
+
+	DictSZ_ForEach(pSK->mpVShaders, SearchPointersCB, &ps);
+
+	return	ps.mpFoundKey;
+}
+
+const UT_string	*StuffKeeper_GetPSName(const StuffKeeper *pSK,
+								const ID3D11PixelShader *pPS)
+{
+	PointerSearch	ps;
+	ps.mpFoundKey	=NULL;
+	ps.mpPointer	=pPS;
+
+	DictSZ_ForEach(pSK->mpPShaders, SearchPointersCB, &ps);
+
+	return	ps.mpFoundKey;
+}
+
 
 void	TestSKStuff(void)
 {

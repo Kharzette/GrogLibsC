@@ -30,3 +30,5 @@ GrogFont					*StuffKeeper_GetFont(const StuffKeeper *pSK, const char *pName);
 ID3D11ShaderResourceView	*StuffKeeper_GetFontSRV(const StuffKeeper *pSK, const char *pName);
 const StringList			*StuffKeeper_GetVSEntryList(const StuffKeeper *pSK, const UT_string *szKey);
 const StringList			*StuffKeeper_GetPSEntryList(const StuffKeeper *pSK, const UT_string *szKey);
+const UT_string				*StuffKeeper_GetVSName(const StuffKeeper *pSK, const ID3D11VertexShader *pVS);
+const UT_string				*StuffKeeper_GetPSName(const StuffKeeper *pSK, const ID3D11PixelShader *pPS);

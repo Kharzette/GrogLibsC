@@ -1360,6 +1360,18 @@ void	SearchPointersCB(const UT_string *pKey, const void *pValue, void *pContext)
 	}
 }
 
+const UT_string	*StuffKeeper_GetSRVName(const StuffKeeper *pSK,
+								const ID3D11ShaderResourceView *pSRV)
+{
+	PointerSearch	ps;
+	ps.mpFoundKey	=NULL;
+	ps.mpPointer	=pSRV;
+
+	DictSZ_ForEach(pSK->mpSRVs, SearchPointersCB, &ps);
+
+	return	ps.mpFoundKey;
+}
+
 const UT_string	*StuffKeeper_GetVSName(const StuffKeeper *pSK,
 								const ID3D11VertexShader *pVS)
 {
@@ -1382,6 +1394,25 @@ const UT_string	*StuffKeeper_GetPSName(const StuffKeeper *pSK,
 	DictSZ_ForEach(pSK->mpPShaders, SearchPointersCB, &ps);
 
 	return	ps.mpFoundKey;
+}
+
+void	GrabKeysCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	StringList	**pSZL	=(StringList **)pContext;
+	if(pSZL == NULL)
+	{
+		return;
+	}
+	SZList_AddUT(pSZL, pKey);
+}
+
+const StringList	*StuffKeeper_GetTextureList(const StuffKeeper *pSK)
+{
+	StringList	*pRet	=SZList_New();
+
+	DictSZ_ForEach(pSK->mpTextures, GrabKeysCB, &pRet);
+
+	return	pRet;
 }
 
 

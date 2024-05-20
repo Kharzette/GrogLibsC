@@ -104,8 +104,27 @@ int	Misc_SSE_RoundFToI(float val)
 	return	res;
 }
 
-uint32_t	Misc_SSE_Vec3ToRGBA(const vec3 v)
+uint32_t	Misc_SSE_Vec4ToRGBA(const vec4 v)
 {
+	__attribute__((aligned(16)))	float	vec[4]	={ v[0], v[1], v[2], v[3] };
+
+	__m128	arg	=_mm_load_ps(vec);
+
+	__m128	bRec	=_mm_load_ps(byteMul);
+
+	//scale by 255
+	arg	=_mm_mul_ps(bRec, arg);
+
+	//convert down
+	__m128i	gg	=_mm_cvtps_epi32(arg);
+	gg	=_mm_packus_epi32(gg, gg);
+	gg	=_mm_packus_epi16(gg, gg);
+
+	return	_mm_cvtsi128_si32(gg);
+}
+
+uint32_t	Misc_SSE_Vec3ToRGBA(const vec3 v)
+{	
 	__attribute__((aligned(16)))	float	vec[4]	={ v[0], v[1], v[2], 1 };
 
 	__m128	arg	=_mm_load_ps(vec);
@@ -121,6 +140,25 @@ uint32_t	Misc_SSE_Vec3ToRGBA(const vec3 v)
 	gg	=_mm_packus_epi16(gg, gg);
 
 	return	_mm_cvtsi128_si32(gg);
+}
+
+void	Misc_RGBAToVec3(uint32_t col, vec3 ret)
+{
+	ret[0]	=col & 0xFF;
+	ret[1]	=(col & 0xFF00) >> 8;
+	ret[2]	=(col & 0xFF0000) >> 16;
+
+	glm_vec3_mul(ret, byteRecip, ret);
+}
+
+void	Misc_RGBAToVec4(uint32_t col, vec4 ret)
+{
+	ret[0]	=col & 0xFF;
+	ret[1]	=(col & 0xFF00) >> 8;
+	ret[2]	=(col & 0xFF0000) >> 16;
+	ret[3]	=(col & 0xFF000000) >> 24;
+
+	glm_vec4_mul(ret, byteRecip, ret);
 }
 
 

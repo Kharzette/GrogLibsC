@@ -33,4 +33,4 @@ const StringList			*StuffKeeper_GetPSEntryList(const StuffKeeper *pSK, const UT_
 const UT_string				*StuffKeeper_GetVSName(const StuffKeeper *pSK, const ID3D11VertexShader *pVS);
 const UT_string				*StuffKeeper_GetPSName(const StuffKeeper *pSK, const ID3D11PixelShader *pPS);
 const UT_string				*StuffKeeper_GetSRVName(const StuffKeeper *pSK, const ID3D11ShaderResourceView *pSRV);
-const StringList			*StuffKeeper_GetTextureList(const StuffKeeper *pSK);
+StringList					*StuffKeeper_GetTextureList(const StuffKeeper *pSK);

@@ -1406,7 +1406,7 @@ void	GrabKeysCB(const UT_string *pKey, const void *pValue, void *pContext)
 	SZList_AddUT(pSZL, pKey);
 }
 
-const StringList	*StuffKeeper_GetTextureList(const StuffKeeper *pSK)
+StringList	*StuffKeeper_GetTextureList(const StuffKeeper *pSK)
 {
 	StringList	*pRet	=SZList_New();
 

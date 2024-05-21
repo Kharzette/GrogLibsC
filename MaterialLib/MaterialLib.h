@@ -13,3 +13,5 @@ int					MatLib_GetNumMats(const MaterialLib *pML);
 const StringList	*MatLib_GetMatList(const MaterialLib *pML);
 Material			*MatLib_GetMaterial(MaterialLib *pML, const char *szMat);
 const Material		*MatLib_GetConstMaterial(const MaterialLib *pML, const char *szMat);
+void				MatLib_Remove(MaterialLib *pML, const char *szName);
+void				MatLib_ReName(MaterialLib *pML, const char *szMatName, const char *szNewName);

@@ -77,6 +77,29 @@ void	MatLib_Add(MaterialLib *pML, const char *szName, Material *pMat)
 	DictSZ_Addccp(&pML->mpMats, szName, pMat);
 }
 
+void	MatLib_Remove(MaterialLib *pML, const char *szName)
+{
+	if(!DictSZ_ContainsKeyccp(pML->mpMats, szName))
+	{
+		return;
+	}
+
+	DictSZ_Removeccp(&pML->mpMats, szName);
+}
+
+void	MatLib_ReName(MaterialLib *pML, const char *szMatName, const char *szNewName)
+{
+	if(!DictSZ_ContainsKeyccp(pML->mpMats, szMatName))
+	{
+		return;
+	}
+
+	Material	*pMat	=DictSZ_GetValueccp(pML->mpMats, szMatName);
+
+	DictSZ_Removeccp(&pML->mpMats, szMatName);
+	DictSZ_Addccp(&pML->mpMats, szNewName, pMat);
+}
+
 int	MatLib_GetNumMats(const MaterialLib *pML)
 {
 	return	DictSZ_Count(pML->mpMats);

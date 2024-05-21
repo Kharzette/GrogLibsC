@@ -41,7 +41,7 @@ void	DictSZ_Addccp(DictSZ **ppHead, const char *pKey, void *pValue)
 	HASH_ADD_KEYPTR(hh, *ppHead, utstring_body(pAdd->mpKey), utstring_len(pAdd->mpKey), pAdd);
 }
 
-
+//does not free the value
 void	DictSZ_Remove(DictSZ **ppHead, const UT_string *pKey)
 {
 	DictSZ	*pHash;
@@ -55,7 +55,24 @@ void	DictSZ_Remove(DictSZ **ppHead, const UT_string *pKey)
 
 	//free data
 	utstring_done(pHash->mpKey);
-	free(pHash->pValue);
+
+	HASH_DELETE(hh, *ppHead, pHash);
+}
+
+//does not free the value
+void	DictSZ_Removeccp(DictSZ **ppHead, const char *pKey)
+{
+	DictSZ	*pHash;
+
+	HASH_FIND_STR(*ppHead, pKey, pHash);
+
+	if(pHash == NULL)
+	{
+		return;	//not found
+	}
+
+	//free data
+	utstring_done(pHash->mpKey);
 
 	HASH_DELETE(hh, *ppHead, pHash);
 }

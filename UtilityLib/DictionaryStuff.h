@@ -18,6 +18,7 @@ typedef void	(*DictSZ_ValueNukeCB)(void *pValue);
 extern void	DictSZ_Add(DictSZ **ppHead, const UT_string *pKey, void *pValue);
 extern void	DictSZ_Addccp(DictSZ **ppHead, const char *pKey, void *pValue);
 extern void	DictSZ_Remove(DictSZ **ppHead, const UT_string *pKey);
+extern void	DictSZ_Removeccp(DictSZ **ppHead, const char *pKey);
 extern void *DictSZ_GetValue(const DictSZ *pHead, const UT_string *pKey);
 extern void *DictSZ_GetValueccp(const DictSZ *pHead, const char *pKey);
 extern void	DictSZ_New(DictSZ **ppHead);

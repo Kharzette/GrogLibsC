@@ -16,6 +16,17 @@ typedef struct	MaterialLib_t
 }	MaterialLib;
 
 
+MaterialLib	*MatLib_Create(StuffKeeper *pSK)
+{
+	MaterialLib	*pRet	=malloc(sizeof(MaterialLib));
+
+	DictSZ_New(&pRet->mpMats);
+
+	pRet->mpSKeeper	=pSK;
+
+	return	pRet;
+}
+
 MaterialLib	*MatLib_Read(const char *pFileName, StuffKeeper *pSK)
 {
 	FILE	*f	=fopen(pFileName, "rb");
@@ -54,6 +65,16 @@ MaterialLib	*MatLib_Read(const char *pFileName, StuffKeeper *pSK)
 	fclose(f);
 
 	return	pRet;
+}
+
+void	MatLib_Add(MaterialLib *pML, const char *szName, Material *pMat)
+{
+	if(DictSZ_ContainsKeyccp(pML->mpMats, szName))
+	{
+		return;
+	}
+
+	DictSZ_Addccp(&pML->mpMats, szName, pMat);
 }
 
 int	MatLib_GetNumMats(const MaterialLib *pML)

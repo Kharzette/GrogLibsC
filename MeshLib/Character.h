@@ -18,6 +18,7 @@ StringList	*Character_GetPartList(const Character *pChar);
 void		Character_ReNamePart(Character *pChar, const char *pOldName, const char *pNewName);
 void		Character_DeletePartIndex(Character *pChar, int idx);
 void		Character_DeletePart(Character *pChar, const char *szName);
+const char	*Character_GetMaterialForPart(const Character *pChar, const char *szPartName);
 
 void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
 						const MaterialLib *pML, const AnimLib *pAL,

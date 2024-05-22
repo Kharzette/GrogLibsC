@@ -223,3 +223,15 @@ void	Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatN
 
 	utstring_printf(pChar->mpParts[partIndex].mpMatName, "%s", pMatName);
 }
+
+const char	*Character_GetMaterialForPart(const Character *pChar, const char *szPartName)
+{
+	for(int i=0;i < pChar->mNumParts;i++)
+	{
+		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), szPartName);
+		if(res == 0)
+		{
+			return	utstring_body(pChar->mpParts[i].mpMatName);
+		}
+	}
+}

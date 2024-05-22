@@ -55,3 +55,21 @@ UT_string	*Anim_GetName(Anim *pAnim)
 {
 	return	pAnim->szName;
 }
+
+void	Anim_SetNameccp(Anim *pAnim, const char *szNew)
+{
+	utstring_clear(pAnim->szName);
+	utstring_printf(pAnim->szName, "%s", szNew);
+}
+
+void	Anim_Destroy(Anim *pAnim)
+{
+	utstring_done(pAnim->szName);
+
+	for(int i=0;i < pAnim->mNumSubAnims;i++)
+	{
+		SubAnim_Destroy(pAnim->mpSubAnims[i]);
+	}
+
+	free(pAnim);
+}

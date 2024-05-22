@@ -1,4 +1,5 @@
 #include	<stdint.h>
+#include	<assert.h>
 #include	<stdio.h>
 #include	<string.h>
 #include	<cglm/call.h>
@@ -30,7 +31,6 @@ typedef struct	Character_t
 	mat4	mTransform;
 
 	Skin	*mpSkin;
-	Mesh	*mpMesh;
 
 	MeshBound	*mpBound;
 	MeshPart	*mpParts;
@@ -121,7 +121,7 @@ int	Character_GetNumParts(const Character *pChar)
 	return	pChar->mNumParts;
 }
 
-const StringList	*Character_GetPartList(const Character *pChar)
+StringList	*Character_GetPartList(const Character *pChar)
 {
 	StringList	*pRet	=SZList_New();
 
@@ -131,6 +131,88 @@ const StringList	*Character_GetPartList(const Character *pChar)
 	}
 
 	return	pRet;
+}
+
+void	Character_ReNamePart(Character *pChar, const char *pOldName, const char *pNewName)
+{
+	for(int i=0;i < pChar->mNumParts;i++)
+	{
+		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), pOldName);
+		if(res == 0)
+		{
+			utstring_clear(pChar->mpParts[i].mpPartName);
+			utstring_printf(pChar->mpParts[i].mpPartName, "%s", pNewName);
+		}
+	}
+}
+
+void	Character_DeletePartIndex(Character *pChar, int idx)
+{
+	assert(idx >= 0 && idx < pChar->mNumParts);
+
+	if(pChar->mNumParts > 1)
+	{
+		MeshPart	*newParts	=malloc(sizeof(MeshPart) * pChar->mNumParts - 1);
+
+		int	destIdx	=0;
+		for(int i=0;i < pChar->mNumParts;i++)
+		{
+			if(i == idx)
+			{
+				utstring_done(pChar->mpParts[i].mpMatName);
+				utstring_done(pChar->mpParts[i].mpPartName);
+				continue;
+			}
+
+			memcpy(&newParts[destIdx], &pChar->mpParts[i], sizeof(MeshPart));
+			destIdx++;
+		}
+
+		free(pChar->mpParts);
+		pChar->mpParts	=newParts;
+	}
+	else
+	{
+		utstring_done(pChar->mpParts[0].mpMatName);
+		utstring_done(pChar->mpParts[0].mpPartName);
+		free(pChar->mpParts);
+		pChar->mpParts	=NULL;
+	}
+}
+
+void	Character_DeletePart(Character *pChar, const char *szName)
+{
+	for(int i=0;i < pChar->mNumParts;i++)
+	{
+		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), szName);
+		if(res == 0)
+		{
+			Character_DeletePartIndex(pChar, i);
+			pChar->mNumParts--;
+			return;
+		}
+	}
+}
+
+void	Character_Destroy(Character *pChar)
+{
+	free(pChar->mBones);
+
+	for(int i=0;i < pChar->mNumParts;i++)
+	{
+		utstring_done(pChar->mpParts[i].mpMatName);
+		utstring_done(pChar->mpParts[i].mpPartName);
+	}
+
+	if(pChar->mpParts != NULL)
+	{
+		free(pChar->mpParts);
+	}
+
+	MeshBound_Destroy(pChar->mpBound);
+	Skin_Destroy(pChar->mpSkin);
+
+	free(pChar);
 }
 
 void	Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatName)

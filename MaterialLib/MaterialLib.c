@@ -118,7 +118,7 @@ void	MatNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
 	SZList_AddUT(ppSL, pKey);
 }
 
-const StringList	*MatLib_GetMatList(const MaterialLib *pML)
+StringList	*MatLib_GetMatList(const MaterialLib *pML)
 {
 	StringList	*pRet	=SZList_New();
 

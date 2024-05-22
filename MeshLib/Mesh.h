@@ -9,6 +9,8 @@ typedef struct	CBKeeper_t			CBKeeper;
 
 
 Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName);
+void	Mesh_Destroy(Mesh *pMesh);
+void	Mesh_SetName(Mesh *pMesh, const char *szNew);
 void	Mesh_DrawMat(const Mesh *pMesh, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat);
 void	Mesh_Draw(Mesh *pMesh, GraphicsDevice *pGD, StuffKeeper *pSK,
 			const char *szVS, const char *szPS, const char *szTex);

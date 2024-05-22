@@ -208,3 +208,19 @@ void	Mesh_DrawMat(const Mesh *pMesh, GraphicsDevice *pGD,
 
 	GD_DrawIndexed(pGD, pMesh->mNumTriangles * 3, 0, 0);
 }
+
+void	Mesh_SetName(Mesh *pMesh, const char *szNew)
+{
+	utstring_clear(pMesh->mpName);
+	utstring_printf(pMesh->mpName, "%s", szNew);
+}
+
+void	Mesh_Destroy(Mesh *pMesh, GraphicsDevice *pGD)
+{
+	pMesh->mpVerts->lpVtbl->Release(pMesh->mpVerts);
+	pMesh->mpIndexs->lpVtbl->Release(pMesh->mpIndexs);
+
+	utstring_done(pMesh->mpName);
+
+	free(pMesh);
+}

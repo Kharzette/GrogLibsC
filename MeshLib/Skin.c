@@ -27,6 +27,17 @@ typedef struct	Skin_t
 }	Skin;
 
 
+void	Skin_Destroy(Skin *pSkin)
+{
+	free(pSkin->mpBoneBoxes);
+	free(pSkin->mpBoneSpheres);
+	free(pSkin->mpBoneCapsules);
+	free(pSkin->mpBoneColShapes);
+
+	free(pSkin);
+}
+
+
 Skin	*Skin_Read(FILE *f)
 {
 #ifdef __AVX__

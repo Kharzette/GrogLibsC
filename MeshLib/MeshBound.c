@@ -7,6 +7,8 @@
 
 typedef struct	MeshBound_t
 {
+	int	mNumParts;
+
 	vec4	mSphere;	//center + radius
 	vec3	mBox[2];
 	bool	mbChoice;	//true for box
@@ -18,9 +20,33 @@ typedef struct	MeshBound_t
 }	MeshBound;
 
 
+void	MeshBound_Destroy(MeshBound *pMB)
+{
+	for(int i=0;i < pMB->mNumParts;i++)
+	{
+		free(pMB->mpPartBoxes[i]);
+	}
+
+	if(pMB->mpPartBoxes != NULL)
+	{
+		free(pMB->mpPartBoxes);
+	}
+	if(pMB->mpPartSpheres != NULL)
+	{
+		free(pMB->mpPartSpheres);
+	}
+	if(pMB->mpChoices != NULL)
+	{
+		free(pMB->mpChoices);
+	}
+
+	free(pMB);
+}
+
 MeshBound	*MeshBound_Read(FILE *f)
 {
 	MeshBound	*pRet	=malloc(sizeof(MeshBound));
+	memset(pRet, 0, sizeof(MeshBound));
 
 	fread(&pRet->mSphere, sizeof(vec4), 1, f);
 	fread(&pRet->mBox, sizeof(vec3), 2, f);
@@ -30,19 +56,18 @@ MeshBound	*MeshBound_Read(FILE *f)
 
 	pRet->mbChoice	=(choice != 0);
 
-	int	numParts;
-	fread(&numParts, sizeof(int), 1, f);
+	fread(&pRet->mNumParts, sizeof(int), 1, f);
 
-	if(numParts == 0)
+	if(pRet->mNumParts == 0)
 	{
 		return	pRet;
 	}
 
-	pRet->mpPartBoxes	=malloc(sizeof(vec3 *) * numParts);
-	pRet->mpPartSpheres	=malloc(sizeof(vec4) * numParts);
-	pRet->mpChoices		=malloc(sizeof(bool) * numParts);
+	pRet->mpPartBoxes	=malloc(sizeof(vec3 *) * pRet->mNumParts);
+	pRet->mpPartSpheres	=malloc(sizeof(vec4) * pRet->mNumParts);
+	pRet->mpChoices		=malloc(sizeof(bool) * pRet->mNumParts);
 
-	for(int i=0;i < numParts;i++)
+	for(int i=0;i < pRet->mNumParts;i++)
 	{
 		pRet->mpPartBoxes[i]	=malloc(sizeof(vec3) * 2);
 

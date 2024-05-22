@@ -144,3 +144,13 @@ void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping)
 
 	KeyFrame_Lerp(&pSA->mpKeys[startIndex], &pSA->mpKeys[startIndex + 1], percentage, pSA->mpBone);
 }
+
+void	SubAnim_Destroy(SubAnim *pSA)
+{
+	free(pSA->mpKeys);
+	free(pSA->mpTimes);
+
+	utstring_done(pSA->szBoneName);
+
+	free(pSA);
+}

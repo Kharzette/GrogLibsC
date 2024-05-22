@@ -88,6 +88,37 @@ int	AnimLib_GetNumAnims(const AnimLib *pAL)
 }
 
 
+void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew)
+{
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szOld))
+	{
+		return;
+	}
+
+	Anim	*pAn	=DictSZ_GetValueccp(pAL->mpAnims, szOld);
+
+	DictSZ_Removeccp(&pAL->mpAnims, szOld);
+	DictSZ_Addccp(&pAL->mpAnims, szNew, pAn);
+
+	Anim_SetNameccp(pAn, szNew);
+}
+
+
+void	AnimLib_Delete(AnimLib *pAL, const char *szAnim)
+{
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
+	{
+		return;
+	}
+
+	Anim	*pAn	=DictSZ_GetValueccp(pAL->mpAnims, szAnim);
+
+	DictSZ_Removeccp(&pAL->mpAnims, szAnim);
+
+	Anim_Destroy(pAn);
+}
+
+
 void	AnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
 	StringList	**ppSL	=(StringList **)pContext;
@@ -100,7 +131,7 @@ void	AnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
 	SZList_AddUT(ppSL, pKey);
 }
 
-const StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
+StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
 {
 	StringList	*pRet	=SZList_New();
 

@@ -414,3 +414,12 @@ UT_string	*SZ_ReadString(FILE *f)
 
 	return	pRet;
 }
+
+void	SZ_WriteString(FILE *f, const UT_string *pSZ)
+{
+	uint8_t	len	=utstring_len(pSZ);
+
+	fwrite(&len, sizeof(uint8_t), 1, f);
+
+	fwrite(utstring_body(pSZ), len, 1, f);
+}

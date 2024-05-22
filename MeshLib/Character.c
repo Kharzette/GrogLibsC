@@ -234,4 +234,5 @@ const char	*Character_GetMaterialForPart(const Character *pChar, const char *szP
 			return	utstring_body(pChar->mpParts[i].mpMatName);
 		}
 	}
+	return	NULL;
 }

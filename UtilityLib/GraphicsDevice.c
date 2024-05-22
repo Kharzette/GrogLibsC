@@ -36,7 +36,8 @@ typedef struct GraphicsDevice_t
 //try to make a device of the desired feature level
 //TODO: get the swap effect stuff right
 bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
-			int w, int h, D3D_FEATURE_LEVEL desiredFeatureLevel)
+			int posX, int posY, int w, int h, bool bRandomPos,
+			D3D_FEATURE_LEVEL desiredFeatureLevel)
 {
 	//alloc
 	*ppGD	=malloc(sizeof(GraphicsDevice));
@@ -56,9 +57,17 @@ bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 
 	SDL_Vulkan_LoadLibrary(NULL);
 
-	pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
-		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-		w, h, SDL_WINDOW_VULKAN);
+	if(bRandomPos)
+	{
+		pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
+			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+			w, h, SDL_WINDOW_VULKAN | SDL_WINDOW_BORDERLESS);
+	}
+	else
+	{
+		pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
+			posX, posY, w, h, SDL_WINDOW_VULKAN | SDL_WINDOW_BORDERLESS);
+	}
 	if(pGD->mWnd == NULL)
 	{
 		printf("Window creation didn't work: %s\n", SDL_GetError());
@@ -202,6 +211,27 @@ int	GD_GetWidth(const GraphicsDevice *pGD)
 int	GD_GetHeight(const GraphicsDevice *pGD)
 {
 	return	pGD->mHeight;
+}
+
+int	GD_GetPosX(const GraphicsDevice *pGD)
+{
+	int	x;
+	SDL_GetWindowPosition(pGD->mWnd, &x, NULL);
+
+	return	x;
+}
+
+int	GD_GetPosY(const GraphicsDevice *pGD)
+{
+	int	y;
+	SDL_GetWindowPosition(pGD->mWnd, NULL, &y);
+
+	return	y;
+}
+
+void	GD_SetWindowBordered(GraphicsDevice *pGD, bool bOn)
+{
+	SDL_SetWindowBordered(pGD->mWnd, bOn);
 }
 
 ID3D11RenderTargetView	*GD_GetBackBufferView(const GraphicsDevice *pGD)

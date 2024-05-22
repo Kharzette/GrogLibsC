@@ -50,6 +50,7 @@ extern UT_string	*SZ_SubStringUTStartEnd(const UT_string *pSZ, int startPos, int
 
 //file read
 extern UT_string	*SZ_ReadString(FILE *f);
+extern void			SZ_WriteString(FILE *f, const UT_string *pSZ);
 
 //caller responsible for freeing
 extern wchar_t	*SZ_ConvertToWCHAR(const UT_string *pSZ);

@@ -1,5 +1,6 @@
 #pragma	once
 #include	<stdint.h>
+#include	<stdbool.h>
 #include	<cglm/call.h>
 #include	<d3dcommon.h>
 #include	<d3d11.h>
@@ -7,13 +8,19 @@
 typedef struct GraphicsDevice_t	GraphicsDevice;
 
 
-extern bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle, int w, int h, D3D_FEATURE_LEVEL desiredFeatureLevel);
+extern bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
+			int posX, int posY, int w, int h, bool bRandomPos,
+			D3D_FEATURE_LEVEL desiredFeatureLevel);
+
 extern void	GD_Destroy(GraphicsDevice **ppGD);
 
 //gets
+extern int	GD_GetWidth(const GraphicsDevice *pGD);
+extern int	GD_GetHeight(const GraphicsDevice *pGD);
+extern int	GD_GetPosX(const GraphicsDevice *pGD);
+extern int	GD_GetPosY(const GraphicsDevice *pGD);
+
 extern D3D_FEATURE_LEVEL		GD_GetFeatureLevel(const GraphicsDevice *pGD);
-extern int						GD_GetWidth(const GraphicsDevice *pGD);
-extern int						GD_GetHeight(const GraphicsDevice *pGD);
 extern ID3D11RenderTargetView	*GD_GetBackBufferView(const GraphicsDevice *pGD);
 extern ID3D11DepthStencilView	*GD_GetDepthView(const GraphicsDevice *pGD);
 
@@ -62,6 +69,7 @@ extern void GD_DrawIndexed(GraphicsDevice *pGD,
 extern void GD_Present(GraphicsDevice *pGD);
 
 //set states
+extern void	GD_SetWindowBordered(GraphicsDevice *pGD, bool bOn);
 extern void GD_OMSetBlendState(GraphicsDevice *pGD, ID3D11BlendState *pBlend);
 extern void GD_OMSetDepthStencilState(GraphicsDevice *pGD, ID3D11DepthStencilState *pDSS);
 extern void GD_ClearDepthStencilView(GraphicsDevice *pGD, ID3D11DepthStencilView *pView);

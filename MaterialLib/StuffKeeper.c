@@ -335,6 +335,8 @@ static void LoadCompiledShader(DictSZ **ppStorage, const UT_string *pPath, const
 {
 	FILE	*f	=fopen(utstring_body(pPath), "rb");
 
+	printf("Shader Path: %s\n", utstring_body(pPath));
+
 	//see how big the file is
 	fseek(f, 0, SEEK_END);
 	long	fileLen	=ftell(f);
@@ -1191,7 +1193,7 @@ static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
 {
 	//load EntryLayouts, this maps from a shader entry point
 	//to a layout name (such as VPosNormBone etc...)
-	FILE	*f	=fopen("Shaders/EntryLayouts.txt", "r");
+	FILE	*f	=fopen("CompiledShaders/EntryLayouts.txt", "r");
 	if(f == NULL)
 	{
 		printf("Couldn't open entry layouts file!\n");
@@ -1206,7 +1208,7 @@ static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
 
 StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 {
-	FILE	*f	=fopen("Shaders/VSEntryPoints.txt", "r");
+	FILE	*f	=fopen("CompiledShaders/VSEntryPoints.txt", "r");
 	if(f == NULL)
 	{
 		printf("Couldn't open shader entry points file.\n");
@@ -1219,7 +1221,7 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 
 	fclose(f);
 
-	f	=fopen("Shaders/PSEntryPoints.txt", "r");
+	f	=fopen("CompiledShaders/PSEntryPoints.txt", "r");
 
 	pRet->mpPSEntryPoints	=ReadEntryPoints(f);
 
@@ -1420,13 +1422,13 @@ void	TestSKStuff(void)
 {
 	printf("StuffKeeper testing...\n");
 
-	FILE	*f	=fopen("Shaders/VSEntryPoints.txt", "r");
+	FILE	*f	=fopen("CompiledShaders/VSEntryPoints.txt", "r");
 
 	DictSZ	*pVSEP	=ReadEntryPoints(f);
 
 	fclose(f);
 
-	f	=fopen("Shaders/PSEntryPoints.txt", "r");
+	f	=fopen("CompiledShaders/PSEntryPoints.txt", "r");
 
 	DictSZ	*pPSEP	=ReadEntryPoints(f);
 

@@ -21,6 +21,7 @@
 //TwoD			b7
 //BSP Dynamic	b8
 //BSP Dyn Color	b9
+//Cel Shading	b10
 #define	PEROBJECT_REG	0
 #define	PERFRAME_REG	1
 #define	PERSHADOW_REG	2
@@ -31,6 +32,7 @@
 #define	TWOD_REG		7
 #define	BSP_LIGHT_POS	8
 #define	BSP_LIGHT_COL	9
+#define	CEL_REG			10
 
 
 //constants that need to match shaders
@@ -147,6 +149,17 @@ typedef struct	TextMode_t
 	uint32_t	mCharHeight;	//height of characters in texels in the font texture (fixed)
 }	TextMode;
 
+//Cel.hlsli
+typedef struct	CelStuff_t
+{
+	vec4	mValMin;
+	vec4	mValMax;
+	vec4	mSnapTo;
+
+	int		mNumSteps;
+	vec3	mPad;
+}	CelStuff;
+
 typedef struct	CBKeeper_t
 {
 	//Character.hlsl bone array
@@ -162,6 +175,7 @@ typedef struct	CBKeeper_t
 	ID3D11Buffer	*mpPostBuf;
 	ID3D11Buffer	*mpPerShadowBuf;
 	ID3D11Buffer	*mpTextModeBuf;
+	ID3D11Buffer	*mpCelBuf;
 
 	//resource pointers for update
 	ID3D11Resource	*mpPerObjectRes;
@@ -172,6 +186,7 @@ typedef struct	CBKeeper_t
 	ID3D11Resource	*mpPostRes;
 	ID3D11Resource	*mpPerShadowRes;
 	ID3D11Resource	*mpTextModeRes;
+	ID3D11Resource	*mpCelRes;
 
 	//CPU side
 	PerObject	*mpPerObject;
@@ -181,6 +196,7 @@ typedef struct	CBKeeper_t
 	Post		*mpPost;
 	PerShadow	*mpPerShadow;
 	TextMode	*mpTextMode;
+	CelStuff	*mpCelStuff;
 }	CBKeeper;
 
 
@@ -217,6 +233,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPostBuf			=MakeConstantBuffer(pGD, sizeof(Post));
 	pRet->mpTextModeBuf		=MakeConstantBuffer(pGD, sizeof(TextMode));
 	pRet->mpTwoDBuf			=MakeConstantBuffer(pGD, sizeof(TwoD));
+	pRet->mpCelBuf			=MakeConstantBuffer(pGD, sizeof(CelStuff));
 
 	//grab resource pointers for each
 	pRet->mpPerObjectBuf->lpVtbl->QueryInterface(pRet->mpPerObjectBuf, &IID_ID3D11Resource, (void **)&pRet->mpPerObjectRes);
@@ -227,6 +244,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPostBuf->lpVtbl->QueryInterface(pRet->mpPostBuf, &IID_ID3D11Resource, (void **)&pRet->mpPostRes);
 	pRet->mpPerShadowBuf->lpVtbl->QueryInterface(pRet->mpPerShadowBuf, &IID_ID3D11Resource, (void **)&pRet->mpPerShadowRes);
 	pRet->mpTextModeBuf->lpVtbl->QueryInterface(pRet->mpTextModeBuf, &IID_ID3D11Resource, (void **)&pRet->mpTextModeRes);
+	pRet->mpCelBuf->lpVtbl->QueryInterface(pRet->mpCelBuf, &IID_ID3D11Resource, (void **)&pRet->mpCelRes);
 
 	//alloc cpu side data
 #ifdef	__AVX__
@@ -236,6 +254,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPost		=aligned_alloc(32, sizeof(Post));
 	pRet->mpPerShadow	=aligned_alloc(32, sizeof(PerShadow));
 	pRet->mpTextMode	=aligned_alloc(32, sizeof(TextMode));
+	pRet->mpCelStuff	=aligned_alloc(32, sizeof(CelStuff));
 #else
 	pRet->mpPerObject	=aligned_alloc(16, sizeof(PerObject));
 	pRet->mpPerFrame	=aligned_alloc(16, sizeof(PerFrame));
@@ -243,6 +262,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPost		=aligned_alloc(16, sizeof(Post));
 	pRet->mpPerShadow	=aligned_alloc(16, sizeof(PerShadow));
 	pRet->mpTextMode	=aligned_alloc(16, sizeof(TextMode));
+	pRet->mpCelStuff	=aligned_alloc(16, sizeof(CelStuff));
 #endif
 	return	pRet;
 }
@@ -256,6 +276,8 @@ void	CBK_SetCommonCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 	GD_PSSetConstantBuffer(pGD, PEROBJECT_REG, pCBK->mpPerObjectBuf);
 	GD_VSSetConstantBuffer(pGD, PERFRAME_REG, pCBK->mpPerFrameBuf);
 	GD_PSSetConstantBuffer(pGD, PERFRAME_REG, pCBK->mpPerFrameBuf);
+	GD_VSSetConstantBuffer(pGD, CEL_REG, pCBK->mpCelBuf);
+	GD_PSSetConstantBuffer(pGD, CEL_REG, pCBK->mpCelBuf);
 }
 
 void	CBK_Set2DCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
@@ -338,6 +360,11 @@ void	CBK_UpdatePerShadow(CBKeeper *pCBK, GraphicsDevice *pGD)
 void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	GD_UpdateSubResource(pGD, pCBK->mpTextModeRes, pCBK->mpTextMode);
+}
+
+void	CBK_UpdateCel(CBKeeper *pCBK, GraphicsDevice *pGD)
+{
+	GD_UpdateSubResource(pGD, pCBK->mpCelRes, pCBK->mpCelStuff);
 }
 
 
@@ -587,4 +614,25 @@ void CBK_SetTextModeFontInfo(CBKeeper *pCBK, uint32_t startChar, uint32_t numCol
 	pCBK->mpTextMode->mNumColumns	=numColumns;
 	pCBK->mpTextMode->mCharWidth	=charWidth;
 	pCBK->mpTextMode->mCharHeight	=charHeight;
+}
+
+
+//cel stuff
+void	CBK_SetCelSteps(CBKeeper *pCBK, const float *pMins, const float *pMaxs,
+						const float *pSteps, int numSteps)
+{
+	assert(numSteps <= 4);
+
+	pCBK->mpCelStuff->mNumSteps	=numSteps;
+
+	glm_vec4_zero(pCBK->mpCelStuff->mValMin);
+	glm_vec4_zero(pCBK->mpCelStuff->mValMax);
+	glm_vec4_zero(pCBK->mpCelStuff->mSnapTo);
+
+	for(int i=0;i < numSteps;i++)
+	{
+		pCBK->mpCelStuff->mValMin[i]	=pMins[i];
+		pCBK->mpCelStuff->mValMax[i]	=pMaxs[i];
+		pCBK->mpCelStuff->mSnapTo[i]	=pSteps[i];
+	}
 }

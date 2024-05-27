@@ -379,7 +379,7 @@ void PP_DrawStage(PostProcess *pPP, GraphicsDevice *pGD, CBKeeper *pCBK)
 
 	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pPP->mpSK, "VPos"));
 	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pPP->mpSK, "SimpleQuadVS"));
-	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pPP->mpSK, "SimpleQuadPS"));
+	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pPP->mpSK, "BloomCombinePS"));
 
 	CBK_UpdatePost(pCBK, pGD);
 

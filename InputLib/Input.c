@@ -69,7 +69,7 @@ void	INP_Update(Input *pInp, void *pContext)
 	SDL_Event	evt;
 	while(SDL_PollEvent(&evt))
 	{
-		if(evt.type == SDL_KEYUP)
+		if(evt.type == SDL_EVENT_KEY_UP)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -97,7 +97,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_KEYDOWN)
+		else if(evt.type == SDL_EVENT_KEY_DOWN)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -122,7 +122,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_MOUSEBUTTONUP)
+		else if(evt.type == SDL_EVENT_MOUSE_BUTTON_UP)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -150,7 +150,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_MOUSEBUTTONDOWN)
+		else if(evt.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -178,7 +178,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_MOUSEMOTION)
+		else if(evt.type == SDL_EVENT_MOUSE_MOTION)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)

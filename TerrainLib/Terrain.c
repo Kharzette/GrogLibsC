@@ -434,9 +434,18 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 }
 
 
-void	Terrain_SetSRV(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK)
+void	Terrain_SetSRVAndLayout(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK)
 {
-	pTer->mpSRV	=StuffKeeper_GetSRV(pSK, szSRV);
+	if(szSRV == NULL)
+	{
+		pTer->mpSRV	=NULL;
+	}
+	else
+	{
+		pTer->mpSRV		=StuffKeeper_GetSRV(pSK, szSRV);
+	}
+	
+	pTer->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNormTex04Tex14");
 }
 
 
@@ -444,7 +453,7 @@ void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 {
 	GD_IASetVertexBuffers(pGD, pTer->mpVerts, pTer->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pTer->mpIndexs, DXGI_FORMAT_R32_UINT, 0);
-	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pSK, "VPosNormTex04Tex14"));
+	GD_IASetInputLayout(pGD, pTer->mpLayout);
 
 	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
 	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));
@@ -458,6 +467,8 @@ void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const M
 {
 	GD_IASetVertexBuffers(pGD, pTer->mpVerts, pTer->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pTer->mpIndexs, DXGI_FORMAT_R32_UINT, 0);
+
+	GD_IASetInputLayout(pGD, pTer->mpLayout);
 
 	MAT_Apply(pMat, pCBK, pGD);
 

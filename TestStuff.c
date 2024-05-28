@@ -16,6 +16,7 @@
 #include	"MaterialLib/PostProcess.h"
 #include	"MaterialLib/Material.h"
 #include	"MaterialLib/ScreenText.h"
+#include	"MaterialLib/MaterialLib.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
@@ -106,23 +107,23 @@ typedef struct	TestStuff_t
 }	TestStuff;
 
 //static forward decs
-static void	TestManyRays(const Terrain *pTer);
-static void	PrintRandomPointInTerrain(const Terrain *pTer);
-static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
+static void		TestManyRays(const Terrain *pTer);
+static void		PrintRandomPointInTerrain(const Terrain *pTer);
+static int		TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
 __attribute_maybe_unused__
-static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane);
-static void	ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
-static void	SetupKeyBinds(Input *pInp);
-static void	SetupRastVP(GraphicsDevice *pGD);
-static void SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK);
-static void	MoveCharacter(TestStuff *pTS, const vec3 moveVec);
+static int		TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane);
+static void		ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
+static void		SetupKeyBinds(Input *pInp);
+static void		SetupRastVP(GraphicsDevice *pGD);
+static void		SetupDebugStrings(TestStuff *pTS, const StuffKeeper *pSK);
+static void		MoveCharacter(TestStuff *pTS, const vec3 moveVec);
+static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
 
 //material setups
 static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeCubeMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeRaysMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeHitsMat(TestStuff *pTS, const StuffKeeper *pSK);
-static Material	*MakeCharacterMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*MakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK);
@@ -162,7 +163,7 @@ int main(void)
 {
 	printf("DirectX on looney loonix!\n");
 
-	Audio	*pAud	=Audio_Create(2);
+//	Audio	*pAud	=Audio_Create(2);
 
 	//store a bunch of vars in a struct
 	//for ref/modifying by input handlers
@@ -180,7 +181,10 @@ int main(void)
 	Input	*pInp	=INP_CreateInput();
 	SetupKeyBinds(pInp);
 
-	GD_Init(&pTS->mpGD, "Blortallius!", RESX, RESY, D3D_FEATURE_LEVEL_11_0);
+	GD_Init(&pTS->mpGD, "Blortallius!", 0, 0, RESX, RESY, true, D3D_FEATURE_LEVEL_11_1);
+
+	//turn on border
+	GD_SetWindowBordered(pTS->mpGD, true);
 
 	SetupRastVP(pTS->mpGD);
 
@@ -230,8 +234,9 @@ __attribute_maybe_unused__
 		CBK_SetFogVars(pCBK, 50.0f, 300.0f, true);
 	}
 
-	PP_MakePostTarget(pPP, pTS->mpGD, "LinearColor", RESX, RESY, DXGI_FORMAT_R8G8B8A8_UNORM);
-	PP_MakePostDepth(pPP, pTS->mpGD, "LinearDepth", RESX, RESY, DXGI_FORMAT_D32_FLOAT);
+//	PP_MakePostTarget(pPP, pTS->mpGD, "LinearColor", RESX, RESY, DXGI_FORMAT_R8G8B8A8_UNORM);
+//	PP_MakePostDepth(pPP, pTS->mpGD, "LinearDepth", RESX, RESY, DXGI_FORMAT_D32_FLOAT);
+	PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
 
 	float	aspect	=(float)RESX / (float)RESY;
 
@@ -246,7 +251,7 @@ __attribute_maybe_unused__
 	//biped mover
 	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
-	SoundEffectPlay("synth(4)", pTS->mPlayerPos);
+//	SoundEffectPlay("synth(4)", pTS->mPlayerPos);
 
 	//3D Projection
 	mat4	camProj;
@@ -276,17 +281,15 @@ __attribute_maybe_unused__
 	Material	*pCubeMat	=MakeCubeMat(pTS, pSK);
 	Material	*pRaysMat	=MakeRaysMat(pTS, pSK);
 	Material	*pHitsMat	=MakeHitsMat(pTS, pSK);
-	Material	*pCharMat	=MakeCharacterMat(pTS, pSK);
 	Material	*pTerMat	=MakeTerrainMat(pTS, pSK);
 	Material	*pBoxesMat	=MakeNodeBoxesMat(pTS, pSK);
 	Material	*pSkyBoxMat	=MakeSkyBoxMat(pTS, pSK);
 
-	//character
-	Mesh		*pMesh	=Mesh_Read(pTS->mpGD, pSK, "Characters/CyliProtag-materialMesh.mesh");
-	Character	*pChar	=Character_Read("Characters/Protag.Character");
-	AnimLib		*pALib	=AnimLib_Read("Characters/Protag.AnimLib");
-
-	mat4	bones[MAX_BONES];
+	//character stuffs
+	Character	*pChar		=Character_Read("Characters/Protag.Character");
+	AnimLib		*pALib		=AnimLib_Read("Characters/Protag.AnimLib");
+	MaterialLib	*pCharMats	=MatLib_Read("Characters/Protag.MatLib", pSK);
+	DictSZ		*pMeshes	=sLoadCharacterMeshParts(pTS->mpGD, pSK, pChar);
 
 	float	animTime		=0.0f;
 	float	maxDT			=0.0f;
@@ -309,12 +312,14 @@ __attribute_maybe_unused__
 			//move turn etc
 			INP_Update(pInp, pTS);
 
-			bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
-			if(bJumped)
+			if(!pTS->mbFlyMode)
 			{
-				SoundEffectPlay("PowerUp3", pTS->mPlayerPos);
+				bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+				if(bJumped)
+				{
+//					SoundEffectPlay("PowerUp3", pTS->mPlayerPos);
+				}
 			}
-
 			MoveCharacter(pTS, pTS->mCharMoveVec);
 
 			if(pTS->mDrawHit == TER_INSIDE)
@@ -349,7 +354,6 @@ __attribute_maybe_unused__
 		MAT_SetLightDirection(pCubeMat, pTS->mLightDir);
 		MAT_SetLightDirection(pRaysMat, pTS->mLightDir);
 		MAT_SetLightDirection(pHitsMat, pTS->mLightDir);
-		MAT_SetLightDirection(pCharMat, pTS->mLightDir);
 		MAT_SetLightDirection(pTerMat, pTS->mLightDir);
 		MAT_SetLightDirection(pBoxesMat, pTS->mLightDir);
 
@@ -357,7 +361,7 @@ __attribute_maybe_unused__
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
 		//update audio
-		Audio_Update(pAud, pTS->mPlayerPos, pTS->mCharMoveVec);
+//		Audio_Update(pAud, pTS->mPlayerPos, pTS->mCharMoveVec);
 
 		//player moving?
 		float	moving	=glm_vec3_norm(pTS->mCharMoveVec);
@@ -379,8 +383,6 @@ __attribute_maybe_unused__
 			animTime	+=dt;
 			AnimLib_Animate(pALib, "LD55ProtagIdle", animTime);
 		}
-
-		Character_FillBoneArray(pChar, AnimLib_GetSkeleton(pALib), bones);
 
 		{
 			if(dt > maxDT)
@@ -441,7 +443,8 @@ __attribute_maybe_unused__
 				vec3	feetToCenter	={	0.0f, -0.25f, 0.0f	};
 				glm_translate(guraMat, feetToCenter);
 
-				MAT_SetWorld(pCharMat, guraMat);
+				Material	*pCM	=MatLib_GetMaterial(pCharMats, "Protag");
+				MAT_SetWorld(pCM, guraMat);
 			}
 
 			CBK_SetView(pCBK, viewMat, pTS->mEyePos);
@@ -452,10 +455,12 @@ __attribute_maybe_unused__
 		}
 
 
-		PP_SetTargets(pPP, pTS->mpGD, "LinearColor", "LinearDepth");
+//		PP_SetTargets(pPP, pTS->mpGD, "LinearColor", "LinearDepth");
 
-		PP_ClearDepth(pPP, pTS->mpGD, "LinearDepth");
-		PP_ClearTarget(pPP, pTS->mpGD, "LinearColor");
+//		PP_ClearDepth(pPP, pTS->mpGD, "LinearDepth");
+//		PP_ClearTarget(pPP, pTS->mpGD, "LinearColor");
+		PP_ClearDepth(pPP, pTS->mpGD, "BackDepth");
+		PP_ClearTarget(pPP, pTS->mpGD, "BackColor");
 
 		//update frame CB
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
@@ -543,18 +548,13 @@ __attribute_maybe_unused__
 		if(pTS->mbFlyMode)
 		{
 			glm_translate_make(charMat, pTS->mPlayerPos);
-			MAT_SetWorld(pCharMat, charMat);
+			Material	*pCM	=MatLib_GetMaterial(pCharMats, "Protag");
+			MAT_SetWorld(pCM, charMat);
 		}
-		MAT_SetDanglyForce(pCharMat, pTS->mDanglyForce);
+//		MAT_SetDanglyForce(pCharMat, pTS->mDanglyForce);
 		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
-		//bones
-		CBK_SetBonesWithTranspose(pCBK, bones);
-		CBK_UpdateCharacter(pCBK, pTS->mpGD);
-		CBK_SetCharacterToShaders(pCBK, pTS->mpGD);
-
-		//draw mesh
-		Mesh_DrawMat(pMesh, pTS->mpGD, pCBK, pCharMat);
+		Character_Draw(pChar, pMeshes, pCharMats, pALib, pTS->mpGD, pCBK);
 
 		//set proj for 2D
 		CBK_SetProjection(pCBK, textProj);
@@ -566,19 +566,19 @@ __attribute_maybe_unused__
 		CBK_SetProjection(pCBK, camProj);
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
-		PP_ClearDepth(pPP, pTS->mpGD, "BackDepth");
-		PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
+//		PP_ClearDepth(pPP, pTS->mpGD, "BackDepth");
+//		PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
 
-		PP_SetSRV(pPP, pTS->mpGD, "LinearColor", 1);	//1 for colortex
+//		PP_SetSRV(pPP, pTS->mpGD, "LinearColor", 1);	//1 for colortex
 
-		PP_DrawStage(pPP, pTS->mpGD, pCBK);
+//		PP_DrawStage(pPP, pTS->mpGD, pCBK);
 
 		GD_Present(pTS->mpGD);
 	}
 
 	GD_Destroy(&pTS->mpGD);
 
-	Audio_Destroy(&pAud);
+//	Audio_Destroy(&pAud);
 
 	return	EXIT_SUCCESS;
 }
@@ -983,7 +983,7 @@ static void	KeySprintEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputSprint(pTS->mpBPM);
+	BPM_InputSprint(pTS->mpBPM, true);
 }
 
 static void	KeyTurnLeftEH(void *pContext, const SDL_Event *pEvt)
@@ -1039,7 +1039,6 @@ static Material	*MakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 
-	MAT_SetLayout(pRet, "VPosNorm", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
@@ -1058,7 +1057,6 @@ static Material	*MakeCubeMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 
-	MAT_SetLayout(pRet, "VPosNorm", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
@@ -1077,7 +1075,6 @@ static Material	*MakeRaysMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light1		={	0.5f, 0.5f, 0.5f	};
 	vec3	light2		={	0.3f, 0.3f, 0.3f	};
 
-	MAT_SetLayout(pRet, "VPosNormCol0", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetVShader(pRet, "WNormWPosVColorVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidVColorSpecPS", pSK);
@@ -1097,33 +1094,11 @@ static Material	*MakeHitsMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light2		={	0.3f, 0.3f, 0.3f		};
 	vec4	hitCol		={	1.0f, 0.0f, 0.0f, 1.0f	};
 
-	MAT_SetLayout(pRet, "VPosNorm", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
 	MAT_SetSolidColour(pRet, hitCol);
 	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 4.0f);
-	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
-
-	return	pRet;
-}
-
-static Material	*MakeCharacterMat(TestStuff *pTS, const StuffKeeper *pSK)
-{
-	Material	*pRet	=MAT_Create(pTS->mpGD);
-
-	vec3	light0		={	1.0f, 1.0f, 1.0f	};
-	vec3	light1		={	0.2f, 0.3f, 0.3f	};
-	vec3	light2		={	0.1f, 0.2f, 0.2f	};
-
-	MAT_SetLayout(pRet, "VPosNormBoneTex0", pSK);
-	MAT_SetVShader(pRet, "SkinWNormWPosTex0VS", pSK);
-	MAT_SetPShader(pRet, "TriTex0SpecPS", pSK);
-	MAT_SetSRV0(pRet, "Characters/LD55ProtagTexd_UVMap_color", pSK);
-
-	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 6.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
@@ -1137,7 +1112,6 @@ static Material	*MakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light1		={	0.2f, 0.3f, 0.3f	};
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 
-	MAT_SetLayout(pRet, "VPosNormTex04Tex14", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetVShader(pRet, "WNormWPosTexFactVS", pSK);
 	MAT_SetPShader(pRet, "TriTexFact8PS", pSK);
@@ -1145,6 +1119,9 @@ static Material	*MakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetSRV0(pRet, "Terrain/TerAtlas", pSK);
 	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 3.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	//srv is set in the material, but need input layout set
+	Terrain_SetSRVAndLayout(pTS->mpTer, NULL, pSK);
 
 	return	pRet;
 }
@@ -1158,7 +1135,6 @@ static Material	*MakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light2		={	0.2f, 0.2f, 0.2f		};
 	vec4	ghosty		={	1.0f, 1.0f, 1.0f, 0.5f	};
 
-	MAT_SetLayout(pRet, "VPosNorm", pSK);
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
 	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
 	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
@@ -1173,7 +1149,6 @@ static Material	*MakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK)
 {
 	Material	*pRet	=MAT_Create(pTS->mpGD);
 
-	MAT_SetLayout(pRet, "VPosNormTex0", pSK);
 	MAT_SetVShader(pRet, "SkyBoxVS", pSK);
 	MAT_SetPShader(pRet, "SkyGradientFogPS", pSK);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
@@ -1214,7 +1189,7 @@ static void	SetupKeyBinds(Input *pInp)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_t, KeyTurnDownEH);
 
 	//move data events
-	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_MOUSEMOTION, MouseMoveEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_EVENT_MOUSE_MOTION, MouseMoveEH);
 
 	//down/up events
 	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_RIGHT, RightMouseDownEH);
@@ -1306,4 +1281,32 @@ static void	MoveCharacter(TestStuff *pTS, const vec3 moveVec)
 
 		ST_ModifyStringText(pTS->mpST, 70, "Moved!");
 	}
+}
+
+static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar)
+{
+	StringList	*pParts	=Character_GetPartList(pChar);
+
+	DictSZ		*pMeshes;
+	UT_string	*szMeshPath;
+
+	DictSZ_New(&pMeshes);
+	utstring_new(szMeshPath);
+
+	const StringList	*pCur	=SZList_Iterate(pParts);
+	while(pCur != NULL)
+	{
+		utstring_printf(szMeshPath, "Characters/%s.mesh", SZList_IteratorVal(pCur));
+
+		Mesh	*pMesh	=Mesh_Read(pGD, pSK, utstring_body(szMeshPath));
+
+		DictSZ_Add(&pMeshes, SZList_IteratorValUT(pCur), pMesh);
+
+		pCur	=SZList_IteratorNext(pCur);
+	}
+
+	utstring_done(szMeshPath);
+	SZList_Clear(&pParts);
+
+	return	pMeshes;
 }

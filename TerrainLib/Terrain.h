@@ -30,7 +30,7 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 
 void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat);
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);
-void	Terrain_SetSRV(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK);
+void	Terrain_SetSRVAndLayout(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK);
 void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds);
 void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs);
 

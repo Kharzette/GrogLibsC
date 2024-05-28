@@ -11,13 +11,13 @@ CFLAGS=-std=gnu2x -g -O0 -march=native	\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
 #	-Xlinker --verbose	
 SOURCES=$(wildcard *.c)
-LIBS=-lvulkan -lUtilityLib -lMaterialLib -lMeshLib -lTerrainLib -lInputLib -lAudioLib# -ldxvk_d3d11 -ldxvk_dxgi
-LDFLAGS=-LUtilityLib -LMaterialLib -LMeshLib -LTerrainLib -LInputLib -LAudioLib# -Ldxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu -LSDL/build
+LIBS=-lm -lvulkan -lUtilityLib -lMaterialLib -lMeshLib -lTerrainLib -lInputLib -lAudioLib# -ldxvk_d3d11 -ldxvk_dxgi
+LDFLAGS=-Llibs
 
 all: TestStuff
 
 TestStuff: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o TestStuff -lm $(LIBS)	\
+	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o TestStuff $(LIBS)	\
 	SDL/build/libSDL3.so	\
 	libpng/build/libpng.so	\
 	AudioLib/FAudio/build/libFAudio.so	\

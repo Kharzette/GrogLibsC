@@ -1,0 +1,73 @@
+{
+	"CurrentGame": "/mnt/SkyFather/Games/CurrentGame",
+	"CurrentGameLibs": "${config:CurrentGame}/libs",
+	"files.associations": {
+		"xaudio2redist.h": "c",
+		"xaudio2.h": "c",
+		"types.h": "c",
+		"sdl_syswm.h": "c",
+		"windows_base.h": "c",
+		"utstring.h": "c",
+		"graphicsdevice.h": "c",
+		"float.h": "c",
+		"f16cintrin.h": "c",
+		"floatn.h": "c",
+		"features.h": "c",
+		"floatn-common.h": "c",
+		"math.h": "c",
+		"time.h": "c",
+		"x86intrin.h": "c",
+		"immintrin.h": "c",
+		"cglm.h": "c",
+		"tgmath.h": "c",
+		"liststuff.h": "c",
+		"dictionarystuff.h": "c",
+		"quat.h": "c",
+		"call.h": "c",
+		"png.h": "c",
+		"mmintrin.h": "c",
+		"emmintrin.h": "c",
+		"xmmintrin.h": "c",
+		"pmmintrin.h": "c",
+		"tmmintrin.h": "c",
+		"smmintrin.h": "c",
+		"wmmintrin.h": "c",
+		"avxintrin.h": "c",
+		"array": "cpp",
+		"stringstuff.h": "c",
+		"faudio.h": "c"
+	},
+	"terminal.integrated.profiles.windows": {
+
+		"PowerShell": {
+			"source": "PowerShell",
+			"icon": "terminal-powershell"
+		},
+		"Command Prompt": {
+			"path": [
+				"${env:windir}\\Sysnative\\cmd.exe",
+				"${env:windir}\\System32\\cmd.exe"
+			],
+			"args": [],
+			"icon": "terminal-cmd"
+		},
+		"Git Bash": {
+			"source": "Git Bash"
+		},
+		"msys mingw64": {
+			"path": [
+				"C:\\msys64\\msys2_shell.cmd"
+			],
+			"args": [
+                "-defterm",
+                "-here",
+                "-no-start",
+                "-mingw64"
+            ]
+		}
+	},
+	"cmake.configureOnOpen": false,
+	"cmake.sourceDirectory": "${workspaceFolder}/SDL",
+	"dotnet.defaultSolution": "GrogLibsC.sln",
+	"C_Cpp.default.compilerPath": "/usr/bin/gcc"
+}

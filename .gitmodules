@@ -25,3 +25,6 @@
 [submodule "libpng"]
 	path = libpng
 	url = git@github.com:pnggroup/libpng.git
+[submodule "SDL"]
+	path = SDL
+	url = git@github.com:Kharzette/SDL.git

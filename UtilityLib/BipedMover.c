@@ -68,7 +68,8 @@ BipedMover	*BPM_Create(GameCamera *pGCam)
 {
 	BipedMover	*pRet	=malloc(sizeof(BipedMover));
 
-	pRet->mpGCam	=pGCam;
+	pRet->mpGCam		=pGCam;
+	pRet->mMoveMethod	=MOVE_GROUND;	//default
 
 	return	pRet;
 }

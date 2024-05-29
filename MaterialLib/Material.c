@@ -54,6 +54,8 @@ Material	*MAT_Create(GraphicsDevice *pGD)
 
 	pRet->mSpecPower	=3.0f;
 
+	glm_mat4_identity(pRet->mWorld);
+
 	return	pRet;
 }
 
@@ -64,7 +66,7 @@ void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD)
 	GD_VSSetShader(pGD, pMat->mpVShader);
 	GD_PSSetShader(pGD, pMat->mpPShader);
 	GD_PSSetSRV(pGD, pMat->mpSRV0, 0);
-	GD_PSSetSRV(pGD, pMat->mpSRV0, 1);
+	GD_PSSetSRV(pGD, pMat->mpSRV1, 1);
 
 	//materialish shtuff
 	CBK_SetTrilights3(pCBK, pMat->mTrilight0, pMat->mTrilight1,

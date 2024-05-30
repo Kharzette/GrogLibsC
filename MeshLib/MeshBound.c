@@ -51,10 +51,7 @@ MeshBound	*MeshBound_Read(FILE *f)
 	fread(&pRet->mSphere, sizeof(vec4), 1, f);
 	fread(&pRet->mBox, sizeof(vec3), 2, f);
 
-	uint8_t	choice;
-	fread(&choice, 1, 1, f);	//not sure the size of C# bool
-
-	pRet->mbChoice	=(choice != 0);
+	fread(&pRet->mbChoice, sizeof(bool), 1, f);
 
 	fread(&pRet->mNumParts, sizeof(int), 1, f);
 
@@ -77,4 +74,25 @@ MeshBound	*MeshBound_Read(FILE *f)
 	}
 
 	return	pRet;
+}
+
+void	MeshBound_Write(const MeshBound *pMB, FILE *f)
+{
+	fwrite(&pMB->mSphere, sizeof(vec4), 1, f);
+	fwrite(&pMB->mBox, sizeof(vec3), 2, f);
+
+	fwrite(&pMB->mbChoice, sizeof(bool), 1, f);
+
+	fwrite(&pMB->mNumParts, sizeof(int), 1, f);
+	if(pMB->mNumParts == 0)
+	{
+		return;
+	}
+
+	for(int i=0;i < pMB->mNumParts;i++)
+	{
+		fwrite(pMB->mpPartBoxes[i], sizeof(vec3), 2, f);
+		fwrite(pMB->mpPartSpheres[i], sizeof(vec4), 1, f);
+		fwrite(&pMB->mpChoices[i], sizeof(bool), 1, f);
+	}
 }

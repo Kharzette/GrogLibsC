@@ -11,6 +11,7 @@ typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	CBKeeper_t			CBKeeper;
 
 Character	*Character_Read(const char *szFileName);
+void		Character_Write(const Character *pChar, const char *szFileName);
 void		Character_Destroy(Character *pChar);
 void		Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatName);
 int			Character_GetNumParts(const Character *pChar);

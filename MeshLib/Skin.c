@@ -11,10 +11,12 @@
 typedef struct	Skin_t
 {
 	mat4	mInverseBindPoses[MAX_BONES];
-	mat4	mBindPoses[MAX_BONES];
+	mat4	mBindPoses[MAX_BONES];	
 
 	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
 										//units in meters by default
+	int	mNumBinds;	//num ibp/bp above
+	int	mNumShapes;	//num col shapes below
 										
 	//malloc'd collision shapes for bones
 	vec3	*mpBoneBoxes;		//double num for min/max
@@ -49,10 +51,9 @@ Skin	*Skin_Read(FILE *f)
 	glm_mat4_identity_array(pRet->mInverseBindPoses, MAX_BONES);
 	glm_mat4_identity_array(pRet->mBindPoses, MAX_BONES);
 
-	int	numIBP;
-	fread(&numIBP, sizeof(int), 1, f);
+	fread(&pRet->mNumBinds, sizeof(int), 1, f);
 
-	for(int i=0;i < numIBP;i++)
+	for(int i=0;i < pRet->mNumBinds;i++)
 	{
 		int	idx;
 		fread(&idx, sizeof(int), 1, f);
@@ -64,18 +65,17 @@ Skin	*Skin_Read(FILE *f)
 		glm_mat4_transpose_to(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
 	}
 
-	int	numBoxen;
-	fread(&numBoxen, sizeof(int), 1, f);
+	fread(&pRet->mNumShapes, sizeof(int), 1, f);
 
-	pRet->mpBoneBoxes		=malloc(sizeof(vec3) * 2 * numBoxen);
-	pRet->mpBoneSpheres		=malloc(sizeof(vec4) * numBoxen);
-	pRet->mpBoneCapsules	=malloc(sizeof(vec2) * numBoxen);
-	pRet->mpBoneColShapes	=malloc(sizeof(int) * numBoxen);
+	pRet->mpBoneBoxes		=malloc(sizeof(vec3) * 2 * pRet->mNumShapes);
+	pRet->mpBoneSpheres		=malloc(sizeof(vec4) * pRet->mNumShapes);
+	pRet->mpBoneCapsules	=malloc(sizeof(vec2) * pRet->mNumShapes);
+	pRet->mpBoneColShapes	=malloc(sizeof(int) * pRet->mNumShapes);
 
-	fread(pRet->mpBoneBoxes, sizeof(vec3), 2 * numBoxen, f);
-	fread(pRet->mpBoneSpheres, sizeof(vec4), numBoxen, f);
-	fread(pRet->mpBoneCapsules, sizeof(vec2), numBoxen, f);
-	fread(pRet->mpBoneColShapes, sizeof(int), numBoxen, f);
+	fread(pRet->mpBoneBoxes, sizeof(vec3), 2 * pRet->mNumShapes, f);
+	fread(pRet->mpBoneSpheres, sizeof(vec4), pRet->mNumShapes, f);
+	fread(pRet->mpBoneCapsules, sizeof(vec2), pRet->mNumShapes, f);
+	fread(pRet->mpBoneColShapes, sizeof(int), pRet->mNumShapes, f);
 
 	float	scaleFactor;
 	fread(&scaleFactor, sizeof(float), 1, f);
@@ -88,6 +88,34 @@ Skin	*Skin_Read(FILE *f)
 	fread(pRet->mRootTransform, sizeof(mat4), 1, f);
 
 	return	pRet;
+}
+
+void	Skin_Write(const Skin *pSkin, FILE *f)
+{
+	fwrite(&pSkin->mNumBinds, sizeof(int), 1, f);
+
+	for(int i=0;i < pSkin->mNumBinds;i++)
+	{
+		//this index write looks goofy, but it
+		//is a int dictionary in C# out of order
+		fwrite(&i, sizeof(int), 1, f);
+
+		fwrite(pSkin->mInverseBindPoses[i], sizeof(mat4), 1, f);
+	}
+
+	fwrite(&pSkin->mNumShapes, sizeof(int), 1, f);
+
+	fwrite(pSkin->mpBoneBoxes, sizeof(vec3), 2 * pSkin->mNumShapes, f);
+	fwrite(pSkin->mpBoneSpheres, sizeof(vec4), pSkin->mNumShapes, f);
+	fwrite(pSkin->mpBoneCapsules, sizeof(vec2), pSkin->mNumShapes, f);
+	fwrite(pSkin->mpBoneColShapes, sizeof(int), pSkin->mNumShapes, f);
+
+	//scale factor
+	vec4	scaley;
+	glm_sphere_transform(GLM_VEC4_ONE, pSkin->mScaleMat, scaley);
+	fwrite(&scaley, sizeof(float), 1, f);
+
+	fwrite(&pSkin->mRootTransform, sizeof(mat4), 1, f);	
 }
 
 

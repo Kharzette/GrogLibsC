@@ -91,6 +91,37 @@ Character	*Character_Read(const char *szFileName)
 	return	pRet;
 }
 
+void	Character_Write(const Character *pChar, const char *szFileName)
+{
+	FILE	*f	=fopen(szFileName, "wb");
+	if(f == NULL)
+	{
+		printf("Couldn't open file %s for writing.\n", szFileName);
+		return;
+	}
+
+	uint32_t	magic	=0xCA1EC7BE;
+	fwrite(&magic, sizeof(uint32_t), 1, f);
+
+	fwrite(pChar->mTransform, sizeof(mat4), 1, f);
+
+	MeshBound_Write(pChar->mpBound, f);
+	Skin_Write(pChar->mpSkin, f);
+
+	fwrite(&pChar->mNumParts, sizeof(int), 1, f);
+
+	for(int i=0;i < pChar->mNumParts;i++)
+	{
+		SZ_WriteString(f, pChar->mpParts[i].mpPartName);
+		SZ_WriteString(f, pChar->mpParts[i].mpMatName);
+
+		fwrite(&pChar->mpParts[i].mMaterialID, sizeof(int), 1, f);
+		fwrite(&pChar->mpParts[i].mbVisible, sizeof(bool), 1, f);
+	}
+
+	fclose(f);
+}
+
 void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
 						const MaterialLib *pML, const AnimLib *pAL,
 						GraphicsDevice *pGD, CBKeeper *pCBK)

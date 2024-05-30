@@ -5,6 +5,7 @@
 #include	<string.h>
 #include	<assert.h>
 #include	"../UtilityLib/FileStuff.h"
+#include	"../UtilityLib/StringStuff.h"
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"../MaterialLib/Material.h"
@@ -25,6 +26,10 @@ typedef struct	Mesh_t
 	ID3D11InputLayout	*mpLayout;
 	int					mNumVerts, mNumTriangles, mVertSize;
 	int					mTypeIndex;
+
+	//extra editor stuff if needed
+	void		*mpVertData;
+	uint16_t	*mpIndData;
 }	Mesh;
 
 //C# stored types, but we just need the size
@@ -92,7 +97,8 @@ static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 }
 
 
-Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName)
+Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
+					const char *szFileName, bool bEditor)
 {
 	Mesh	*pMesh	=malloc(sizeof(Mesh));
 	memset(pMesh, 0, sizeof(Mesh));
@@ -113,21 +119,7 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName)
 		return	NULL;
 	}
 
-	uint8_t	nameLen;
-	fread(&nameLen, sizeof(uint8_t), 1, f);
-	if(nameLen > 63)
-	{
-		//too long!
-		fclose(f);
-		free(pMesh);
-		return	NULL;
-	}
-
-	utstring_new(pMesh->mpName);
-
-	char	nameBuf[64];
-	fread(nameBuf, nameLen, 1, f);
-	utstring_printf(pMesh->mpName, "%s", nameBuf);
+	pMesh->mpName	=SZ_ReadString(f);
 
 	fread(&pMesh->mNumVerts, sizeof(int), 1, f);
 	fread(&pMesh->mNumTriangles, sizeof(int), 1, f);
@@ -159,13 +151,14 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName)
 	pMesh->mpVerts	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
 
 	//read indexes
-	bool	bNull;
+	uint16_t	*pInds	=NULL;
+	bool		bNull;
 	fread(&bNull, sizeof(bool), 1, f);
 	if(bNull)
 	{
 		int	numIdx;
 		fread(&numIdx, sizeof(int), 1, f);
-		uint16_t	*pInds	=malloc(numIdx * sizeof(uint16_t));
+		pInds	=malloc(numIdx * sizeof(uint16_t));
 
 		fread(pInds, numIdx * sizeof(uint16_t), 1, f);
 
@@ -173,11 +166,57 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName)
 		pMesh->mpIndexs	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);
 	}
 
+	if(bEditor)
+	{
+		pMesh->mpVertData	=pVerts;
+		pMesh->mpIndData	=pInds;
+	}
+	else
+	{
+		free(pVerts);
+		free(pInds);
+	}
+
 	fclose(f);
 
 	return	pMesh;
 }
 
+void	Mesh_Write(const Mesh *pMesh, const char *szFileName)
+{
+	//make sure this has editor stuff
+	assert(pMesh->mpVertData);
+
+	FILE	*f	=fopen(szFileName, "wb");
+
+	uint32_t	magic	=0xb0135313;
+	fwrite(&magic, sizeof(uint32_t), 1, f);
+
+	SZ_WriteString(f, pMesh->mpName);
+
+	fwrite(&pMesh->mNumVerts, sizeof(int), 1, f);
+	fwrite(&pMesh->mNumTriangles, sizeof(int), 1, f);
+	fwrite(&pMesh->mVertSize, sizeof(int), 1, f);
+	fwrite(&pMesh->mTypeIndex, sizeof(int), 1, f);
+
+	//this is written twice, weird c# stuff
+	fwrite(&pMesh->mTypeIndex, sizeof(int), 1, f);
+	fwrite(&pMesh->mNumVerts, sizeof(int), 1, f);
+
+	fwrite(pMesh->mpVertData, sTypeSizes[pMesh->mTypeIndex], pMesh->mNumVerts, f);
+
+	bool	bIndexed	=(pMesh->mpIndData != NULL);
+	fwrite(&bIndexed, sizeof(bool), 1, f);
+
+	if(bIndexed)
+	{
+		int	numIndexes	=pMesh->mNumTriangles * 3;
+		fwrite(&numIndexes, sizeof(int), 1, f);
+		fwrite(pMesh->mpIndData, sizeof(uint16_t), numIndexes, f);
+	}
+
+	fclose(f);
+}
 
 //an early draw effort, later will have material lib
 void	Mesh_Draw(Mesh *pMesh, GraphicsDevice *pGD, StuffKeeper *pSK,

@@ -12,8 +12,7 @@ typedef struct	CBKeeper_t			CBKeeper;
 Static	*Static_Read(const char *szFileName);
 void	Static_Write(const Static *pStat, const char *szFileName);
 void	Static_Draw(const Static *pStat, const DictSZ *pMeshes,
-					const MaterialLib *pML,
-					GraphicsDevice *pGD, CBKeeper *pCBK);
+					MaterialLib *pML, GraphicsDevice *pGD, CBKeeper *pCBK);
 
 int			Static_GetNumParts(const Static *pStat);
 StringList	*Static_GetPartList(const Static *pStat);

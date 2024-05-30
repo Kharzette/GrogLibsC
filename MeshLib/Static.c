@@ -111,8 +111,7 @@ void	Static_Write(const Static *pStat, const char *szFileName)
 }
 
 void	Static_Draw(const Static *pStat, const DictSZ *pMeshes,
-						const MaterialLib *pML,
-						GraphicsDevice *pGD, CBKeeper *pCBK)
+					MaterialLib *pML, GraphicsDevice *pGD, CBKeeper *pCBK)
 {
 	for(int i=0;i < pStat->mNumParts;i++)
 	{

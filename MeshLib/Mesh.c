@@ -107,6 +107,7 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 	if(f == NULL)
 	{
 		free(pMesh);
+		printf("Couldn't open file %s\n", szFileName);
 		return	NULL;
 	}
 
@@ -116,6 +117,7 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 	{
 		fclose(f);
 		free(pMesh);
+		printf("Bad magic for Mesh_Read() %s\n", szFileName);
 		return	NULL;
 	}
 

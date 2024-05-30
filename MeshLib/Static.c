@@ -34,6 +34,7 @@ Static	*Static_Read(const char *szFileName)
 	FILE	*f	=fopen(szFileName, "rb");
 	if(f == NULL)
 	{
+		printf("Couldn't open file %s\n", szFileName);
 		return	NULL;
 	}
 
@@ -42,6 +43,7 @@ Static	*Static_Read(const char *szFileName)
 	if(magic != 0x57A71C15)
 	{
 		fclose(f);
+		printf("Bad magic for Static_Read() %s\n", szFileName);
 		return	NULL;
 	}
 	Static	*pRet	=malloc(sizeof(Static));

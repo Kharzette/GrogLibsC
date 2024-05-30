@@ -41,6 +41,7 @@ Character	*Character_Read(const char *szFileName)
 	FILE	*f	=fopen(szFileName, "rb");
 	if(f == NULL)
 	{
+		printf("Couldn't open file %s\n", szFileName);
 		return	NULL;
 	}
 
@@ -49,6 +50,7 @@ Character	*Character_Read(const char *szFileName)
 	if(magic != 0xCA1EC7BE)
 	{
 		fclose(f);
+		printf("Bad magic for Character_Read() %s\n", szFileName);
 		return	NULL;
 	}
 	Character	*pRet	=malloc(sizeof(Character));

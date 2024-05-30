@@ -19,6 +19,7 @@ AnimLib	*AnimLib_Read(const char *fileName)
 	FILE	*f	=fopen(fileName, "rb");
 	if(f == NULL)
 	{
+		printf("Couldn't open file %s\n", fileName);
 		return	NULL;
 	}
 
@@ -28,6 +29,7 @@ AnimLib	*AnimLib_Read(const char *fileName)
 	if(magic != 0xA91BA7E)
 	{
 		fclose(f);
+		printf("Bad magic for AnimLib_Read() %s\n", fileName);
 		return	NULL;
 	}
 

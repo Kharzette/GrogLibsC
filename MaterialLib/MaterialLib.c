@@ -67,6 +67,57 @@ MaterialLib	*MatLib_Read(const char *pFileName, StuffKeeper *pSK)
 	return	pRet;
 }
 
+typedef struct	MatSaveContext_t
+{
+	FILE		*f;
+	StuffKeeper	*pSK;
+}	MatSaveContext;
+
+static void	sWriteMatsCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	MatSaveContext	*pMSC	=(MatSaveContext *)pContext;
+	if(pMSC == NULL)
+	{
+		return;
+	}
+
+	Material	*pMat	=(Material *)pValue;
+	if(pMat == NULL)
+	{
+		return;
+	}
+
+	SZ_WriteString(pMSC->f, pKey);
+
+	MAT_Write(pMat, pMSC->f, pMSC->pSK);
+}
+
+void	MatLib_Write(const MaterialLib *pML, const char *szFileName)
+{
+	FILE	*f	=fopen(szFileName, "wb");
+	if(f == NULL)
+	{
+		printf("Couldn't open %s for writing.\n", szFileName);
+		return;
+	}
+
+	uint32_t	magic	=0xFA77DA77;
+
+	fwrite(&magic, sizeof(uint32_t), 1, f);
+
+	int	numMats	=DictSZ_Count(pML->mpMats);
+	fwrite(&numMats, sizeof(int), 1, f);
+
+	MatSaveContext	msc;
+
+	msc.f	=f;
+	msc.pSK	=pML->mpSKeeper;
+
+	DictSZ_ForEach(pML->mpMats, sWriteMatsCB, &msc);
+
+	fclose(f);
+}
+
 void	MatLib_Add(MaterialLib *pML, const char *szName, Material *pMat)
 {
 	if(DictSZ_ContainsKeyccp(pML->mpMats, szName))

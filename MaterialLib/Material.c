@@ -251,6 +251,73 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 	return	pRet;
 }
 
+void	MAT_Write(const Material *pMat, FILE *f, const StuffKeeper *pSK)
+{
+	const UT_string	*szVS	=StuffKeeper_GetVSName(pSK, pMat->mpVShader);
+	const UT_string	*szPS	=StuffKeeper_GetPSName(pSK, pMat->mpPShader);
+
+	SZ_WriteString(f, szVS);
+	SZ_WriteString(f, szPS);
+
+	UT_string	*szFakeStates;
+	utstring_new(szFakeStates);
+
+	utstring_printf(szFakeStates, "FakeBlort");
+
+	//I'll do these eventually
+	SZ_WriteString(f, szFakeStates);
+	SZ_WriteString(f, szFakeStates);
+	SZ_WriteString(f, szFakeStates);
+	SZ_WriteString(f, szFakeStates);
+
+	fwrite(&pMat->mMaterialID, sizeof(int), 1, f);
+
+	bool	bBSP	=false;
+	fwrite(&bBSP, sizeof(bool), 1, f);
+
+	bool	bMesh	=true;
+	fwrite(&bMesh, sizeof(bool), 1, f);
+
+	fwrite(pMat->mSolidColour, sizeof(vec4), 1, f);
+
+	//lotsa v4s that should be v3s
+	vec4	tempSpec	={	pMat->mSpecular[0], pMat->mSpecular[1], pMat->mSpecular[2], 1.0f	};
+	fwrite(tempSpec, sizeof(vec4), 1, f);
+
+	vec4	tempT0	={	pMat->mTrilight0[0], pMat->mTrilight0[1], pMat->mTrilight0[2], 1.0f	};
+	fwrite(tempT0, sizeof(vec4), 1, f);
+	vec4	tempT1	={	pMat->mTrilight1[0], pMat->mTrilight1[1], pMat->mTrilight1[2], 1.0f	};
+	fwrite(tempT1, sizeof(vec4), 1, f);
+	vec4	tempT2	={	pMat->mTrilight2[0], pMat->mTrilight2[1], pMat->mTrilight2[2], 1.0f	};
+	fwrite(tempT2, sizeof(vec4), 1, f);
+
+	fwrite(pMat->mLightDirection, sizeof(vec3), 1, f);
+	fwrite(pMat->mDanglyForce, sizeof(vec3), 1, f);
+	fwrite(&pMat->mSpecPower, sizeof(float), 1, f);
+
+	const UT_string	*szSRV0	=StuffKeeper_GetSRVName(pSK, pMat->mpSRV0);
+	const UT_string	*szSRV1	=StuffKeeper_GetSRVName(pSK, pMat->mpSRV1);
+
+	//check for null strings
+	uint8_t	empty	=0;
+	if(szSRV0 == NULL)
+	{
+		fwrite(&empty, sizeof(uint8_t), 1, f);
+	}
+	else
+	{
+		SZ_WriteString(f, szSRV0);
+	}
+	if(szSRV1 == NULL)
+	{
+		fwrite(&empty, sizeof(uint8_t), 1, f);
+	}
+	else
+	{
+		SZ_WriteString(f, szSRV1);
+	}
+}
+
 //get functions for gui etc
 const ID3D11VertexShader	*MAT_GetVShader(const Material *pMat)
 {

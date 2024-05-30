@@ -21,6 +21,13 @@ void	KeyFrame_Read(FILE *f, KeyFrame *pKey)
 	fread(pKey->mScale, sizeof(vec3), 1, f);
 }
 
+void	KeyFrame_Write(const KeyFrame *pKey, FILE *f)
+{
+	fwrite(pKey->mRotation, sizeof(vec4), 1, f);
+	fwrite(pKey->mPosition, sizeof(vec3), 1, f);
+	fwrite(pKey->mScale, sizeof(vec3), 1, f);
+}
+
 
 void	KeyFrame_GetMatrix(const KeyFrame *pKey, mat4 mat)
 {

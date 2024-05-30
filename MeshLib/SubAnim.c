@@ -58,6 +58,23 @@ SubAnim	*SubAnim_Read(FILE *f, const Skeleton *pSkel)
 	return	pRet;
 }
 
+void	SubAnim_Write(const SubAnim *pSA, FILE *f)
+{	
+	SZ_WriteString(f, pSA->szBoneName);
+
+	fwrite(&pSA->mNumKeys, sizeof(int), 1, f);
+
+	fwrite(pSA->mpTimes, sizeof(float), pSA->mNumKeys, f);
+
+	fwrite(&pSA->mNumKeys, sizeof(int), 1, f);
+
+	for(int i=0;i < pSA->mNumKeys;i++)
+	{
+		KeyFrame_Write(&pSA->mpKeys[i], f);
+	}
+
+	fwrite(&pSA->mTotalTime, sizeof(float), 1, f);
+}
 
 void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping)
 {	

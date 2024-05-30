@@ -8,5 +8,6 @@ typedef struct	Skeleton_t	Skeleton;
 
 
 SubAnim	*SubAnim_Read(FILE *f, const Skeleton *pSkel);
+void	SubAnim_Write(const SubAnim *pSA, FILE *f);
 void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping);
 void	SubAnim_Destroy(SubAnim *pSA);

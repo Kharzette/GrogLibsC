@@ -44,6 +44,22 @@ GSNode	*GSNode_Read(FILE *f)
 	return	pRet;
 }
 
+void	GSNode_Write(const GSNode *pNode, FILE *f)
+{
+	SZ_WriteString(f, pNode->szName);
+
+	KeyFrame_Write(&pNode->mKeyValue, f);
+
+	fwrite(&pNode->mNumChildren, sizeof(int), 1, f);
+	if(pNode->mNumChildren > 0)
+	{
+		for(int i=0;i < pNode->mNumChildren;i++)
+		{
+			GSNode_Write(pNode->mpChildren[i], f);
+		}
+	}
+}
+
 
 KeyFrame	*GSNode_GetKeyByName(GSNode *pNode, const char *pName)
 {

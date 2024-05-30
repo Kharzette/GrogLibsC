@@ -56,6 +56,45 @@ AnimLib	*AnimLib_Read(const char *fileName)
 	return	pRet;
 }
 
+static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	Anim	*pAnm	=(Anim *)pValue;
+	if(pAnm == NULL)
+	{
+		return;
+	}
+
+	FILE	*f	=(FILE *)pContext;
+	if(f == NULL)
+	{
+		return;
+	}
+
+	Anim_Write(pAnm, f);
+}
+
+void	AnimLib_Write(const AnimLib *pAL, const char *szFileName)
+{
+	FILE	*f	=fopen(szFileName, "wb");
+	if(f == NULL)
+	{
+		printf("Couldn't open %s for writing.\n", szFileName);
+		return;
+	}
+
+	uint32_t	magic	=0xA91BA7E;
+	fwrite(&magic, sizeof(uint32_t), 1, f);
+
+	Skeleton_Write(pAL->mpSkeleton, f);
+
+	int	anmCount	=DictSZ_Count(pAL->mpAnims);
+	fwrite(&anmCount, sizeof(int), 1, f);
+
+	DictSZ_ForEach(pAL->mpAnims, sSaveAnimsCB, f);
+
+	fclose(f);
+}
+
 
 void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 {

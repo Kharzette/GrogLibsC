@@ -10,6 +10,7 @@ typedef struct	GSNode_t	GSNode;
 
 
 GSNode	*GSNode_Read(FILE *f);
+void	GSNode_Write(const GSNode *pNode, FILE *f);
 
 KeyFrame	*GSNode_GetKeyByName(GSNode *pNode, const char *pName);
 KeyFrame	*GSNode_GetKeyByIndex(GSNode *pNode, int index);

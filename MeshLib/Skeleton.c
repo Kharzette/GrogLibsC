@@ -31,6 +31,16 @@ Skeleton	*Skeleton_Read(FILE *f)
 	return	pRet;
 }
 
+void	Skeleton_Write(const Skeleton *pSkel, FILE *f)
+{
+	fwrite(&pSkel->mNumRoots, sizeof(int), 1, f);
+
+	for(int i=0;i < pSkel->mNumRoots;i++)
+	{
+		GSNode_Write(pSkel->mpRoots[i], f);
+	}
+}
+
 
 KeyFrame	*Skeleton_GetBoneKey(const Skeleton *pSkel, const char *szName)
 {

@@ -3,6 +3,7 @@
 #include	<stdio.h>
 #include	<string.h>
 #include	<cglm/call.h>
+#include	"MeshPart.h"
 #include	"Skin.h"
 #include	"Mesh.h"
 #include	"MeshBound.h"
@@ -17,14 +18,6 @@
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES		55
-
-typedef struct	MeshPart_t
-{
-	UT_string	*mpPartName;
-	UT_string	*mpMatName;
-	int			mMaterialID;
-	bool		mbVisible;
-}	MeshPart;
 
 typedef struct	Character_t
 {

@@ -576,12 +576,16 @@ int	main(void)
 	res	=FAudio_StartEngine(pFA);
 	assert(!res);
 
+	//there's always a pop
+	sleep(2);
+
 	vec3	zvec;
 	glm_vec3_zero(zvec);
 
-	if(!SoundEffectPlay("JumpIdle", zvec))
+	for(int i=0;i < numLoaded;i++)
 	{
-		printf("Error playing sound!.\n");
+		SoundEffectPlayIdx(i, zvec);
+		sleep(1);
 	}
 
 	//lazy wait for sound effect to finish

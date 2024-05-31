@@ -346,14 +346,9 @@ int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA, uint32_t numChannel
 	return	count;
 }
 
-//think about returning indexes to save on string compares?
-bool	SoundEffectPlay(const char *szName, vec3 position)
+bool	SoundEffectPlayIdx(int idx, vec3 position)
 {
-	int	idx	=GetIndex(szName);
-	if(idx == -1)
-	{
-		return	false;
-	}
+	idx	%=sNumSFX;
 
 	SoundEffect	*pSFX	=&sSoundFX[idx];
 
@@ -380,6 +375,17 @@ bool	SoundEffectPlay(const char *szName, vec3 position)
 	pSFX->mEmitter.Position.z	=position[2];
 
 	return	(res == 0);
+}
+
+//think about returning indexes to save on string compares?
+bool	SoundEffectPlay(const char *szName, vec3 position)
+{
+	int	idx	=GetIndex(szName);
+	if(idx == -1)
+	{
+		return	false;
+	}
+	return	SoundEffectPlayIdx(idx, position);
 }
 
 

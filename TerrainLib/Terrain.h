@@ -48,3 +48,7 @@ int	Terrain_SphereIntersect(const Terrain *pTer, const vec3 pos, float radius, v
 //return footing
 int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
 					   float radius, vec3 finalPos);
+
+
+void	Terrain_SweptSphereIntersectPL(const Terrain *pTer, const vec3 start, const vec3 end,
+										float radius, Vec4List **ppPlanesHit);

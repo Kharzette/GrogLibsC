@@ -6,6 +6,7 @@
 #include	<assert.h>
 #include	"../UtilityLib/FileStuff.h"
 #include	"../UtilityLib/MiscStuff.h"
+#include	"../UtilityLib/ListStuff.h"
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"../MaterialLib/Material.h"
@@ -14,7 +15,7 @@
 #include	"QuadNode.h"	//for testing splits
 #include	"Terrain.h"
 
-#define	FOOT_CHECK	0.2f
+#define	FOOT_CHECK	0.1f
 
 
 typedef struct	Terrain_t
@@ -502,6 +503,13 @@ int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const ve
 	return	QT_SweptSphereIntersect(pTer->mpQT, start, end, radius, intersection, planeHit);
 }
 
+//keep a list of the planes struck
+void	Terrain_SweptSphereIntersectPL(const Terrain *pTer, const vec3 start, const vec3 end,
+										float radius, Vec4List **ppPlanesHit)
+{
+	return	QT_SweptSphereIntersectPL(pTer->mpQT, start, end, radius, ppPlanesHit);
+}
+
 int	Terrain_SphereIntersect(const Terrain *pTer, const vec3 pos, float radius, vec4 planeHit)
 {
 	return	QT_SphereIntersect(pTer->mpQT, pos, radius, planeHit);
@@ -526,23 +534,24 @@ static int	FootCheck(const Terrain *pTer, const vec3 pos, float radius)
 {
 	vec4	plane;
 	int	res	=Terrain_SphereIntersect(pTer, pos, radius, plane);
-	if(res == TER_HIT || TER_HIT_INSIDE)
+	if(res == TER_INSIDE)
+	{
+		return	2;	//bad
+	}
+
+	if(res == TER_HIT || res == TER_HIT_INSIDE)
 	{
 		//probably shouldn't be hitting, but whateva
-		if(PM_IsGround(plane))
+		if(!PM_IsGround(plane))
 		{
-			return	1;
+			return	2;	//probably bad
 		}
-	}
-	else if(res == TER_INSIDE)
-	{
-		return	2;
 	}
 
 	//if in air, expand the radius slightly to
 	//check if the sphere is just off the ground
 	res	=Terrain_SphereIntersect(pTer, pos, radius + FOOT_CHECK, plane);
-	if(res == TER_HIT || TER_HIT_INSIDE)
+	if(res == TER_HIT || res == TER_HIT_INSIDE)
 	{
 		if(PM_IsGround(plane))
 		{
@@ -566,83 +575,52 @@ int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
 	glm_vec3_copy(start, newStart);
 	glm_vec3_copy(end, newEnd);
 
-	//force newStart to valid
-	for(;;)
-	{
-		vec4	plane;
-		int	hit	=Terrain_SphereIntersect(pTer, newStart, radius, plane);
-		if(hit == TER_MISS)
-		{
-			break;
-		}
 
-		PM_ReflectSphere(plane, radius, newStart);
-	}
+
+	//make this plane list or skip it
+	//force newStart to valid
+//	for(;;)
+//	{
+//		vec4	plane;
+//		int	hit	=Terrain_SphereIntersect(pTer, newStart, radius, plane);
+//		if(hit == TER_MISS)
+//		{
+//			break;
+//		}
+//
+//		PM_ReflectSphere(plane, radius, newStart);
+//	}
 
 	int	maxIter	=5;
 
-	for(i=0;i < maxIter;i++)
+	Vec4List	*pPlanesHit	=V4List_New();
+
+	Terrain_SweptSphereIntersectPL(pTer, newStart, newEnd, radius, &pPlanesHit);
+
+	int	count	=V4List_Count(pPlanesHit);
+	if(count == 0)
 	{
-		vec3	intersection;
-		vec4	plane;
+		glm_vec3_copy(newEnd, finalPos);
 
-		glm_vec3_fill(intersection, FLT_MAX);
-
-		//make sure the start point is valid
-		int	startHit	=Terrain_SphereIntersect(pTer, newStart, radius, plane);
-		if(startHit != TER_MISS)
-		{
-			PM_ReflectSphere(plane, radius, newStart);
-			__attribute_maybe_unused__
-			float	check	=PM_Distance(plane, newStart);
-			continue;
-		}
-
-		int	hit	=Terrain_SweptSphereIntersect(pTer, newStart, newEnd, radius, intersection, plane);
-		if(hit == TER_MISS)
-		{
-			break;
-		}
-
-		if(hit == TER_HIT_INSIDE || hit == TER_INSIDE)
-		{
-			//started in a solid leaf
-			PM_ReflectSphere(plane, radius, newStart);
-			__attribute_maybe_unused__
-			float	check	=PM_Distance(plane, newStart);
-			continue;
-		}
-
-		//move slightly off hit plane
-		PM_ReflectSphere(plane, radius, intersection);
-
-		//reflect off plane hit to new endpoint
-		PM_ReflectSphere(plane, radius, newEnd);
-//		PM_ReflectMove(plane, newStart, newEnd, newEnd);
-
-		//copy intersect point to start
-		glm_vec3_copy(intersection, newStart);
+		return	FootCheck(pTer, finalPos, radius);
 	}
 
-	if(i == maxIter)
+	const Vec4List	*pVIter	=V4List_Iterate(pPlanesHit);
+	for(int i=0;i < count;i++)
 	{
-		printf("Max Iterations!\n");
+		vec4	hitPlane;
+		vec3	intersect;
+
+		glm_vec4_copy(V4List_IteratorVal(pVIter), hitPlane);
+
+		PM_ReflectMoveSphere(hitPlane, newStart, newEnd, radius, intersect);
+
+		glm_vec3_copy(newEnd, newStart);
+
+		glm_vec3_copy(intersect, newStart);
 	}
 
-	glm_vec3_copy(newEnd, finalPos);
-
-	//force finalPos to valid
-	for(;;)
-	{
-		vec4	plane;
-		int	hit	=Terrain_SphereIntersect(pTer, finalPos, radius, plane);
-		if(hit == TER_MISS)
-		{
-			break;
-		}
-
-		PM_ReflectSphere(plane, radius, finalPos);
-	}
+	glm_vec3_copy(newStart, finalPos);
 
 	return	FootCheck(pTer, finalPos, radius);
 }

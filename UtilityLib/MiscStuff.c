@@ -460,3 +460,13 @@ float	Misc_ComputeAngleSum(const vec3 pointOnPlane, const vec3 *pVerts, int numV
 	}
 	return	dotSum;
 }
+
+bool	Misc_CompareVec4s(const vec4 a, const vec4 b)
+{
+	return	((a[0] == b[0]) && (a[1] == b[1]) && (a[2] == b[2]) && (a[3] == b[3]));
+}
+
+bool	Misc_CompareVec3s(const vec3 a, const vec3 b)
+{
+	return	((a[0] == b[0]) && (a[1] == b[1]) && (a[2] == b[2]));
+}

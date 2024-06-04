@@ -1,7 +1,9 @@
 #include	<stdint.h>
 #include	<stdbool.h>
+#include	<cglm/call.h>
 #include	"utlist.h"
 #include	"utstring.h"
+#include	"MiscStuff.h"
 
 
 //an attempt at making more C# style lists using utlist behind the scenes
@@ -13,6 +15,13 @@ typedef struct	StringList_t
 
 	struct StringList_t	*next;
 }	StringList;
+
+typedef struct	Vec4List_t
+{
+	vec4	mVec;
+
+	struct Vec4List_t	*next;
+}	Vec4List;
 
 
 StringList	*SZList_New(void)
@@ -96,7 +105,6 @@ void	SZList_Remove(StringList **ppSL, const char *pSZ)
 	}
 }
 
-
 void	SZList_RemoveUT(StringList **ppSL, const UT_string *pSZ)
 {
 	StringList	*pTmp, *pElement	=NULL;
@@ -169,4 +177,102 @@ const char	*SZList_IteratorVal(const StringList *pIter)
 const UT_string	*SZList_IteratorValUT(const StringList *pIter)
 {
 	return	pIter->mpSZ;
+}
+
+
+Vec4List	*V4List_New(void)
+{
+	return	NULL;
+}
+
+
+void	V4List_Add(Vec4List **ppVL, const vec4 vec)
+{
+	Vec4List	*pNew	=malloc(sizeof(Vec4List));
+
+	//copy into structure
+	glm_vec4_copy(vec, pNew->mVec);
+
+	pNew->next	=NULL;
+
+	LL_APPEND(*ppVL, pNew);
+}
+
+
+void	V4List_Clear(Vec4List **ppVL)
+{
+	Vec4List	*pTmp, *pElement	=NULL;
+
+	LL_FOREACH_SAFE(*ppVL, pElement, pTmp)
+	{
+		LL_DELETE(*ppVL, pElement);
+
+		//free data
+		free(pElement);
+	}
+}
+
+
+void	V4List_Remove(Vec4List **ppVL, const vec4 vec)
+{
+	Vec4List	*pTmp, *pElement	=NULL;
+
+	LL_FOREACH_SAFE(*ppVL, pElement, pTmp)
+	{
+		if(Misc_CompareVec4s(pElement->mVec, vec))
+		{
+			//remove from list
+			LL_DELETE(*ppVL, pElement);
+
+			//free data
+			free(pElement);
+
+			return;
+		}
+	}
+}
+
+
+bool	V4List_Contains(const Vec4List *pVL, const vec4 vec)
+{
+	const Vec4List	*pElement	=NULL;
+
+	LL_FOREACH(pVL, pElement)
+	{
+		if(Misc_CompareVec4s(pElement->mVec, vec))
+		{
+			return	true;
+		}
+	}
+	return	false;
+}
+
+
+int	V4List_Count(const Vec4List *pVL)
+{
+	int	cnt	=0;
+
+	const Vec4List	*pElement	=NULL;
+
+	LL_COUNT(pVL, pElement, cnt);
+
+	return	cnt;
+}
+
+
+const Vec4List	*V4List_Iterate(const Vec4List *pList)
+{
+	const Vec4List	*pRet	=pList;
+
+	return	pRet;
+}
+
+const Vec4List	*V4List_IteratorNext(const Vec4List *pIter)
+{
+	return	pIter->next;
+}
+
+const float *V4List_IteratorVal(const Vec4List *pIter)
+{
+	return	pIter->mVec;
 }

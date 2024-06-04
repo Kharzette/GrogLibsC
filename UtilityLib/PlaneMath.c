@@ -354,6 +354,13 @@ int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3
 		//start and end both behind triangle
 		//This could early out in a volumetric dataset
 		bInside	=true;
+
+		//intersect not set here, re-run with pushed start
+		vec3	newStart;
+		glm_vec3_copy(start, newStart);
+		PM_ReflectPosition(triPlane, newStart);
+		int	res2	=PM_LineIntersectPlane(triPlane, newStart, end, intersection);
+		assert(res2 == PLANE_HIT);
 	}
 
 	//return plane back to real value
@@ -403,24 +410,16 @@ int	PM_SweptSphereToTriIntersect(const vec3 tri[3], const vec3 start, const vec3
 		return	MISS;
 	}
 
-	//direct plane hit
-	if(dist01 <= 0.001f && dist02 <= 0.001f && dist12 <= 0.001f)
+	//tri hit
+	glm_vec4_copy(triPlane, hitPlane);
+	glm_vec3_copy(intersection, hit);
+
+	if(bInside)
 	{
-		glm_vec4_copy(triPlane, hitPlane);
-		glm_vec3_copy(intersection, hit);
-
-		if(bInside)
-		{
-			return	INSIDE_INTERSECT;
-		}
-
-		return	INTERSECT;
+		return	INSIDE_INTERSECT;
 	}
 
-	//For closed meshes I THINK this is enough...
-	//For free floating triangles I think additional checks for
-	//edge and vertex collisions would need to be done here.
-	return	MISS;
+	return	INTERSECT;
 }
 
 int	PM_SphereToTriIntersect(const vec3 tri[3], const vec3 pos, float radius, vec4 hitPlane)
@@ -636,6 +635,42 @@ void	PM_ReflectMove(const vec4 plane, const vec3 start, const vec3 end, vec3 new
 		glm_vec3_scale(plane, dist - DIST_EPSILON, scaledNorm);
 		glm_vec3_sub(end, scaledNorm, newPos);
 	}
+}
+
+//push slightly to the front side
+void	PM_ReflectMoveSphere(const vec4 plane, const vec3 start, const vec3 end, float radius, vec3 newPos)
+{
+	vec4	radPlane;
+
+	glm_vec4_copy(plane, radPlane);
+
+	//expand by radius
+	radPlane[3]	+=radius;
+
+	int	res	=PM_LineIntersectPlane(radPlane, start, end, newPos);
+	if(res == PLANE_BACK)
+	{
+		//both start and end are behind the plane
+		//this probably shouldn't happen
+		vec3	newStart;
+		glm_vec3_copy(start, newStart);
+		PM_ReflectPosition(radPlane, newStart);
+		PM_ReflectMoveSphere(plane, newStart, end, radius, newPos);
+		return;
+	}
+
+	if(res == PLANE_FRONT)
+	{
+		//no intersection
+		glm_vec3_copy(end, newPos);
+	}
+	
+
+	vec3	scaledNorm;
+	glm_vec3_scale(radPlane, DIST_EPSILON, scaledNorm);
+
+	//adjust it to the front side
+	glm_vec3_add(scaledNorm, newPos, newPos);
 }
 
 //adjust a position just off the front side

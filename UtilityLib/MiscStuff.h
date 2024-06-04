@@ -40,6 +40,8 @@ extern void		Misc_RandomDirection(vec3 dir);
 extern void		Misc_RandomColour(vec4 col);
 extern void		Misc_BuildBasisVecsFromDirection(const vec3 direction, vec3 baseX, vec3 baseY, vec3 baseZ);
 extern float	Misc_ComputeAngleSum(const vec3 pointOnPlane, const vec3 *pVerts, int numVerts);
+extern bool		Misc_CompareVec4s(const vec4 a, const vec4 b);
+extern bool		Misc_CompareVec3s(const vec3 a, const vec3 b);
 
 //collision stuff
 extern bool	Misc_CheckTwoAABBOverlap(const vec3 aMin, const vec3 aMax, const vec3 bMin, const vec3 bMax);

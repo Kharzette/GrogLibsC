@@ -5,6 +5,7 @@
 #include	<assert.h>
 #include	"../UtilityLib/FileStuff.h"
 #include	"../UtilityLib/MiscStuff.h"
+#include	"../UtilityLib/ListStuff.h"
 #include	"../UtilityLib/PlaneMath.h"
 #include	"QuadNode.h"
 #include	"Terrain.h"
@@ -183,6 +184,34 @@ static int	SweptSphereIntersectLeafNode(const QuadNode *pQN, const vec3 start, c
 		}
 	}
 	return	ret;
+}
+
+static void	SweptSphereIntersectLeafNodePL(const QuadNode *pQN, const vec3 start, const vec3 end,
+											float radius, Vec4List **ppPlanesHit)
+{
+	assert(pQN->mpQLD);
+
+	for(int i=0;i < LEAF_TRIS;i++)
+	{
+		vec3	hit;
+		vec4	hitPlane;
+
+		vec3	tri[3];
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[i * 3]], tri[0]);
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[(i * 3) + 1]], tri[1]);
+		glm_vec3_copy(pQN->mpQLD->mCollisionVerts[pQN->mpQLD->mCollisionIndexes[(i * 3) + 2]], tri[2]);
+
+		int	res	=PM_SweptSphereToTriIntersect(tri, start, end, radius, hit, hitPlane);
+		if(res == MISS)
+		{
+			continue;
+		}
+
+		if(!V4List_Contains(*ppPlanesHit, hitPlane))
+		{
+			V4List_Add(ppPlanesHit, hitPlane);
+		}
+	}
 }
 
 static int	SphereIntersectLeafNode(const QuadNode *pQN, const vec3 pos, float radius,
@@ -618,6 +647,36 @@ int	QN_SweptSphereIntersect(const QuadNode *pQN, const vec3 rayStart, const vec3
 	}
 
 	return	ret;
+}
+
+void	QN_SweptSphereIntersectPL(const QuadNode *pQN, const vec3 rayStart, const vec3 end,
+								const vec3 invDir, float radius, float rayLen,
+								Vec4List **ppPlanesHit)
+{
+	vec3	bounds[2];
+	glm_vec3_copy(pQN->mMins, bounds[0]);
+	glm_vec3_copy(pQN->mMaxs, bounds[1]);
+
+	//expand by radius
+	Misc_ExpandBounds(bounds[0], bounds[1], radius);
+
+	//fast intersect check for nodes
+	//don't need plane hit or point returned, just a yes or no
+	if(!Misc_RayIntersectBounds(rayStart, invDir, rayLen, bounds))
+	{
+		return;
+	}
+
+	if(pQN->mpQLD)	//leaf?
+	{
+		SweptSphereIntersectLeafNodePL(pQN, rayStart, end, radius, ppPlanesHit);
+		return;
+	}
+
+	QN_SweptSphereIntersectPL(pQN->mpChildA, rayStart, end, invDir, radius, rayLen, ppPlanesHit);
+	QN_SweptSphereIntersectPL(pQN->mpChildB, rayStart, end, invDir, radius, rayLen, ppPlanesHit);
+	QN_SweptSphereIntersectPL(pQN->mpChildC, rayStart, end, invDir, radius, rayLen, ppPlanesHit);
+	QN_SweptSphereIntersectPL(pQN->mpChildD, rayStart, end, invDir, radius, rayLen, ppPlanesHit);
 }
 
 //non moving sphere intersect

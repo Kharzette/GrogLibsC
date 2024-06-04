@@ -25,4 +25,5 @@ bool	PM_IsGround(const vec4 plane);
 void	PM_ReflectMove(const vec4 plane, const vec3 start, const vec3 end, vec3 newPos);
 void	PM_ReflectPosition(const vec4 plane, vec3 pos);
 void	PM_ReflectSphere(const vec4 plane, float radius, vec3 pos);
+void	PM_ReflectMoveSphere(const vec4 plane, const vec3 start, const vec3 end, float radius, vec3 newPos);
 bool	PM_MoveAlong(const vec4 plane, vec3 moveVec);

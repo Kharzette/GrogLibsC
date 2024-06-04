@@ -3,6 +3,7 @@
 #include	<string.h>
 #include	<assert.h>
 #include	"../UtilityLib/FileStuff.h"
+#include	"../UtilityLib/ListStuff.h"
 #include	"../UtilityLib/MiscStuff.h"
 #include	"../UtilityLib/ConvexVolume.h"
 #include	"Terrain.h"
@@ -141,6 +142,24 @@ int	QT_SweptSphereIntersect(const QuadTree *pQT, const vec3 start, const vec3 en
 	Misc_SSE_ReciprocalVec3(rayDir, invDir);
 
 	return	QN_SweptSphereIntersect(pQT->mpRoot, start, end, invDir, radius, rayLen, intersection, planeHit);
+}
+
+void	QT_SweptSphereIntersectPL(const QuadTree *pQT, const vec3 start, const vec3 end,
+								float radius, Vec4List **ppPlanesHit)
+{
+	//convert to a ray format
+	vec3	rayDir;
+
+	glm_vec3_sub(end, start, rayDir);
+
+	float	rayLen	=glm_vec3_norm(rayDir);
+
+	glm_vec3_scale(rayDir, 1.0f / rayLen, rayDir);
+
+	vec3	invDir;
+	Misc_SSE_ReciprocalVec3(rayDir, invDir);
+
+	QN_SweptSphereIntersectPL(pQT->mpRoot, start, end, invDir, radius, rayLen, ppPlanesHit);
 }
 
 int	QT_SphereIntersect(const QuadTree *pQT, const vec3 pos, float radius, vec4 planeHit)

@@ -74,6 +74,11 @@ BipedMover	*BPM_Create(GameCamera *pGCam)
 	return	pRet;
 }
 
+void	BPM_SetMoveMethod(BipedMover *pBM, int method)
+{
+	pBM->mMoveMethod	=method;
+}
+
 bool    BPM_IsGoodFooting(const BipedMover *pBPM)
 {
 	return	(pBPM->mbOnGround && !pBPM->mbBadFooting);

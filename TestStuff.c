@@ -109,7 +109,7 @@ typedef struct	TestStuff_t
 //static forward decs
 static void		TestManyRays(const Terrain *pTer);
 static void		PrintRandomPointInTerrain(const Terrain *pTer);
-static int		TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
+static bool		TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane);
 __attribute_maybe_unused__
 static int		TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane);
 static void		ReBuildManyRayPrims(PrimObject **ppMR, PrimObject **ppMI, GraphicsDevice *pGD);
@@ -246,7 +246,9 @@ __attribute_maybe_unused__
 
 	float	aspect	=(float)RESX / (float)RESY;
 
-	mat4	charMat, hitSphereMat;
+	//these need align
+	__attribute((aligned(32)))	mat4	charMat, hitSphereMat, camProj;
+	__attribute((aligned(32)))	mat4	textProj, viewMat, headMat, guraMat;
 
 	pTS->mEyePos[1]	=0.6f;
 	pTS->mEyePos[2]	=4.5f;
@@ -260,12 +262,10 @@ __attribute_maybe_unused__
 //	SoundEffectPlay("synth(4)", pTS->mPlayerPos);
 
 	//3D Projection
-	mat4	camProj;
 	GameCam_GetProjection(pTS->mpCam, camProj);
 	CBK_SetProjection(pCBK, camProj);
 
 	//2d projection for text
-	mat4	textProj;
 	glm_ortho(0, RESX, RESY, 0, -1.0f, 1.0f, textProj);
 
 	//set constant buffers to shaders, think I just have to do this once
@@ -505,11 +505,11 @@ __attribute_maybe_unused__
 		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
 
 		//draw test cube
-//		GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, pCube->mVertSize, 0);
-//		GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
+		GD_IASetVertexBuffers(pTS->mpGD, pCube->mpVB, pCube->mVertSize, 0);
+		GD_IASetIndexBuffers(pTS->mpGD, pCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
-//		MAT_Apply(pCubeMat, pCBK, pTS->mpGD);
-//		GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
+		MAT_Apply(pCubeMat, pCBK, pTS->mpGD);
+		GD_DrawIndexed(pTS->mpGD, pCube->mIndexCount, 0, 0);
 
 		//impact sphere VB/IB etc
 		if(pTS->mDrawHit != MISS)
@@ -683,7 +683,7 @@ __attribute_maybe_unused__
 	printf("Ray test of %d rays took %lu tics\n", numRays, delta);
 }
 
-static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane)
+static bool	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 eyePos, vec3 hitPos, vec4 hitPlane)
 {
 	vec3	forward, right, up, endRay;
 
@@ -718,9 +718,10 @@ static int	TestOneRay(const Terrain *pTer, const GameCamera *pCam, const vec3 ey
 //	int	res	=CV_SweptSphereIntersect(spTestVol, eyePos, endRay, 0.5f, hitPos, hitPlane);
 //	int	res	=Terrain_SweptBoundIntersect(pTer, eyePos, endRay, sTestBoxMin, sTestBoxMax, hitPos, hitPlane);
 //	int	res	=PM_SweptSphereToTriIntersect(sTestTri, eyePos, endRay, 0.25f, hitPos, hitPlane);
-	int	res	=Terrain_SweptSphereIntersect(pTer, eyePos, endRay, 0.25f, hitPos, hitPlane);
+//	int	res	=Terrain_SweptSphereIntersect(pTer, eyePos, endRay, 0.25f, hitPos, hitPlane);
+	return	Misc_RayIntersectBounds(eyePos, invDir, RAY_LEN, bounds);
 
-	return	res;
+//	return	res;
 }
 
 static int	TestOneMove(const Terrain *pTer, vec3 hitPos, vec4 hitPlane)
@@ -772,7 +773,11 @@ static void	CastOneRayEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	pTS->mDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
+	if(TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane))
+	{
+		pTS->mDrawHit	=TER_HIT;
+	}
+//	pTS->mDrawHit	=TestOneRay(pTS->mpTer, pTS->mpCam, pTS->mEyePos, pTS->mHitPos, pTS->mHitPlane);
 //	pTS->mDrawHit	=TestOneMove(pTS->mpTer, pTS->mHitPos, pTS->mHitPlane);
 }
 
@@ -829,6 +834,13 @@ static void	ToggleFlyModeEH(void *pContext, const SDL_Event *pEvt)
 	assert(pTS);
 
 	pTS->mbFlyMode	=!pTS->mbFlyMode;
+
+	if(pTS->mbFlyMode)
+	{
+	}
+	else
+	{
+	}
 }
 
 static void	LeftMouseDownEH(void *pContext, const SDL_Event *pEvt)

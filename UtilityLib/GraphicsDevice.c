@@ -1,6 +1,6 @@
 #include	<d3d11_1.h>
-#include	<SDL3/SDL.h>
-#include	<SDL3/SDL_vulkan.h>
+#include	<SDL2/SDL.h>
+#include	<SDL2/SDL_vulkan.h>
 #include	<stdint.h>
 #include	<stdbool.h>
 #include	<cglm/call.h>
@@ -57,26 +57,18 @@ bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 
 	SDL_Vulkan_LoadLibrary(NULL);
 
-	SDL_PropertiesID	props	=SDL_CreateProperties();
-
-	SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, pWindowTitle);
-	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, w);
-	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, h);
-	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
-	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
 
 	if(bRandomPos)
-	{
-		SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, SDL_WINDOWPOS_UNDEFINED);
-		SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_UNDEFINED);
+	{	
+		pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
+			SDL_WINDOWPOS_UNDEFINED,
+			SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_SHOWN);
 	}
 	else
 	{
-		SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, posX);
-		SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, posY);
+		pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
+				posX, posY, w, h, SDL_WINDOW_SHOWN);
 	}
-	
-	pGD->mWnd	=SDL_CreateWindowWithProperties(props);
 
 	if(pGD->mWnd == NULL)
 	{

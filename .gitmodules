@@ -4,9 +4,6 @@
 [submodule "AudioLib/tinywav"]
 	path = AudioLib/tinywav
 	url = git@github.com:Kharzette/tinywav.git
-[submodule "AudioLib/FAudio"]
-	path = AudioLib/FAudio
-	url = git@github.com:Kharzette/FAudio.git
 [submodule "dxvk-native"]
 	path = dxvk-native
 	url = git@github.com:Kharzette/dxvk-native.git
@@ -22,9 +19,3 @@
 [submodule "ShaderLib"]
 	path = ShaderLib
 	url = git@github.com:Kharzette/ShaderLib.git
-[submodule "libpng"]
-	path = libpng
-	url = git@github.com:pnggroup/libpng.git
-[submodule "SDL"]
-	path = SDL
-	url = git@github.com:Kharzette/SDL.git

@@ -6,8 +6,8 @@
 #include	<unistd.h>
 #include	<assert.h>
 #include	<x86intrin.h>
-#include	<SDL3/SDL.h>
-#include	<SDL3/SDL_keycode.h>
+#include	<SDL2/SDL.h>
+#include	<SDL2/SDL_keycode.h>
 #include	<cglm/call.h>
 #include	"AudioLib/SoundEffect.h"
 #include	"AudioLib/Audio.h"
@@ -1189,7 +1189,7 @@ static void	SetupKeyBinds(Input *pInp)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_t, KeyTurnDownEH);
 
 	//move data events
-	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_EVENT_MOUSE_MOTION, MouseMoveEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_MOUSEMOTION, MouseMoveEH);
 
 	//down/up events
 	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_RIGHT, RightMouseDownEH);
@@ -1298,7 +1298,7 @@ static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, co
 	{
 		utstring_printf(szMeshPath, "Characters/%s.mesh", SZList_IteratorVal(pCur));
 
-		Mesh	*pMesh	=Mesh_Read(pGD, pSK, utstring_body(szMeshPath));
+		Mesh	*pMesh	=Mesh_Read(pGD, pSK, utstring_body(szMeshPath), false);
 
 		DictSZ_Add(&pMeshes, SZList_IteratorValUT(pCur), pMesh);
 

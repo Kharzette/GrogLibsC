@@ -3,7 +3,6 @@ CFLAGS=-std=gnu2x -g -O0 -march=native -fpic -shared	\
 	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
 	-DCGLM_FORCE_LEFT_HANDED	\
 	-I../dxvk-native/include/native/directx \
-	-I../SDL/include	\
 	-I../libpng/build/include	\
 	-I../dxvk-native/include/native/windows	\
 	-I../dxvk-native/include/native	\
@@ -12,13 +11,11 @@ CFLAGS=-std=gnu2x -g -O0 -march=native -fpic -shared	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
 SOURCES=$(wildcard *.c)
-LIBS=-lvulkan
+LIBS=-lvulkan -lpng16 -lSDL2
 
 all: MaterialLib
 
 MaterialLib: $(SOURCES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libMaterialLib.so $(LIBS) \
-	../SDL/build/libSDL3.so -lm	\
-	../libpng/build/libpng.so	\
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so

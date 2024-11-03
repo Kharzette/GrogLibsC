@@ -6,8 +6,8 @@
 #include	<x86intrin.h>
 #include	<string.h>
 #include	<assert.h>
-#include	<SDL3/SDL.h>
-#include	<SDL3/SDL_keycode.h>
+#include	<SDL2/SDL.h>
+#include	<SDL2/SDL_keycode.h>
 #include	"utlist.h"
 #include	"Input.h"
 
@@ -69,7 +69,7 @@ void	INP_Update(Input *pInp, void *pContext)
 	SDL_Event	evt;
 	while(SDL_PollEvent(&evt))
 	{
-		if(evt.type == SDL_EVENT_KEY_UP)
+		if(evt.type == SDL_KEYUP)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -97,7 +97,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_EVENT_KEY_DOWN)
+		else if(evt.type == SDL_KEYDOWN)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -122,7 +122,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_EVENT_MOUSE_BUTTON_UP)
+		else if(evt.type == SDL_MOUSEBUTTONUP)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -150,7 +150,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+		else if(evt.type == SDL_MOUSEBUTTONDOWN)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -178,7 +178,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_EVENT_MOUSE_MOTION)
+		else if(evt.type == SDL_MOUSEMOTION)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)

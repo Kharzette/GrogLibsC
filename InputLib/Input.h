@@ -1,7 +1,7 @@
 #pragma once
 #include	<stdint.h>
 #include	<stdbool.h>
-#include	<SDL3/SDL.h>
+#include	<SDL2/SDL.h>
 
 #define	INP_BIND_TYPE_HELD		1
 #define	INP_BIND_TYPE_EVENT		2

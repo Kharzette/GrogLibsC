@@ -19,3 +19,19 @@ Game libraries using C language, often ported from my C# libraries of the same n
 - Static meshes with various collision shapes
 - Some kind of UI
 - Windows
+
+# Building
+For awhile I had every dependency as a submodule, but that made it annoying for people.  These packages should be installed:
+- SDL2
+- FAudio
+- pnglib
+
+The dxvk-native submodule needs building:
+```bash
+meson --buildtype "debug" build
+cd build
+ninja
+```
+Grog's makefiles will look for the libs there in dxvk-native/build/etc
+
+So something really annoying I do that I should probably fix is using .vscode launch.json and tasks.json to copy the shared libraries around.  I should either commit those or stop doing that and have the makefiles do something more reasonable.

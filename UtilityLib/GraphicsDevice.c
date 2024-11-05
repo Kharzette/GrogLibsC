@@ -62,12 +62,12 @@ bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 	{	
 		pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
 			SDL_WINDOWPOS_UNDEFINED,
-			SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_SHOWN);
+			SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
 	}
 	else
 	{
 		pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
-				posX, posY, w, h, SDL_WINDOW_SHOWN);
+				posX, posY, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
 	}
 
 	if(pGD->mWnd == NULL)
@@ -85,7 +85,7 @@ bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 	//of an ordinary hwnd in most cases.  This wasn't very clear at first
 	//and cost me hours of debugging!
 	scDesc.BufferDesc.Format					=DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-	scDesc.BufferDesc.RefreshRate.Numerator		=144;
+	scDesc.BufferDesc.RefreshRate.Numerator		=60;
 	scDesc.BufferDesc.RefreshRate.Denominator	=1;
 	scDesc.SampleDesc.Count						=1;
 	scDesc.SampleDesc.Quality					=0;

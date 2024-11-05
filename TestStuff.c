@@ -181,7 +181,13 @@ int main(void)
 	Input	*pInp	=INP_CreateInput();
 	SetupKeyBinds(pInp);
 
-	GD_Init(&pTS->mpGD, "Blortallius!", 0, 0, RESX, RESY, true, D3D_FEATURE_LEVEL_11_1);
+	bool	bGDInit	=GD_Init(&pTS->mpGD, "Blortallius!",
+				0, 0, RESX, RESY, true, D3D_FEATURE_LEVEL_11_1);
+	if(!bGDInit)
+	{
+		printf("Graphics init failed!\n");
+		return	EXIT_FAILURE;
+	}
 
 	//turn on border
 	GD_SetWindowBordered(pTS->mpGD, true);
@@ -426,6 +432,7 @@ __attribute_maybe_unused__
 
 		//set CB view
 		{
+			__attribute__((aligned(32)))
 			mat4	viewMat;
 			if(pTS->mbFlyMode)
 			{
@@ -435,6 +442,7 @@ __attribute_maybe_unused__
 			{
 				GameCam_GetViewMatrixThird(pTS->mpCam, viewMat, pTS->mEyePos);
 
+				__attribute__((aligned(32)))
 				mat4	headMat, guraMat;
 				GameCam_GetLookMatrix(pTS->mpCam, headMat);
 				GameCam_GetFlatLookMatrix(pTS->mpCam, guraMat);
@@ -443,7 +451,8 @@ __attribute_maybe_unused__
 				vec3	feetToCenter	={	0.0f, -0.25f, 0.0f	};
 				glm_translate(guraMat, feetToCenter);
 
-				Material	*pCM	=MatLib_GetMaterial(pCharMats, "Protag");
+				Material	*pCM	=MatLib_GetMaterial(pCharMats, "ProtagCel");
+				assert(pCM);
 				MAT_SetWorld(pCM, guraMat);
 			}
 
@@ -548,7 +557,8 @@ __attribute_maybe_unused__
 		if(pTS->mbFlyMode)
 		{
 			glm_translate_make(charMat, pTS->mPlayerPos);
-			Material	*pCM	=MatLib_GetMaterial(pCharMats, "Protag");
+			Material	*pCM	=MatLib_GetMaterial(pCharMats, "ProtagCel");
+			assert(pCM);
 			MAT_SetWorld(pCM, charMat);
 		}
 //		MAT_SetDanglyForce(pCharMat, pTS->mDanglyForce);

@@ -49,6 +49,13 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	8,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 
+	//VPos2Col0
+	D3D11_INPUT_ELEMENT_DESC	iedVPos2Col0[]	=
+	{
+		{	"POSITION",	0,	DXGI_FORMAT_R32G32_FLOAT,		0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"COLOR",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	8,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
+	};
+
 	//VPosNormTex0
 	D3D11_INPUT_ELEMENT_DESC	iedVPosNormTex0[]	=
 	{
@@ -209,6 +216,16 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		return;
 	}
 	DictSZ_Addccp(ppLayouts, "VPos2Tex04", pLO);
+
+	//VPos2Col0
+	pCode	=DictSZ_GetValueccp(pVSCode, "ShapeVS");
+	pLO		=GD_CreateInputLayout(pGD, iedVPos2Col0, 2, pCode->mpBytes, pCode->mLen);
+	if(pLO == NULL)
+	{
+		printf("Error creating layout.\n");
+		return;
+	}
+	DictSZ_Addccp(ppLayouts, "VPos2Col0", pLO);
 
 	//VPosNormTex0
 	pCode	=DictSZ_GetValueccp(pVSCode, "TexTriVS");

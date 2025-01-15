@@ -70,6 +70,8 @@ void	GText_FreeAll(GrogText *pGT)
 {
 	pGT->mpVB->lpVtbl->Release(pGT->mpVB);
 
+	free(pGT->mpTextBuf);
+
 	free(pGT);
 }
 

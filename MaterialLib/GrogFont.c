@@ -1,3 +1,4 @@
+#include	"d3d11.h"
 #include	<stdint.h>
 #include	<stdio.h>
 #include	<ctype.h>
@@ -12,12 +13,19 @@ typedef struct	GrogFont_t
 	int		mCellWidth, mCellHeight;
 	uint8_t	mStartChar;
 
+	ID3D11ShaderResourceView	*mpSRV;
+
 	uint8_t	*mpWidths;
 }	GrogFont;
 
 
-GrogFont	*Font_Create(UT_string *pPath)
+GrogFont	*Font_Create(const UT_string *pPath)
 {
+	if(pPath == NULL)
+	{
+		return	NULL;
+	}
+
 	FILE	*f	=fopen(utstring_body(pPath), "rb");
 	if(f == NULL)
 	{
@@ -38,7 +46,29 @@ GrogFont	*Font_Create(UT_string *pPath)
 
 	fclose(f);
 
+	pRet->mpSRV	=NULL;
+
 	return	pRet;
+}
+
+void	Font_SetSRV(GrogFont *pFont, ID3D11ShaderResourceView *pSRV)
+{
+	if(pFont == NULL)
+	{
+		return;
+	}
+
+	pFont->mpSRV	=pSRV;
+}
+
+ID3D11ShaderResourceView *Font_GetSRV(const GrogFont *pFont)
+{
+	if(pFont == NULL)
+	{
+		return	NULL;
+	}
+
+	return	pFont->mpSRV;
 }
 
 int	Font_GetCharacterWidth(const GrogFont *pFont, char c)

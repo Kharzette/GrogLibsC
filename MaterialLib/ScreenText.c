@@ -9,6 +9,10 @@
 #include	"../UtilityLib/MiscStuff.h"
 
 
+//This is mainly for debuggish text that goes on the screen
+//and changes now and then.  Stuff like a FPS counter or
+//player coordinates or something.
+//This maintains state frame to frame.
 typedef struct	TextVert_t
 {
 	vec2		Position;

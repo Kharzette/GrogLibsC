@@ -35,8 +35,8 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16_FLOAT,		0,	12,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 
-	//VPos2Tex02
-	D3D11_INPUT_ELEMENT_DESC	iedVPos2Tex02[]	=
+	//VPos2Tex0
+	D3D11_INPUT_ELEMENT_DESC	iedVPos2Tex0[]	=
 	{
 		{	"POSITION",	0,	DXGI_FORMAT_R32G32_FLOAT,	0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
 		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16_FLOAT,	0,	8,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
@@ -54,6 +54,14 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 	{
 		{	"POSITION",	0,	DXGI_FORMAT_R32G32_FLOAT,		0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
 		{	"COLOR",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	8,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
+	};
+
+	//VPos2Col0Tex04
+	D3D11_INPUT_ELEMENT_DESC	iedVPos2Col0Tex04[]	=
+	{
+		{	"POSITION",	0,	DXGI_FORMAT_R32G32_FLOAT,		0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"COLOR",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	8,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	16,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 
 	//VPosNormTex0
@@ -197,15 +205,15 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 	}
 	DictSZ_Addccp(ppLayouts, "VPosTex0", pLO);
 
-	//VPos2Tex02
+	//VPos2Tex0
 	pCode	=DictSZ_GetValueccp(pVSCode, "TextVS");
-	pLO		=GD_CreateInputLayout(pGD, iedVPos2Tex02, 2, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPos2Tex0, 2, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
 		return;
 	}
-	DictSZ_Addccp(ppLayouts, "VPos2Tex02", pLO);
+	DictSZ_Addccp(ppLayouts, "VPos2Tex0", pLO);
 
 	//VPos2Tex04
 	pCode	=DictSZ_GetValueccp(pVSCode, "KeyedGumpVS");
@@ -226,6 +234,16 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		return;
 	}
 	DictSZ_Addccp(ppLayouts, "VPos2Col0", pLO);
+
+	//VPos2Col0Tex04
+	pCode	=DictSZ_GetValueccp(pVSCode, "UIStuffVS");
+	pLO		=GD_CreateInputLayout(pGD, iedVPos2Col0Tex04, 3, pCode->mpBytes, pCode->mLen);
+	if(pLO == NULL)
+	{
+		printf("Error creating layout.\n");
+		return;
+	}
+	DictSZ_Addccp(ppLayouts, "VPos2Col0Tex04", pLO);
 
 	//VPosNormTex0
 	pCode	=DictSZ_GetValueccp(pVSCode, "TexTriVS");

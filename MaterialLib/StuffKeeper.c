@@ -861,7 +861,19 @@ static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pCo
 	if(pSRV != NULL)
 	{
 		DictSZ_Add(&pCon->mpSK->mpFontSRVs, pKey, pSRV);
+
+		//assign the SRV to the font
+		void	*pFont	=DictSZ_GetValue(pCon->mpSK->mpFonts, pKey);
+		if(pFont == NULL)
+		{
+			printf("Font not found for font SRV %s!\n", utstring_body(pKey));
+		}
+		else
+		{
+			GFont_SetSRV(pFont, pSRV);
+		}
 	}
+
 
 	pRes->lpVtbl->Release(pRes);
 }
@@ -951,7 +963,7 @@ void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
 				utstring_clear(pFilePath);
 				utstring_printf(pFilePath, "%s.dat", utstring_body(pExtLess));
 
-				GrogFont	*pFont	=Font_Create(pFilePath);
+				GrogFont	*pFont	=GFont_Create(pFilePath);
 				if(pFont == NULL)
 				{
 					printf("Error reading font %s\n", utstring_body(pFilePath));

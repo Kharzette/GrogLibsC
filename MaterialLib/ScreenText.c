@@ -13,17 +13,17 @@
 //and changes now and then.  Stuff like a FPS counter or
 //player coordinates or something.
 //This maintains state frame to frame.
-typedef struct	TextVert_t
+typedef struct	UIVert_t
 {
 	vec2		Position;
 	uint16_t	TexCoord0[2];
-}	TextVert;
+}	UIVert;
 
 typedef struct	StringData_t
 {
 	int			id;			//dictionary id
 
-	TextVert	*mpVerts;
+	UIVert	*mpVerts;
 	vec4		mColor;
 	vec2		mPosition;
 	vec2		mScale;
@@ -49,13 +49,13 @@ typedef struct	ScreenText_t
 	int		mMaxCharacters;
 	int		mNumVerts;
 
-	TextVert	*mpTextBuf;
+	UIVert	*mpTextBuf;
 	StringData	*mpStrings;
 }	ScreenText;
 
 
 //statics
-static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText);
+static void	CopyLetters(const GrogFont *pFont, UIVert *pTV, const char *pText);
 static void	ReBuildVB(ScreenText *pST, GraphicsDevice *pGD);
 
 static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
@@ -89,11 +89,11 @@ ScreenText	*ST_Create(GraphicsDevice *pGD, const StuffKeeper *pSK, int maxChars,
 	pRet->mpSS		=StuffKeeper_GetSamplerState(pSK, "PointClamp");
 
 	//alloc buf
-	pRet->mpTextBuf	=malloc(sizeof(TextVert) * maxChars * 6);
+	pRet->mpTextBuf	=malloc(sizeof(UIVert) * maxChars * 6);
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(TextVert) * maxChars * 6);
+	MakeVBDesc(&bufDesc, sizeof(UIVert) * maxChars * 6);
 	pRet->mpVB	=GD_CreateBuffer(pGD, &bufDesc);
 
 	return	pRet;
@@ -113,7 +113,7 @@ void	ST_AddString(ScreenText *pST, const char *pSZ, const int id,
 	glm_vec2_copy(pos, pDat->mPosition);
 	glm_vec2_copy(scale, pDat->mScale);
 
-	pDat->mpVerts	=malloc(sizeof(TextVert) * pDat->mLen * 6);
+	pDat->mpVerts	=malloc(sizeof(UIVert) * pDat->mLen * 6);
 	CopyLetters(pST->mpFont, pDat->mpVerts, pSZ);
 
 	HASH_ADD_INT(pST->mpStrings, id, pDat);
@@ -146,9 +146,9 @@ void	ST_MeasureString(ScreenText *pST, const char *pToMeasure, vec2 size)
 	int	len			=strlen(pToMeasure);
 	for(int i=0;i < len;i++)
 	{
-		size[0]	+=Font_GetCharacterWidth(pST->mpFont, pToMeasure[i]);
+		size[0]	+=GFont_GetCharacterWidth(pST->mpFont, pToMeasure[i]);
 
-		int	height	=Font_GetCharacterHeight(pST->mpFont);
+		int	height	=GFont_GetCharacterHeight(pST->mpFont);
 		if(height > maxHeight)
 		{
 			maxHeight	=height;
@@ -193,7 +193,7 @@ void	ST_ModifyStringText(ScreenText *pST, int id, const char *pText)
 
 	free(pSD->mpVerts);
 
-	pSD->mpVerts	=malloc(sizeof(TextVert) * len * 6);
+	pSD->mpVerts	=malloc(sizeof(UIVert) * len * 6);
 	pSD->mLen		=len;
 
 	CopyLetters(pST->mpFont, pSD->mpVerts, pText);
@@ -285,7 +285,7 @@ void	ST_Draw(ScreenText *pST, GraphicsDevice *pGD, CBKeeper *pCBK)
 }
 
 
-static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText)
+static void	CopyLetters(const GrogFont *pFont, UIVert *pTV, const char *pText)
 {
 	int	curWidth	=0;
 	int	szLen		=strlen(pText);
@@ -295,7 +295,7 @@ static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText)
 
 	for(int i=0;i < szLen;i++)
 	{
-		int	nextWidth	=curWidth + Font_GetCharacterWidth(pFont, pText[i]);
+		int	nextWidth	=curWidth + GFont_GetCharacterWidth(pFont, pText[i]);
 		int	sixi		=i * 6;
 
 		vec2	xCoord, xCoord2, yCoord, yCoord2, uv;
@@ -303,31 +303,31 @@ static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText)
 		glm_vec2_scale(unitX, curWidth, xCoord);
 		glm_vec2_scale(unitX, nextWidth, xCoord2);
 		glm_vec2_zero(yCoord);
-		glm_vec2_scale(unitY, Font_GetCharacterHeight(pFont), yCoord2);
+		glm_vec2_scale(unitY, GFont_GetCharacterHeight(pFont), yCoord2);
 
 		//note the winding order reversal here
 		glm_vec2_copy(xCoord, pTV[sixi].Position);
-		Font_GetUV(pFont, pText[i], 0, uv);
+		GFont_GetUV(pFont, pText[i], 0, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi].TexCoord0);
 
 		glm_vec2_copy(xCoord2, pTV[sixi + 2].Position);
-		Font_GetUV(pFont, pText[i], 1, uv);
+		GFont_GetUV(pFont, pText[i], 1, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 2].TexCoord0);
 
 		glm_vec2_add(xCoord2, yCoord2, pTV[sixi + 1].Position);
-		Font_GetUV(pFont, pText[i], 2, uv);
+		GFont_GetUV(pFont, pText[i], 2, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 1].TexCoord0);
 
 		glm_vec2_copy(xCoord, pTV[sixi + 3].Position);
-		Font_GetUV(pFont, pText[i], 3, uv);
+		GFont_GetUV(pFont, pText[i], 3, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 3].TexCoord0);
 
 		glm_vec2_add(xCoord2, yCoord2, pTV[sixi + 5].Position);
-		Font_GetUV(pFont, pText[i], 4, uv);
+		GFont_GetUV(pFont, pText[i], 4, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 5].TexCoord0);
 
 		glm_vec2_add(xCoord, yCoord2, pTV[sixi + 4].Position);
-		Font_GetUV(pFont, pText[i], 5, uv);
+		GFont_GetUV(pFont, pText[i], 5, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 4].TexCoord0);
 
 		curWidth	=nextWidth;
@@ -346,7 +346,7 @@ static void	ReBuildVB(ScreenText *pST, GraphicsDevice *pGD)
 
 	StringData	*pSD, *pTmp;
 
-	int	twoTriSize	=sizeof(TextVert) * 6;
+	int	twoTriSize	=sizeof(UIVert) * 6;
 
 	HASH_ITER(hh, pST->mpStrings, pSD, pTmp)
 	{

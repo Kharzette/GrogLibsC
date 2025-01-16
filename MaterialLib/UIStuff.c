@@ -9,27 +9,19 @@
 #include	"../UtilityLib/MiscStuff.h"
 
 
-//This is for stateless text drawn for UI
-//The draw data is rebuilt every draw
-//With my debug strings I'd have shader variables control
-//stuff like scale and position and colour, but if I want
-//to draw all text at once, I need to track that stuff
-//per vert
-//
-//right before falling asleep I realized there will be zorder problems...
-//might need multiple draw calls
-//OR!... draw shapes and text together?
-typedef struct	TextVert_t
+//This is for stateless text/shapes drawn for UI
+//The draw data is rebuilt every frame
+typedef struct	UIVert_t
 {
 	vec2		Position;
 	uint16_t	Color[4];		//float16 xyzw
-	uint16_t	TexCoord0[2];	//float16 xy
-}	TextVert;
+	uint16_t	TexCoord0[4];	//float16 xyzw
+}	UIVert;
 
-typedef struct	GrogText_t
+typedef struct	UIStuff_t
 {
 	//D3D Stuff
-	ID3D11Buffer				*mpVB;
+	ID3D11Buffer				*mpVB;	//dynamic
 	ID3D11InputLayout			*mpLayout;
 	ID3D11VertexShader			*mpVS;
 	ID3D11PixelShader			*mpPS;
@@ -37,34 +29,38 @@ typedef struct	GrogText_t
 	ID3D11BlendState			*mpBS;
 	ID3D11SamplerState			*mpSS;
 
+	//device
+	GraphicsDevice	*mpGD;
+
 	//font
 	GrogFont	*mpFont;
 
-	int		mMaxCharacters;	//enough for all of this font onscreen
-	int		mNumVerts;
+	int		mMaxVerts, mNumVerts;
 
-	bool	mbDrawStage;
+	bool	mbDrawStage;	//begin/end
 
-	TextVert	*mpTextBuf;
+	//store up multiple user draws in this
+	UIVert	*mpUIBuf;
 
-}	GrogText;
+}	UIStuff;
 
 //statics
 static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize);
+static void	sRender(UIStuff *pUI);
 
-
-//This creates the stuff needed to draw text.
-//create one of these per font in use
-GrogText	*GText_Create(GraphicsDevice *pGD, const StuffKeeper *pSK, GrogFont *pFont, int maxChars)
+//combined text and shape buffer
+UIStuff	*UI_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
+					GrogFont *pFont, int maxVerts)
 {
-	GrogText	*pRet	=malloc(sizeof(GrogText));
-	memset(pRet, 0, sizeof(GrogText));
+	UIStuff	*pRet	=malloc(sizeof(UIStuff));
+	memset(pRet, 0, sizeof(UIStuff));
 
-	pRet->mMaxCharacters	=maxChars;
+	pRet->mMaxVerts	=maxVerts;
+	pRet->mpGD		=pGD;
 
-	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPos2Tex02");
-	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "TextVS");
-	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TextPS");
+	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPos2Col0Tex04");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "UIStuffVS");
+	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "UIStuffPS");
 	pRet->mpDSS		=StuffKeeper_GetDepthStencilState(pSK, "DisableDepth");
 	pRet->mpBS		=StuffKeeper_GetBlendState(pSK, "AlphaBlending");
 	pRet->mpSS		=StuffKeeper_GetSamplerState(pSK, "PointClamp");
@@ -72,112 +68,86 @@ GrogText	*GText_Create(GraphicsDevice *pGD, const StuffKeeper *pSK, GrogFont *pF
 	pRet->mpFont	=pFont;
 
 	//alloc buf
-	pRet->mpTextBuf	=malloc(sizeof(TextVert) * maxChars * 6);
+	pRet->mpUIBuf	=malloc(sizeof(UIVert) * maxVerts);
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(TextVert) * maxChars * 6);
+	MakeVBDesc(&bufDesc, sizeof(UIVert) * maxVerts);
 	pRet->mpVB	=GD_CreateBuffer(pGD, &bufDesc);
 
 	return	pRet;
 }
 
-void	GText_FreeAll(GrogText *pGT)
+void	UI_FreeAll(UIStuff *pUI)
 {
-	pGT->mpVB->lpVtbl->Release(pGT->mpVB);
+	pUI->mpVB->lpVtbl->Release(pUI->mpVB);
 
-	free(pGT->mpTextBuf);
+	free(pUI->mpUIBuf);
 
-	free(pGT);
+	free(pUI);
 }
 
-void	GText_BeginDraw(GrogText *pGT)
+void	UI_BeginDraw(UIStuff *pUI)
 {
-	assert(!pGT->mbDrawStage);
+	assert(!pUI->mbDrawStage);
 
-	pGT->mNumVerts		=0;
-	pGT->mbDrawStage	=true;
+	pUI->mNumVerts		=0;
+	pUI->mbDrawStage	=true;
 }
 
-void	GText_EndDraw(GrogText *pGT, GraphicsDevice *pGD)
+void	UI_EndDraw(UIStuff *pUI)
 {
-	assert(pGT->mbDrawStage);
+	assert(pUI->mbDrawStage);
 
-	pGT->mbDrawStage	=false;
+	pUI->mbDrawStage	=false;
 
 	D3D11_MAPPED_SUBRESOURCE	msr;
 
 	memset(&msr, 0, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
-	GD_MapDiscard(pGD, (ID3D11Resource *)pGT->mpVB, &msr);
+	GD_MapDiscard(pUI->mpGD, (ID3D11Resource *)pUI->mpVB, &msr);
 
-	memcpy(msr.pData, pGT->mpTextBuf, sizeof(TextVert) * pGT->mNumVerts);
+	memcpy(msr.pData, pUI->mpUIBuf, sizeof(UIVert) * pUI->mNumVerts);
 
-	GD_UnMap(pGD, (ID3D11Resource *)pGT->mpVB);
-}
+	GD_UnMap(pUI->mpGD, (ID3D11Resource *)pUI->mpVB);
 
-//Returns the longest line width in the string
-float	GText_MeasureText(const GrogText *pGT, const char *pText)
-{
-	int	len	=strlen(pText);
-	if(len <= 0)
-	{
-		return	0.0f;
-	}
-
-	float	maxWidth	=0.0f;
-	float	lineWidth	=0.0f;
-
-	for(int i=0;i < len;i++)
-	{
-		char	c	=pText[i];
-
-		if(c == '\n')
-		{
-			maxWidth	=fmax(maxWidth, lineWidth);
-			lineWidth	=0;
-			continue;
-		}
-		lineWidth	+=Font_GetCharacterWidth(pGT->mpFont, c);
-	}
-
-	return	fmax(maxWidth, lineWidth);
+	sRender(pUI);
 }
 
 
-void	GText_Render(GrogText *pGT, GraphicsDevice *pGD)
+static void	sRender(UIStuff *pUI)
 {
-	if(pGT->mNumVerts <= 0)
+	if(pUI->mNumVerts <= 0)
 	{
 		return;
 	}
 
-	if(pGT == NULL || pGD == NULL)
+	if(pUI == NULL)
 	{
 		return;
 	}
 
-	if(pGT->mNumVerts <= 0)
+	if(pUI->mNumVerts <= 0)
 	{
 		return;
 	}
 
-	GD_IASetPrimitiveTopology(pGD, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	GD_IASetPrimitiveTopology(pUI->mpGD, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	GD_IASetVertexBuffers(pGD, pGT->mpVB, sizeof(TextVert), 0);
-	GD_IASetIndexBuffers(pGD, NULL, DXGI_FORMAT_UNKNOWN, 0);
-	GD_IASetInputLayout(pGD, pGT->mpLayout);
+	GD_IASetVertexBuffers(pUI->mpGD, pUI->mpVB, sizeof(UIVert), 0);
+	GD_IASetIndexBuffers(pUI->mpGD, NULL, DXGI_FORMAT_UNKNOWN, 0);
+	GD_IASetInputLayout(pUI->mpGD, pUI->mpLayout);
 
-	GD_VSSetShader(pGD, pGT->mpVS);
-	GD_PSSetShader(pGD, pGT->mpPS);
-	GD_PSSetSRV(pGD, Font_GetSRV(pGT->mpFont), 0);
+	GD_VSSetShader(pUI->mpGD, pUI->mpVS);
+	GD_PSSetShader(pUI->mpGD, pUI->mpPS);
+	GD_PSSetSRV(pUI->mpGD, GFont_GetSRV(pUI->mpFont), 0);
 
-	GD_PSSetSampler(pGD, pGT->mpSS, 0);
+	GD_PSSetSampler(pUI->mpGD, pUI->mpSS, 0);
 
-	GD_OMSetDepthStencilState(pGD, pGT->mpDSS);
-	GD_OMSetBlendState(pGD, pGT->mpBS);
+	GD_OMSetDepthStencilState(pUI->mpGD, pUI->mpDSS);
+	GD_OMSetBlendState(pUI->mpGD, pUI->mpBS);
 
-	GD_Draw(pGD, pGT->mNumVerts, 0);
+	GD_Draw(pUI->mpGD, pUI->mNumVerts, 0);
 }
 
 
@@ -193,94 +163,35 @@ static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 	pDesc->Usage				=D3D11_USAGE_DYNAMIC;
 }
 
-static int	CopyLetters(const GrogText *pGT, TextVert *pTV, const char *pText)
+
+void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont, vec2 pos, vec4 colour)
 {
-	int	curWidth	=0;
-	int	szLen		=strlen(pText);
-	int	copied		=0;
-
-	//check bounds
-	if(szLen + (pGT->mNumVerts / 6) > pGT->mMaxCharacters)
-	{
-		printf("Overflow of GrogText buffer...\n");
-		return	0;
-	}
-
-	vec2	unitX	={	1.0f, 0.0f	};
-	vec2	unitY	={	0.0f, 1.0f	};
-
-	vec2	yCoord, yCoord2;
-
-	glm_vec2_zero(yCoord);
-	glm_vec2_scale(unitY, Font_GetCharacterHeight(pGT->mpFont), yCoord2);
-
-	int	sixi	=0;
-	for(int i=0;i < szLen;i++)
-	{
-		int	nextWidth	=curWidth + Font_GetCharacterWidth(pGT->mpFont, pText[i]);
-
-		vec2	xCoord, xCoord2, yCoord, yCoord2, uv;
-
-		glm_vec2_scale(unitX, curWidth, xCoord);
-		glm_vec2_scale(unitX, nextWidth, xCoord2);
-
-		//check for \n
-		//TODO: handle \r and dos CR
-		if(pText[i] == '\n')
-		{
-			curWidth	=0;
-			glm_vec2_add(yCoord2, yCoord, yCoord);			
-			continue;
-		}
-
-		//note the winding order reversal here
-		glm_vec2_copy(xCoord, pTV[sixi].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 0, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi].TexCoord0);
-
-		glm_vec2_copy(xCoord2, pTV[sixi + 2].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 1, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 2].TexCoord0);
-
-		glm_vec2_add(xCoord2, yCoord2, pTV[sixi + 1].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 2, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 1].TexCoord0);
-
-		glm_vec2_copy(xCoord, pTV[sixi + 3].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 3, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 3].TexCoord0);
-
-		glm_vec2_add(xCoord2, yCoord2, pTV[sixi + 5].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 4, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 5].TexCoord0);
-
-		glm_vec2_add(xCoord, yCoord2, pTV[sixi + 4].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 5, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 4].TexCoord0);
-
-		curWidth	=nextWidth;
-		sixi		=(i + 1) * 6;
-		copied++;
-	}
-	return	copied;
-}
-
-
-void	GText_DrawString(GrogText *pGT, const char *pText, vec2 pos, vec4 colour)
-{
-	if(pGT == NULL || !pGT->mbDrawStage)
+	if(pUI == NULL || !pUI->mbDrawStage)
 	{
 		return;
 	}
 
+	//see if there is a change of font
+	if(pUI->mpFont != pFont)
+	{
+		//font changed, flush what we have
+		if(pUI->mNumVerts > 0)
+		{
+			printf("Font change: %d\n", pUI->mNumVerts);
+			UI_EndDraw(pUI);
+			UI_BeginDraw(pUI);
+		}
+		pUI->mpFont	=pFont;
+	}
+
 	int	curWidth	=0;
-	int	szLen		=strlen(pText);
+	int	szLen		=len;
 
 	//check bounds
-	if(szLen + (pGT->mNumVerts / 6) > pGT->mMaxCharacters)
+	if(szLen + (pUI->mNumVerts / 6) > pUI->mMaxVerts)
 	{
-		printf("Overflow of GrogText buffer...\n");
-		return	0;
+		printf("Overflow of UIStuff buffer...\n");
+		return;
 	}
 
 	vec2	unitX	={	1.0f, 0.0f	};
@@ -289,31 +200,26 @@ void	GText_DrawString(GrogText *pGT, const char *pText, vec2 pos, vec4 colour)
 	vec2	yCoord, yCoord2;
 
 	glm_vec2_zero(yCoord);
-	glm_vec2_scale(unitY, Font_GetCharacterHeight(pGT->mpFont), yCoord2);
+	glm_vec2_scale(unitY, GFont_GetCharacterHeight(pUI->mpFont), yCoord2);
 
-	//add in position
-	glm_vec2_add(pos, yCoord, yCoord);
-	glm_vec2_add(pos, yCoord2, yCoord2);
+	UIVert	*pTV	=pUI->mpUIBuf;
 
-	TextVert	*pTV	=pGT->mpTextBuf;
-
-	int	sixi	=pGT->mNumVerts / 6;
+	int	sixi	=pUI->mNumVerts;
 	for(int i=0;i < szLen;i++)
 	{
-		int	nextWidth	=curWidth + Font_GetCharacterWidth(pGT->mpFont, pText[i]);
+		int	nextWidth	=curWidth + GFont_GetCharacterWidth(pUI->mpFont, pText[i]);
 
-		vec2	xCoord, xCoord2, yCoord, yCoord2, uv;
+		vec2	xCoord, xCoord2;
+		vec4	uv	={ 1, 1, 1, 0 };
 
 		glm_vec2_scale(unitX, curWidth, xCoord);
 		glm_vec2_scale(unitX, nextWidth, xCoord2);
 
-		//add in position
-		glm_vec2_add(pos, xCoord, xCoord);
-		glm_vec2_add(pos, xCoord2, xCoord2);
+		char	letter	=pText[i];
 
 		//check for \n
 		//TODO: handle \r and dos CR
-		if(pText[i] == '\n')
+		if(letter == '\n')
 		{
 			curWidth	=0;
 			glm_vec2_add(yCoord2, yCoord, yCoord);			
@@ -321,38 +227,112 @@ void	GText_DrawString(GrogText *pGT, const char *pText, vec2 pos, vec4 colour)
 		}
 
 		//note the winding order reversal here
-		glm_vec2_copy(xCoord, pTV[sixi].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 0, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi].TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pTV[sixi].Color);
+		UIVert	*pV	=&pTV[sixi];
+		glm_vec2_copy(pos, pV->Position);
+		glm_vec2_add(xCoord, pV->Position, pV->Position);
+		GFont_GetUV(pUI->mpFont, letter, 0, uv);
+		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
+		Misc_ConvertVec4ToF16(colour, pV->Color);
 
-		glm_vec2_copy(xCoord2, pTV[sixi + 2].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 1, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 2].TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pTV[sixi + 2].Color);
+		pV	=&pTV[sixi + 2];
+		glm_vec2_copy(pos, pV->Position);
+		glm_vec2_add(xCoord2, pV->Position, pV->Position);
+		GFont_GetUV(pUI->mpFont, letter, 1, uv);
+		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
+		Misc_ConvertVec4ToF16(colour, pV->Color);
 
-		glm_vec2_add(xCoord2, yCoord2, pTV[sixi + 1].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 2, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 1].TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pTV[sixi + 1].Color);
+		pV	=&pTV[sixi + 1];
+		glm_vec2_copy(pos, pV->Position);
+		glm_vec2_add(xCoord2, pV->Position, pV->Position);
+		glm_vec2_add(yCoord2, pV->Position, pV->Position);
+		GFont_GetUV(pUI->mpFont, letter, 2, uv);
+		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
+		Misc_ConvertVec4ToF16(colour, pV->Color);
 
-		glm_vec2_copy(xCoord, pTV[sixi + 3].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 3, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 3].TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pTV[sixi + 3].Color);
+		pV	=&pTV[sixi + 3];
+		glm_vec2_copy(pos, pV->Position);
+		glm_vec2_add(xCoord, pV->Position, pV->Position);
+		GFont_GetUV(pUI->mpFont, letter, 3, uv);
+		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
+		Misc_ConvertVec4ToF16(colour, pV->Color);
 
-		glm_vec2_add(xCoord2, yCoord2, pTV[sixi + 5].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 4, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 5].TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pTV[sixi + 5].Color);
+		pV	=&pTV[sixi + 5];
+		glm_vec2_copy(pos, pV->Position);
+		glm_vec2_add(xCoord2, pV->Position, pV->Position);
+		glm_vec2_add(yCoord2, pV->Position, pV->Position);
+		GFont_GetUV(pUI->mpFont, letter, 4, uv);
+		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
+		Misc_ConvertVec4ToF16(colour, pV->Color);
 
-		glm_vec2_add(xCoord, yCoord2, pTV[sixi + 4].Position);
-		Font_GetUV(pGT->mpFont, pText[i], 5, uv);
-		Misc_ConvertVec2ToF16(uv, pTV[sixi + 4].TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pTV[sixi + 4].Color);
+		pV	=&pTV[sixi + 4];
+		glm_vec2_copy(pos, pV->Position);
+		glm_vec2_add(xCoord, pV->Position, pV->Position);
+		glm_vec2_add(yCoord2, pV->Position, pV->Position);
+		GFont_GetUV(pUI->mpFont, letter, 5, uv);
+		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
+		Misc_ConvertVec4ToF16(colour, pV->Color);
 
 		curWidth		=nextWidth;
-		sixi			=(i + 1) * 6;
-		pGT->mNumVerts	+=6;
+		pUI->mNumVerts	+=6;
+		sixi			=pUI->mNumVerts;
 	}
+}
+
+void	UI_DrawRect(UIStuff *pUI, float x, float y, float width, float height, vec4 color)
+{
+	if(pUI == NULL || !pUI->mbDrawStage)
+	{
+		return;
+	}
+
+	//in my noggin, this should be the other way around
+	//this seems counterclockwise which should be culled
+
+	//tri 0
+	//top left corner
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y;
+	pUI->mNumVerts++;
+
+	//bottom left corner
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y + height;
+	pUI->mNumVerts++;
+
+	//top right corner
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x + width;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y;
+	pUI->mNumVerts++;
+
+
+	//tri1
+	//top right corner
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x + width;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y;
+	pUI->mNumVerts++;
+
+	//bottom left corner
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y + height;
+	pUI->mNumVerts++;
+
+	//bottom right corner
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x + width;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y + height;
+	pUI->mNumVerts++;
+
+	//zero out the texture with z of 0
+	//set w to 1 to boost to white
+	vec4	uv	={	0, 0, 0, 1	};
+
+	//color and UV
+	for(int i=0;i < 6;i++)
+	{
+		int	idx	=(pUI->mNumVerts - 6) + i;
+
+		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
+		Misc_ConvertVec4ToF16(color, pUI->mpUIBuf[idx].Color);
+	}
+
+	assert(pUI->mNumVerts < pUI->mMaxVerts);
 }

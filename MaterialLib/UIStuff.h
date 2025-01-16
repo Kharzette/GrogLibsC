@@ -5,17 +5,17 @@
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	StuffKeeper_t		StuffKeeper;
 typedef struct	CBKeeper_t			CBKeeper;
-typedef struct	GrogText_t			GrogText;
+typedef struct	UIStuff_t			UIStuff;
 typedef struct	GrogFont_t			GrogFont;
 
-GrogText	*GText_Create(GraphicsDevice *pGD, const StuffKeeper *pSK, int maxChars,
-						const char *pFontName, const char *pFontTexName);
+UIStuff	*UI_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
+					GrogFont *pFont, int maxVerts);
+void	UI_FreeAll(UIStuff *pUI);
 
-void	GText_Draw(GrogText *pGT, GraphicsDevice *pGD, CBKeeper *pCBK,
-					const char *pText, const GrogFont *pFont,
-					vec2 pos, float size, vec4 colour);
+void	UI_BeginDraw(UIStuff *pUI);
+void	UI_EndDraw(UIStuff *pUI);
 
-void	GText_FreeAll(GrogText *pST);
-
-//Returns the longest line width in the string
-float	GText_MeasureText(const GrogText *pGT, const GrogFont *pFont, const char *pText);
+void	UI_DrawString(UIStuff *pUI, const char *pText, int len,
+						GrogFont *pFont, vec2 pos, vec4 colour);
+void	UI_DrawRect(UIStuff *pUI, float x, float y, float width,
+					float height, vec4 color);

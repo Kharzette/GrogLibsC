@@ -146,9 +146,9 @@ void	ST_MeasureString(ScreenText *pST, const char *pToMeasure, vec2 size)
 	int	len			=strlen(pToMeasure);
 	for(int i=0;i < len;i++)
 	{
-		size[0]	+=Font_GetCharacterWidth(pST->mpFont, pToMeasure[i]);
+		size[0]	+=GFont_GetCharacterWidth(pST->mpFont, pToMeasure[i]);
 
-		int	height	=Font_GetCharacterHeight(pST->mpFont);
+		int	height	=GFont_GetCharacterHeight(pST->mpFont);
 		if(height > maxHeight)
 		{
 			maxHeight	=height;
@@ -295,7 +295,7 @@ static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText)
 
 	for(int i=0;i < szLen;i++)
 	{
-		int	nextWidth	=curWidth + Font_GetCharacterWidth(pFont, pText[i]);
+		int	nextWidth	=curWidth + GFont_GetCharacterWidth(pFont, pText[i]);
 		int	sixi		=i * 6;
 
 		vec2	xCoord, xCoord2, yCoord, yCoord2, uv;
@@ -303,31 +303,31 @@ static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText)
 		glm_vec2_scale(unitX, curWidth, xCoord);
 		glm_vec2_scale(unitX, nextWidth, xCoord2);
 		glm_vec2_zero(yCoord);
-		glm_vec2_scale(unitY, Font_GetCharacterHeight(pFont), yCoord2);
+		glm_vec2_scale(unitY, GFont_GetCharacterHeight(pFont), yCoord2);
 
 		//note the winding order reversal here
 		glm_vec2_copy(xCoord, pTV[sixi].Position);
-		Font_GetUV(pFont, pText[i], 0, uv);
+		GFont_GetUV(pFont, pText[i], 0, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi].TexCoord0);
 
 		glm_vec2_copy(xCoord2, pTV[sixi + 2].Position);
-		Font_GetUV(pFont, pText[i], 1, uv);
+		GFont_GetUV(pFont, pText[i], 1, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 2].TexCoord0);
 
 		glm_vec2_add(xCoord2, yCoord2, pTV[sixi + 1].Position);
-		Font_GetUV(pFont, pText[i], 2, uv);
+		GFont_GetUV(pFont, pText[i], 2, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 1].TexCoord0);
 
 		glm_vec2_copy(xCoord, pTV[sixi + 3].Position);
-		Font_GetUV(pFont, pText[i], 3, uv);
+		GFont_GetUV(pFont, pText[i], 3, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 3].TexCoord0);
 
 		glm_vec2_add(xCoord2, yCoord2, pTV[sixi + 5].Position);
-		Font_GetUV(pFont, pText[i], 4, uv);
+		GFont_GetUV(pFont, pText[i], 4, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 5].TexCoord0);
 
 		glm_vec2_add(xCoord, yCoord2, pTV[sixi + 4].Position);
-		Font_GetUV(pFont, pText[i], 5, uv);
+		GFont_GetUV(pFont, pText[i], 5, uv);
 		Misc_ConvertVec2ToF16(uv, pTV[sixi + 4].TexCoord0);
 
 		curWidth	=nextWidth;

@@ -644,6 +644,11 @@ void GD_RSSetViewPort(GraphicsDevice *pGD, const D3D11_VIEWPORT *pVP)
 	pGD->mpContext1->lpVtbl->RSSetViewports(pGD->mpContext1, 1, pVP);
 }
 
+void GD_RSSetScissorRects(GraphicsDevice *pGD, UINT numRects, const D3D11_RECT *pRects)
+{
+	pGD->mpContext1->lpVtbl->RSSetScissorRects(pGD->mpContext1, numRects, pRects);
+}
+
 void GD_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV, int slot)
 {
 	pGD->mpContext1->lpVtbl->PSSetShaderResources(pGD->mpContext1, slot, 1, &pSRV);

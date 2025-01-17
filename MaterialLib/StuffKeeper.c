@@ -1133,8 +1133,8 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 	rtbDesc.SrcBlend				=D3D11_BLEND_ONE;
 	rtbDesc.DestBlend				=D3D11_BLEND_INV_SRC_ALPHA;
 	rtbDesc.BlendOp					=D3D11_BLEND_OP_ADD;
-	rtbDesc.SrcBlendAlpha			=D3D11_BLEND_ZERO;
-	rtbDesc.DestBlendAlpha			=D3D11_BLEND_ZERO;
+	rtbDesc.SrcBlendAlpha			=D3D11_BLEND_ONE;
+	rtbDesc.DestBlendAlpha			=D3D11_BLEND_ONE;
 	rtbDesc.BlendOpAlpha			=D3D11_BLEND_OP_ADD;
 	rtbDesc.RenderTargetWriteMask	=D3D11_COLOR_WRITE_ENABLE_ALL;
 

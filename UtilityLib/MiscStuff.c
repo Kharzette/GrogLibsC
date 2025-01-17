@@ -161,6 +161,26 @@ void	Misc_RGBAToVec4(uint32_t col, vec4 ret)
 	glm_vec4_mul(ret, byteRecip, ret);
 }
 
+void	Misc_LinearToSRGB(const vec4 vLin, vec4 vSRGB)
+{
+	float	oo22	=1.0f / 2.2f;
+
+	for(int i=0;i < 3;i++)
+	{
+		vSRGB[i]	=powf(vLin[i], oo22);
+	}
+	vSRGB[3]	=vLin[3];
+}
+
+void	Misc_SRGBToLinear(const vec4 vSRGB, vec4 vLin)
+{
+	for(int i=0;i < 3;i++)
+	{
+		vLin[i]	=powf(vSRGB[i], 2.2f);
+	}
+	vLin[3]	=vSRGB[3];
+}
+
 
 void	Misc_ClearBounds(vec3 min, vec3 max)
 {

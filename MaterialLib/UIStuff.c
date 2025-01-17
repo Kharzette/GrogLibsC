@@ -164,12 +164,16 @@ static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 }
 
 
-void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont, vec2 pos, vec4 colour)
+void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
+						const vec2 pos, const vec4 colour)
 {
 	if(pUI == NULL || !pUI->mbDrawStage)
 	{
 		return;
 	}
+
+	vec4	c;
+	Misc_SRGBToLinear(colour, c);
 
 	//see if there is a change of font
 	if(pUI->mpFont != pFont)
@@ -177,7 +181,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont, ve
 		//font changed, flush what we have
 		if(pUI->mNumVerts > 0)
 		{
-			printf("Font change: %d\n", pUI->mNumVerts);
+//			printf("Font change: %d\n", pUI->mNumVerts);
 			UI_EndDraw(pUI);
 			UI_BeginDraw(pUI);
 		}
@@ -232,14 +236,14 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont, ve
 		glm_vec2_add(xCoord, pV->Position, pV->Position);
 		GFont_GetUV(pUI->mpFont, letter, 0, uv);
 		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pV->Color);
+		Misc_ConvertVec4ToF16(c, pV->Color);
 
 		pV	=&pTV[sixi + 2];
 		glm_vec2_copy(pos, pV->Position);
 		glm_vec2_add(xCoord2, pV->Position, pV->Position);
 		GFont_GetUV(pUI->mpFont, letter, 1, uv);
 		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pV->Color);
+		Misc_ConvertVec4ToF16(c, pV->Color);
 
 		pV	=&pTV[sixi + 1];
 		glm_vec2_copy(pos, pV->Position);
@@ -247,14 +251,14 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont, ve
 		glm_vec2_add(yCoord2, pV->Position, pV->Position);
 		GFont_GetUV(pUI->mpFont, letter, 2, uv);
 		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pV->Color);
+		Misc_ConvertVec4ToF16(c, pV->Color);
 
 		pV	=&pTV[sixi + 3];
 		glm_vec2_copy(pos, pV->Position);
 		glm_vec2_add(xCoord, pV->Position, pV->Position);
 		GFont_GetUV(pUI->mpFont, letter, 3, uv);
 		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pV->Color);
+		Misc_ConvertVec4ToF16(c, pV->Color);
 
 		pV	=&pTV[sixi + 5];
 		glm_vec2_copy(pos, pV->Position);
@@ -262,7 +266,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont, ve
 		glm_vec2_add(yCoord2, pV->Position, pV->Position);
 		GFont_GetUV(pUI->mpFont, letter, 4, uv);
 		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pV->Color);
+		Misc_ConvertVec4ToF16(c, pV->Color);
 
 		pV	=&pTV[sixi + 4];
 		glm_vec2_copy(pos, pV->Position);
@@ -270,7 +274,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont, ve
 		glm_vec2_add(yCoord2, pV->Position, pV->Position);
 		GFont_GetUV(pUI->mpFont, letter, 5, uv);
 		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(colour, pV->Color);
+		Misc_ConvertVec4ToF16(c, pV->Color);
 
 		curWidth		=nextWidth;
 		pUI->mNumVerts	+=6;
@@ -278,7 +282,8 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont, ve
 	}
 }
 
-void	UI_DrawRect(UIStuff *pUI, float x, float y, float width, float height, vec4 color)
+void	UI_DrawRect(UIStuff *pUI, float x, float y, float width,
+					float height, const vec4 color)
 {
 	if(pUI == NULL || !pUI->mbDrawStage)
 	{
@@ -321,6 +326,9 @@ void	UI_DrawRect(UIStuff *pUI, float x, float y, float width, float height, vec4
 	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y + height;
 	pUI->mNumVerts++;
 
+	vec4	c;
+	Misc_SRGBToLinear(color, c);
+
 	//zero out the texture with z of 0
 	//set w to 1 to boost to white
 	vec4	uv	={	0, 0, 0, 1	};
@@ -331,7 +339,7 @@ void	UI_DrawRect(UIStuff *pUI, float x, float y, float width, float height, vec4
 		int	idx	=(pUI->mNumVerts - 6) + i;
 
 		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
-		Misc_ConvertVec4ToF16(color, pUI->mpUIBuf[idx].Color);
+		Misc_ConvertVec4ToF16(c, pUI->mpUIBuf[idx].Color);
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);

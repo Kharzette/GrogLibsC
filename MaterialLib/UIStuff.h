@@ -8,6 +8,12 @@ typedef struct	CBKeeper_t			CBKeeper;
 typedef struct	UIStuff_t			UIStuff;
 typedef struct	GrogFont_t			GrogFont;
 
+typedef struct	UIRect_t
+{
+	float	x, y;	//topleft position
+	float	width, height;
+}	UIRect;
+
 UIStuff	*UI_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
 					GrogFont *pFont, int maxVerts);
 void	UI_FreeAll(UIStuff *pUI);
@@ -17,5 +23,5 @@ void	UI_EndDraw(UIStuff *pUI);
 
 void	UI_DrawString(UIStuff *pUI, const char *pText, int len,
 						GrogFont *pFont, const vec2 pos, const vec4 colour);
-void	UI_DrawRect(UIStuff *pUI, float x, float y, float width,
-					float height, const vec4 color);
+void	UI_DrawRect(UIStuff *pUI, const UIRect r, const vec4 color);
+void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess, const vec4 color);

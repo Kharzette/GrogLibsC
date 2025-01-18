@@ -1,5 +1,5 @@
 #include	"d3d11.h"
-#include	<cglm/call.h>
+#include	"UIStuff.h"
 #include	<assert.h>
 #include	"CBKeeper.h"
 #include	"StuffKeeper.h"
@@ -192,7 +192,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 	int	szLen		=len;
 
 	//check bounds
-	if(szLen + (pUI->mNumVerts / 6) > pUI->mMaxVerts)
+	if(((szLen * 6) + pUI->mNumVerts) > pUI->mMaxVerts)
 	{
 		printf("Overflow of UIStuff buffer...\n");
 		return;
@@ -282,8 +282,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 	}
 }
 
-void	UI_DrawRect(UIStuff *pUI, float x, float y, float width,
-					float height, const vec4 color)
+void	UI_DrawRect(UIStuff *pUI, const UIRect r, const vec4 color)
 {
 	if(pUI == NULL || !pUI->mbDrawStage)
 	{
@@ -295,35 +294,35 @@ void	UI_DrawRect(UIStuff *pUI, float x, float y, float width,
 
 	//tri 0
 	//top left corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y;
 	pUI->mNumVerts++;
 
 	//bottom left corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y + height;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y + r.height;
 	pUI->mNumVerts++;
 
 	//top right corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x + width;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x + r.width;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y;
 	pUI->mNumVerts++;
 
 
 	//tri1
 	//top right corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x + width;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x + r.width;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y;
 	pUI->mNumVerts++;
 
 	//bottom left corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y + height;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y + r.height;
 	pUI->mNumVerts++;
 
 	//bottom right corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=x + width;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=y + height;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x + r.width;
+	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y + r.height;
 	pUI->mNumVerts++;
 
 	vec4	c;
@@ -337,6 +336,235 @@ void	UI_DrawRect(UIStuff *pUI, float x, float y, float width,
 	for(int i=0;i < 6;i++)
 	{
 		int	idx	=(pUI->mNumVerts - 6) + i;
+
+		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
+		Misc_ConvertVec4ToF16(c, pUI->mpUIBuf[idx].Color);
+	}
+
+	assert(pUI->mNumVerts < pUI->mMaxVerts);
+}
+
+void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess, const vec4 color)
+{
+	if(pUI == NULL || !pUI->mbDrawStage)
+	{
+		return;
+	}
+
+	if(roundNess <= 0.0f)
+	{
+		UI_DrawRect(pUI, r, color);
+		return;
+	}
+
+	//roundness should be >0 and <=1
+	glm_clamp(roundNess, 0.0f, 1.0f);
+
+	//for rounded, there are points along the rect where the straight
+	//lines stop and the arcs begin.
+	//        A          B
+	//        ************
+	//    C*                *D
+	//    E*                *F
+	//        ************
+	//        G          H
+	//
+	//            A  B
+	//            ****
+	//           *    *
+	//         C*      *D
+	//          *      *
+	//          *      *
+	//          *      *
+	//         E*      *F
+	//           *    *
+	//            ****
+	//            G  H
+	//
+	//Could start with right triangles like CA EG BD FH
+	//and then draw ABHG
+	//
+	//With a roundess of 1 some of those points go away:
+	//
+	//        A          B
+	//        ************
+	//    C*                *D
+	//        ************
+	//        G          H
+	//
+	//             A  
+	//             **
+	//           *    *
+	//         C*      *D
+	//          *      *
+	//          *      *
+	//          *      *
+	//         E*      *F
+	//           *    *
+	//             **
+	//             G
+	//
+
+	//find length of sides
+	float	xLen	=r.width;
+	float	yLen	=r.height;
+
+	//at full roundness, the shortest side forms
+	//the diameter of a circle
+	float	rad	=0.5f * ((xLen > yLen)? yLen : xLen);
+
+	//scale rad by roundNess factor
+	rad	*=roundNess;
+
+	//the middle bit unaffected by roundness
+	//assumes wider than taller for now
+	vec2	topLeft		={	r.x + rad, r.y	};
+	vec2	topRight	={	(r.x + r.width) - rad, r.y	};
+	vec2	bottomLeft	={	topLeft[0], (r.y + r.height)	};
+	vec2	bottomRight	={	topRight[0], (r.y + r.height)	};
+
+	//in my noggin, this should be the other way around
+	//this seems counterclockwise which should be culled
+	int	vCnt	=0;
+	//tri 0
+	//top left corner
+	glm_vec2_copy(topLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//bottom left corner
+	glm_vec2_copy(bottomLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//top right corner
+	glm_vec2_copy(topRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+
+	//tri1
+	//top right corner
+	glm_vec2_copy(topRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//bottom left corner
+	glm_vec2_copy(bottomLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//bottom right corner
+	glm_vec2_copy(bottomRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//draw the corners for debuggery
+	//topleft
+	vec2	rectTLC	={	r.x, r.y	};				//top left corner
+	vec2	rectLM	={	r.x, r.y + rad	};			//rect left middle
+	vec2	midLeft	={	r.x + rad, r.y + rad	};	//left middle
+
+	//topRight
+	vec2	rectTRC		={	r.x + r.width, r.y	};					//top left corner
+	vec2	rectRM		={	(r.x + r.width), r.y + rad	};			//rect left middle
+	vec2	midRight	={	(r.x + r.width) - rad, r.y + rad	};	//left middle
+
+	//bottomLeft
+	vec2	rectBLC		={	r.x, r.y + r.height	};					//top left corner
+	vec2	rectBLM		={	r.x + rad, (r.y + r.height) - rad	};	//rect left middle
+	vec2	midBLeft	={	r.x, (r.y + r.height) - rad	};			//left middle
+
+	//bottomRight
+	vec2	rectBRC		={	r.x + r.width, r.y + r.height	};					//top left corner
+	vec2	rectBRM		={	(r.x + r.width) - rad, (r.y + r.height) - rad	};	//rect left middle
+	vec2	midBRight	={	r.x + r.width, (r.y + r.height) - rad	};			//left middle
+
+	//square between corners right tri 0
+	glm_vec2_copy(rectRM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midBRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//square between corners right tri 1
+	glm_vec2_copy(midRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(rectBRM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midBRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	
+	//square between corners left tri 0
+	glm_vec2_copy(rectLM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midBLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//square between corners left tri 1
+	glm_vec2_copy(midLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midBLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(rectBLM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//top right corner
+	glm_vec2_copy(bottomRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midBRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(rectBRM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//bottom left corner
+	glm_vec2_copy(bottomLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(rectBLM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midBLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//top left corner
+	glm_vec2_copy(topLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(rectLM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//top right corner
+	glm_vec2_copy(topRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(midRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	glm_vec2_copy(rectRM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	vec4	c;
+	Misc_SRGBToLinear(color, c);
+
+	//zero out the texture with z of 0
+	//set w to 1 to boost to white
+	vec4	uv	={	0, 0, 0, 1	};
+
+	//color and UV
+	for(int i=0;i < vCnt;i++)
+	{
+		int	idx	=(pUI->mNumVerts - vCnt) + i;
 
 		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
 		Misc_ConvertVec4ToF16(c, pUI->mpUIBuf[idx].Color);

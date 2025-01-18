@@ -344,7 +344,10 @@ void	UI_DrawRect(UIStuff *pUI, const UIRect r, const vec4 color)
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
 }
 
-void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess, const vec4 color)
+//roundness 0 to 1 makes the corners more roundy
+//segments makes the curve less polygony
+void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
+							int segments, const vec4 color)
 {
 	if(pUI == NULL || !pUI->mbDrawStage)
 	{
@@ -360,12 +363,16 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess, const vec
 	//roundness should be >0 and <=1
 	glm_clamp(roundNess, 0.0f, 1.0f);
 
+	//segments should be >0 and <=20
+	int	seggz	=(segments < 0)? 1 : segments;
+	seggz		=(seggz > 20)? 20 : seggz;
+
 	//for rounded, there are points along the rect where the straight
 	//lines stop and the arcs begin.
 	//        A          B
 	//        ************
-	//    C*                *D
-	//    E*                *F
+	//    C*  I          J  *D
+	//    E*  K          L  *F
 	//        ************
 	//        G          H
 	//
@@ -416,143 +423,151 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess, const vec
 	//scale rad by roundNess factor
 	rad	*=roundNess;
 
-	//the middle bit unaffected by roundness
 	//assumes wider than taller for now
-	vec2	topLeft		={	r.x + rad, r.y	};
-	vec2	topRight	={	(r.x + r.width) - rad, r.y	};
-	vec2	bottomLeft	={	topLeft[0], (r.y + r.height)	};
-	vec2	bottomRight	={	topRight[0], (r.y + r.height)	};
+	vec2	A	={	r.x + rad,				r.y						};
+	vec2	B	={	(r.x + r.width) - rad,	r.y						};
+	vec2	C	={	r.x,					r.y + rad				};
+	vec2	D	={	(r.x + r.width),		r.y + rad				};
+	vec2	E	={	r.x,					(r.y + r.height) - rad	};
+	vec2	F	={	(r.x + r.width),		(r.y + r.height) - rad	};
+	vec2	G	={	r.x + rad,				r.y + r.height			};
+	vec2	H	={	(r.x + r.width) - rad,	r.y + r.height			};
+	vec2	I	={	r.x + rad,				r.y + rad				};
+	vec2	J	={	(r.x + r.width) - rad,	r.y + rad				};
+	vec2	K	={	r.x + rad,				(r.y + r.height) - rad	};
+	vec2	L	={	(r.x + r.width) - rad,	(r.y + r.height) - rad	};
+
 
 	//in my noggin, this should be the other way around
 	//this seems counterclockwise which should be culled
 	int	vCnt	=0;
-	//tri 0
-	//top left corner
-	glm_vec2_copy(topLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	//tri 0 AGB
+	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(G, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
 	pUI->mNumVerts++;	vCnt++;
 
-	//bottom left corner
-	glm_vec2_copy(bottomLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	//tri1 BGH
+	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(G, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(H, pUI->mpUIBuf[pUI->mNumVerts].Position);
 	pUI->mNumVerts++;	vCnt++;
 
-	//top right corner
-	glm_vec2_copy(topRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	//tri2 CEI
+	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(E, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
 	pUI->mNumVerts++;	vCnt++;
 
-
-	//tri1
-	//top right corner
-	glm_vec2_copy(topRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	//tri3 IEK
+	glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(E, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(K, pUI->mpUIBuf[pUI->mNumVerts].Position);
 	pUI->mNumVerts++;	vCnt++;
 
-	//bottom left corner
-	glm_vec2_copy(bottomLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	//tri4 DJL
+	glm_vec2_copy(D, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(J, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(L, pUI->mpUIBuf[pUI->mNumVerts].Position);
 	pUI->mNumVerts++;	vCnt++;
 
-	//bottom right corner
-	glm_vec2_copy(bottomRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	//tri5 DLF
+	glm_vec2_copy(D, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(L, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(F, pUI->mpUIBuf[pUI->mNumVerts].Position);
 	pUI->mNumVerts++;	vCnt++;
 
-	//draw the corners for debuggery
-	//topleft
-	vec2	rectTLC	={	r.x, r.y	};				//top left corner
-	vec2	rectLM	={	r.x, r.y + rad	};			//rect left middle
-	vec2	midLeft	={	r.x + rad, r.y + rad	};	//left middle
+	//that is all of the square bits
+	//Now an arc needs to be found between A C (and the other corners)
+	//Going to guess that I could be the center?  I'll try that.
+	vec2	AIRay;
+	glm_vec2_sub(A, I, AIRay);
 
-	//topRight
-	vec2	rectTRC		={	r.x + r.width, r.y	};					//top left corner
-	vec2	rectRM		={	(r.x + r.width), r.y + rad	};			//rect left middle
-	vec2	midRight	={	(r.x + r.width) - rad, r.y + rad	};	//left middle
+	//why is length named norm?!?
+	float	AILen	=glm_vec2_norm(AIRay);
 
-	//bottomLeft
-	vec2	rectBLC		={	r.x, r.y + r.height	};					//top left corner
-	vec2	rectBLM		={	r.x + rad, (r.y + r.height) - rad	};	//rect left middle
-	vec2	midBLeft	={	r.x, (r.y + r.height) - rad	};			//left middle
+	//find points between A and C
+	vec2	AC;
+	glm_vec2_sub(A, C, AC);
 
-	//bottomRight
-	vec2	rectBRC		={	r.x + r.width, r.y + r.height	};					//top left corner
-	vec2	rectBRM		={	(r.x + r.width) - rad, (r.y + r.height) - rad	};	//rect left middle
-	vec2	midBRight	={	r.x + r.width, (r.y + r.height) - rad	};			//left middle
+	float	ACLen	=glm_vec2_norm(AC);
 
-	//square between corners right tri 0
-	glm_vec2_copy(rectRM, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	//divide into segments
+	float	seg	=ACLen / (seggz + 1);
+
+	//normalize AC to use to generate  points
+	glm_vec2_scale(AC, 1.0f / ACLen, AC);
+
+	//store points along the AC vector
+	vec2	points[18];
+
+	//scale the AC vec by seg
+	vec2	ACSeg, CMarch;
+	glm_vec2_scale(AC, seg, ACSeg);
+	glm_vec2_copy(C, CMarch);
+
+	for(int i=0;i < seggz;i++)
+	{
+		//advance from C to A
+		glm_vec2_add(CMarch, ACSeg, CMarch);
+
+		glm_vec2_copy(CMarch, points[i]);
+	}
+
+	//for each point, find a vector to I
+	//use this to scale to AILen
+	for(int i=0;i < seggz;i++)
+	{
+		vec2	ray;
+		glm_vec2_sub(points[i], I, ray);
+
+		glm_vec2_normalize(ray);
+
+		glm_vec2_scale(ray, AILen, ray);
+
+		//store ray end back in point
+		glm_vec2_add(I, ray, points[i]);
+	}
+
+	//make triangles for the endpoints of the arc
+	//tri6 ICPoints[0]
+	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(points[0], pUI->mpUIBuf[pUI->mNumVerts].Position);
 	pUI->mNumVerts++;	vCnt++;
 
-	glm_vec2_copy(midRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	//tri7 IAPoints[seggz-1]
+	glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(points[seggz - 1], pUI->mpUIBuf[pUI->mNumVerts].Position);
 	pUI->mNumVerts++;	vCnt++;
 
-	glm_vec2_copy(midBRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//square between corners right tri 1
-	glm_vec2_copy(midRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(rectBRM, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(midBRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	
-	//square between corners left tri 0
-	glm_vec2_copy(rectLM, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(midBLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(midLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//square between corners left tri 1
-	glm_vec2_copy(midLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(midBLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(rectBLM, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//top right corner
-	glm_vec2_copy(bottomRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(midBRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(rectBRM, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//bottom left corner
-	glm_vec2_copy(bottomLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(rectBLM, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(midBLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//top left corner
-	glm_vec2_copy(topLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(rectLM, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(midLeft, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//top right corner
-	glm_vec2_copy(topRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(midRight, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	glm_vec2_copy(rectRM, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
+	//rest of the triangles come from points
+	for(int i=1;i < seggz;i++)
+	{
+		glm_vec2_copy(points[i-1], pUI->mpUIBuf[pUI->mNumVerts].Position);
+		pUI->mNumVerts++;	vCnt++;
+		glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
+		pUI->mNumVerts++;	vCnt++;
+		glm_vec2_copy(points[i], pUI->mpUIBuf[pUI->mNumVerts].Position);
+		pUI->mNumVerts++;	vCnt++;
+	}
 
 	vec4	c;
 	Misc_SRGBToLinear(color, c);

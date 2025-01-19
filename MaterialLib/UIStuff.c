@@ -320,8 +320,8 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 	//roundness should be >0 and <=1
 	glm_clamp(roundNess, 0.0f, 1.0f);
 
-	//segments should be >0 and <=20
-	int	seggz	=(segments < 0)? 1 : segments;
+	//segments should be >=1 and <=20
+	int	seggz	=(segments < 1)? 1 : segments;
 	seggz		=(seggz > 20)? 20 : seggz;
 
 	//for rounded, there are points along the rect where the straight

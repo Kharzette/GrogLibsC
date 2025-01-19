@@ -53,6 +53,9 @@ static void	sMakeCornerArcPoints(const vec2 A, const vec2 B, const vec2 C,
 static int	sMakeCornerTris(UIStuff *pUI, int segments,
 							const vec2 A, const vec2 B, const vec2 C,
 							const vec2 *pPoints);
+static int	sAddTriUVC(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C,
+						const vec4 uvA, const vec4 uvB, const vec4 uvC,
+						const vec4 color);
 
 
 //combined text and shape buffer
@@ -164,15 +167,11 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 	glm_vec2_zero(yCoord);
 	glm_vec2_scale(unitY, GFont_GetCharacterHeight(pUI->mpFont), yCoord2);
 
-	UIVert	*pTV	=pUI->mpUIBuf;
-
-	int	sixi	=pUI->mNumVerts;
 	for(int i=0;i < szLen;i++)
 	{
 		int	nextWidth	=curWidth + GFont_GetCharacterWidth(pUI->mpFont, pText[i]);
 
 		vec2	xCoord, xCoord2;
-		vec4	uv	={ 1, 1, 1, 0 };
 
 		glm_vec2_scale(unitX, curWidth, xCoord);
 		glm_vec2_scale(unitX, nextWidth, xCoord2);
@@ -188,55 +187,30 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 			continue;
 		}
 
-		//note the winding order reversal here
-		UIVert	*pV	=&pTV[sixi];
-		glm_vec2_copy(pos, pV->Position);
-		glm_vec2_add(xCoord, pV->Position, pV->Position);
-		GFont_GetUV(pUI->mpFont, letter, 0, uv);
-		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(c, pV->Color);
+		vec2	A, B, C;
+		vec4	aUV	={ 1, 1, 1, 0 }, bUV ={ 1, 1, 1, 0 }, cUV	={ 1, 1, 1, 0 };
+		glm_vec2_add(pos, xCoord, A);
+		glm_vec2_add(pos, xCoord2, C);
+		glm_vec2_add(C, yCoord2, B);
 
-		pV	=&pTV[sixi + 2];
-		glm_vec2_copy(pos, pV->Position);
-		glm_vec2_add(xCoord2, pV->Position, pV->Position);
-		GFont_GetUV(pUI->mpFont, letter, 1, uv);
-		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(c, pV->Color);
+		GFont_GetUV(pUI->mpFont, letter, 0, aUV);
+		GFont_GetUV(pUI->mpFont, letter, 2, bUV);
+		GFont_GetUV(pUI->mpFont, letter, 1, cUV);
 
-		pV	=&pTV[sixi + 1];
-		glm_vec2_copy(pos, pV->Position);
-		glm_vec2_add(xCoord2, pV->Position, pV->Position);
-		glm_vec2_add(yCoord2, pV->Position, pV->Position);
-		GFont_GetUV(pUI->mpFont, letter, 2, uv);
-		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(c, pV->Color);
+		sAddTriUVC(pUI, A, B, C, aUV, bUV, cUV, colour);
 
-		pV	=&pTV[sixi + 3];
-		glm_vec2_copy(pos, pV->Position);
-		glm_vec2_add(xCoord, pV->Position, pV->Position);
-		GFont_GetUV(pUI->mpFont, letter, 3, uv);
-		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(c, pV->Color);
+		glm_vec2_add(pos, xCoord, A);
+		glm_vec2_add(A, yCoord2, B);
+		glm_vec2_add(pos, xCoord2, C);
+		glm_vec2_add(C, yCoord2, C);
 
-		pV	=&pTV[sixi + 5];
-		glm_vec2_copy(pos, pV->Position);
-		glm_vec2_add(xCoord2, pV->Position, pV->Position);
-		glm_vec2_add(yCoord2, pV->Position, pV->Position);
-		GFont_GetUV(pUI->mpFont, letter, 4, uv);
-		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(c, pV->Color);
+		GFont_GetUV(pUI->mpFont, letter, 3, aUV);
+		GFont_GetUV(pUI->mpFont, letter, 5, bUV);
+		GFont_GetUV(pUI->mpFont, letter, 4, cUV);
 
-		pV	=&pTV[sixi + 4];
-		glm_vec2_copy(pos, pV->Position);
-		glm_vec2_add(xCoord, pV->Position, pV->Position);
-		glm_vec2_add(yCoord2, pV->Position, pV->Position);
-		GFont_GetUV(pUI->mpFont, letter, 5, uv);
-		Misc_ConvertVec4ToF16(uv, pV->TexCoord0);
-		Misc_ConvertVec4ToF16(c, pV->Color);
+		sAddTriUVC(pUI, A, B, C, aUV, bUV, cUV, colour);
 
-		curWidth		=nextWidth;
-		pUI->mNumVerts	+=6;
-		sixi			=pUI->mNumVerts;
+		curWidth	=nextWidth;
 	}
 }
 
@@ -251,37 +225,17 @@ void	UI_DrawRect(UIStuff *pUI, const UIRect r, const vec4 color)
 	//this seems counterclockwise which should be culled
 
 	//tri 0
-	//top left corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y;
-	pUI->mNumVerts++;
-
-	//bottom left corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y + r.height;
-	pUI->mNumVerts++;
-
-	//top right corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x + r.width;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y;
-	pUI->mNumVerts++;
+	sAddTri(pUI,
+		(vec2) { r.x, 			r.y 			},		//top left corner
+		(vec2) { r.x, 			r.y + r.height	},		//bottom left corner 
+		(vec2) { r.x + r.width,	r.y				});		//top right corner
 
 
 	//tri1
-	//top right corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x + r.width;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y;
-	pUI->mNumVerts++;
-
-	//bottom left corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y + r.height;
-	pUI->mNumVerts++;
-
-	//bottom right corner
-	pUI->mpUIBuf[pUI->mNumVerts].Position[0]	=r.x + r.width;
-	pUI->mpUIBuf[pUI->mNumVerts].Position[1]	=r.y + r.height;
-	pUI->mNumVerts++;
+	sAddTri(pUI,
+		(vec2) { r.x + r.width,	r.y 			},		//top right corner
+		(vec2) { r.x, 			r.y + r.height	},		//bottom left corner 
+		(vec2) { r.x + r.width,	r.y + r.height	});		//bottom right corner
 
 	vec4	c;
 	Misc_SRGBToLinear(color, c);
@@ -429,6 +383,28 @@ static int	sAddTri(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C)
 	return	3;
 }
 
+//Add a triangle to the ui buffer
+//returns num verts added
+static int	sAddTriUVC(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C,
+						const vec4 uvA, const vec4 uvB, const vec4 uvC,
+						const vec4 color)
+{
+	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	Misc_ConvertVec4ToF16(uvA, pUI->mpUIBuf[pUI->mNumVerts].TexCoord0);
+	Misc_ConvertVec4ToF16(color, pUI->mpUIBuf[pUI->mNumVerts].Color);
+	pUI->mNumVerts++;
+	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	Misc_ConvertVec4ToF16(uvB, pUI->mpUIBuf[pUI->mNumVerts].TexCoord0);
+	Misc_ConvertVec4ToF16(color, pUI->mpUIBuf[pUI->mNumVerts].Color);
+	pUI->mNumVerts++;
+	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	Misc_ConvertVec4ToF16(uvC, pUI->mpUIBuf[pUI->mNumVerts].TexCoord0);
+	Misc_ConvertVec4ToF16(color, pUI->mpUIBuf[pUI->mNumVerts].Color);
+	pUI->mNumVerts++;
+
+	return	3;
+}
+
 //create points on an arc between right triangle verts A and B
 //with C as the 90 degree corner
 static void	sMakeCornerArcPoints(const vec2 A, const vec2 B, const vec2 C,
@@ -492,31 +468,16 @@ static int	sMakeCornerTris(UIStuff *pUI, int segments,
 	int	vCnt	=0;
 
 	//make triangles for the endpoints of the arc
-	//tri6 CBPoints[0]
-	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(pPoints[0], pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
+	//tri6 BCPoints[0]
+	vCnt	+=sAddTri(pUI, B, C, pPoints[0]);
 
 	//tri7 CAPoints[seggz-1]
-	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(pPoints[segments - 1], pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
+	vCnt	+=sAddTri(pUI, C, A, pPoints[segments - 1]);
 
 	//rest of the triangles come from points
 	for(int i=1;i < segments;i++)
 	{
-		glm_vec2_copy(pPoints[i-1], pUI->mpUIBuf[pUI->mNumVerts].Position);
-		pUI->mNumVerts++;	vCnt++;
-		glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
-		pUI->mNumVerts++;	vCnt++;
-		glm_vec2_copy(pPoints[i], pUI->mpUIBuf[pUI->mNumVerts].Position);
-		pUI->mNumVerts++;	vCnt++;
+		vCnt	+=sAddTri(pUI, pPoints[i-1], C, pPoints[i]);
 	}
 	return	vCnt;
 }

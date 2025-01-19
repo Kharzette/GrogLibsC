@@ -39,7 +39,7 @@ static void	MulAdd2DestS(const vec2 a, const float b, const vec2 c, vec2 dest)
 	dest[1]	=c[1] + (a[1] * b);
 }
 
-static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
+static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {
 	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
 
@@ -219,7 +219,7 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, bool bFlipped, Graphi
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -421,7 +421,7 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNormCol0) * 24 * numBounds);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNormCol0) * 24 * numBounds);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnc, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -592,7 +592,7 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24 * numCubes);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24 * numCubes);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -783,7 +783,7 @@ PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNormCol0) * 24 * numRays);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNormCol0) * 24 * numRays);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnc, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -935,7 +935,7 @@ PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD)
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -1069,7 +1069,7 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * 18);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 18);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -1225,7 +1225,7 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * vertCount * 2);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * vertCount * 2);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -1502,7 +1502,7 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * vertCount * 2);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * vertCount * 2);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -1582,7 +1582,7 @@ PrimObject	*PF_CreateCV(const ConvexVolume *pCV, GraphicsDevice *pGD)
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * totalVerts);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * totalVerts);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
 
 	//make index buffer
@@ -1633,7 +1633,7 @@ PrimObject	*PF_CreateTri(const vec3 tri[3], GraphicsDevice *pGD)
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(VPosNorm) * 3);
+	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 3);
 	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, verts, bufDesc.ByteWidth);
 
 	//make index buffer

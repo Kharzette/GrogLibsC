@@ -72,7 +72,7 @@ const char *sTypeNames[110]	={
 	"VPosNormTex04Tex14Tex24Color0", "VPosNormBoneTanTex0Col0", "VPosNormTex04F", "VPosNormTex0Col0F", "VPosNormTex04Tex14Tex24Color0F"
 };
 
-static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
+static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {
 	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
 
@@ -149,7 +149,7 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 	fread(pVerts, vertSize * arrNumVerts, 1, f);
 
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, vertSize * arrNumVerts);
+	sMakeVBDesc(&bufDesc, vertSize * arrNumVerts);
 	pMesh->mpVerts	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
 
 	//read indexes

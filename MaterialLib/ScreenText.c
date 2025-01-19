@@ -58,7 +58,7 @@ typedef struct	ScreenText_t
 static void	CopyLetters(const GrogFont *pFont, TextVert *pTV, const char *pText);
 static void	ReBuildVB(ScreenText *pST, GraphicsDevice *pGD);
 
-static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
+static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {
 	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
 
@@ -93,7 +93,7 @@ ScreenText	*ST_Create(GraphicsDevice *pGD, const StuffKeeper *pSK, int maxChars,
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(TextVert) * maxChars * 6);
+	sMakeVBDesc(&bufDesc, sizeof(TextVert) * maxChars * 6);
 	pRet->mpVB	=GD_CreateBuffer(pGD, &bufDesc);
 
 	return	pRet;

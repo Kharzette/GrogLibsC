@@ -45,8 +45,14 @@ typedef struct	UIStuff_t
 }	UIStuff;
 
 //statics
-static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize);
+static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize);
 static void	sRender(UIStuff *pUI);
+static void	sMakeCornerArcPoints(const vec2 A, const vec2 B, const vec2 C,
+								 int segments, vec2 *pPoints);
+static int	sMakeCornerTris(UIStuff *pUI, int segments,
+							const vec2 A, const vec2 B, const vec2 C,
+							const vec2 *pPoints);
+
 
 //combined text and shape buffer
 UIStuff	*UI_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
@@ -72,7 +78,7 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
 
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	MakeVBDesc(&bufDesc, sizeof(UIVert) * maxVerts);
+	sMakeVBDesc(&bufDesc, sizeof(UIVert) * maxVerts);
 	pRet->mpVB	=GD_CreateBuffer(pGD, &bufDesc);
 
 	return	pRet;
@@ -86,6 +92,7 @@ void	UI_FreeAll(UIStuff *pUI)
 
 	free(pUI);
 }
+
 
 void	UI_BeginDraw(UIStuff *pUI)
 {
@@ -113,56 +120,6 @@ void	UI_EndDraw(UIStuff *pUI)
 
 	sRender(pUI);
 }
-
-
-static void	sRender(UIStuff *pUI)
-{
-	if(pUI->mNumVerts <= 0)
-	{
-		return;
-	}
-
-	if(pUI == NULL)
-	{
-		return;
-	}
-
-	if(pUI->mNumVerts <= 0)
-	{
-		return;
-	}
-
-	GD_IASetPrimitiveTopology(pUI->mpGD, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	GD_IASetVertexBuffers(pUI->mpGD, pUI->mpVB, sizeof(UIVert), 0);
-	GD_IASetIndexBuffers(pUI->mpGD, NULL, DXGI_FORMAT_UNKNOWN, 0);
-	GD_IASetInputLayout(pUI->mpGD, pUI->mpLayout);
-
-	GD_VSSetShader(pUI->mpGD, pUI->mpVS);
-	GD_PSSetShader(pUI->mpGD, pUI->mpPS);
-	GD_PSSetSRV(pUI->mpGD, GFont_GetSRV(pUI->mpFont), 0);
-
-	GD_PSSetSampler(pUI->mpGD, pUI->mpSS, 0);
-
-	GD_OMSetDepthStencilState(pUI->mpGD, pUI->mpDSS);
-	GD_OMSetBlendState(pUI->mpGD, pUI->mpBS);
-
-	GD_Draw(pUI->mpGD, pUI->mNumVerts, 0);
-}
-
-
-static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
-{
-	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
-
-	pDesc->BindFlags			=D3D11_BIND_VERTEX_BUFFER;
-	pDesc->ByteWidth			=byteSize;
-	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_DYNAMIC;
-	pDesc->MiscFlags			=0;
-	pDesc->StructureByteStride	=0;
-	pDesc->Usage				=D3D11_USAGE_DYNAMIC;
-}
-
 
 void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 						const vec2 pos, const vec4 colour)
@@ -490,84 +447,24 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 	pUI->mNumVerts++;	vCnt++;
 
 	//that is all of the square bits
-	//Now an arc needs to be found between A C (and the other corners)
-	//Going to guess that I could be the center?  I'll try that.
-	vec2	AIRay;
-	glm_vec2_sub(A, I, AIRay);
+	//find arc points for the 4 corners
+	vec2	points[20];
 
-	//why is length named norm?!?
-	float	AILen	=glm_vec2_norm(AIRay);
+	//ACI on the diagram above, top left
+	sMakeCornerArcPoints(A, C, I, seggz, points);
+	vCnt	+=sMakeCornerTris(pUI, seggz, A, C, I, points);
 
-	//find points between A and C
-	vec2	AC;
-	glm_vec2_sub(A, C, AC);
+	//DBJ, top right
+	sMakeCornerArcPoints(D, B, J, seggz, points);
+	vCnt	+=sMakeCornerTris(pUI, seggz, D, B, J, points);
 
-	float	ACLen	=glm_vec2_norm(AC);
+	//EGK, bottom left
+	sMakeCornerArcPoints(E, G, K, seggz, points);
+	vCnt	+=sMakeCornerTris(pUI, seggz, E, G, K, points);
 
-	//divide into segments
-	float	seg	=ACLen / (seggz + 1);
-
-	//normalize AC to use to generate  points
-	glm_vec2_scale(AC, 1.0f / ACLen, AC);
-
-	//store points along the AC vector
-	vec2	points[18];
-
-	//scale the AC vec by seg
-	vec2	ACSeg, CMarch;
-	glm_vec2_scale(AC, seg, ACSeg);
-	glm_vec2_copy(C, CMarch);
-
-	for(int i=0;i < seggz;i++)
-	{
-		//advance from C to A
-		glm_vec2_add(CMarch, ACSeg, CMarch);
-
-		glm_vec2_copy(CMarch, points[i]);
-	}
-
-	//for each point, find a vector to I
-	//use this to scale to AILen
-	for(int i=0;i < seggz;i++)
-	{
-		vec2	ray;
-		glm_vec2_sub(points[i], I, ray);
-
-		glm_vec2_normalize(ray);
-
-		glm_vec2_scale(ray, AILen, ray);
-
-		//store ray end back in point
-		glm_vec2_add(I, ray, points[i]);
-	}
-
-	//make triangles for the endpoints of the arc
-	//tri6 ICPoints[0]
-	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(points[0], pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//tri7 IAPoints[seggz-1]
-	glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(points[seggz - 1], pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//rest of the triangles come from points
-	for(int i=1;i < seggz;i++)
-	{
-		glm_vec2_copy(points[i-1], pUI->mpUIBuf[pUI->mNumVerts].Position);
-		pUI->mNumVerts++;	vCnt++;
-		glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
-		pUI->mNumVerts++;	vCnt++;
-		glm_vec2_copy(points[i], pUI->mpUIBuf[pUI->mNumVerts].Position);
-		pUI->mNumVerts++;	vCnt++;
-	}
+	//HFL, bottom right
+	sMakeCornerArcPoints(H, F, L, seggz, points);
+	vCnt	+=sMakeCornerTris(pUI, seggz, H, F, L, points);
 
 	vec4	c;
 	Misc_SRGBToLinear(color, c);
@@ -586,4 +483,144 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
+}
+
+
+//create points on an arc between right triangle verts A and B
+//with C as the 90 degree corner
+static void	sMakeCornerArcPoints(const vec2 A, const vec2 B, const vec2 C,
+								 int segments, vec2 *pPoints)
+{
+	vec2	ACRay;
+	glm_vec2_sub(A, C, ACRay);
+
+	//why is length named norm?!?
+	float	ACLen	=glm_vec2_norm(ACRay);
+
+	//find points between A and B
+	vec2	AB;
+	glm_vec2_sub(A, B, AB);
+
+	float	ABLen	=glm_vec2_norm(AB);
+
+	//divide into segments
+	float	seg	=ABLen / (segments + 1);
+
+	//normalize AB to use to generate  points
+	glm_vec2_scale(AB, 1.0f / ABLen, AB);
+
+	//store points along the AB vector
+	//scale the AB vec by seg
+	vec2	ABSeg, BMarch;
+	glm_vec2_scale(AB, seg, ABSeg);
+	glm_vec2_copy(B, BMarch);
+
+	for(int i=0;i < segments;i++)
+	{
+		//advance from B to A
+		glm_vec2_add(BMarch, ABSeg, BMarch);
+
+		glm_vec2_copy(BMarch, pPoints[i]);
+	}
+
+	//for each point, find a vector to C
+	//use this to scale to ACLen
+	for(int i=0;i < segments;i++)
+	{
+		vec2	ray;
+		glm_vec2_sub(pPoints[i], C, ray);
+
+		glm_vec2_normalize(ray);
+
+		glm_vec2_scale(ray, ACLen, ray);
+
+		//store ray end back in point
+		glm_vec2_add(C, ray, pPoints[i]);
+	}
+}
+
+//add corner geometry to ui buf from triangle ABC
+//where C is the 90 degree corner
+//returns num verts added
+static int	sMakeCornerTris(UIStuff *pUI, int segments,
+							const vec2 A, const vec2 B, const vec2 C,
+							const vec2 *pPoints)
+{
+	int	vCnt	=0;
+
+	//make triangles for the endpoints of the arc
+	//tri6 CBPoints[0]
+	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(pPoints[0], pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//tri7 CAPoints[seggz-1]
+	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+	glm_vec2_copy(pPoints[segments - 1], pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;	vCnt++;
+
+	//rest of the triangles come from points
+	for(int i=1;i < segments;i++)
+	{
+		glm_vec2_copy(pPoints[i-1], pUI->mpUIBuf[pUI->mNumVerts].Position);
+		pUI->mNumVerts++;	vCnt++;
+		glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
+		pUI->mNumVerts++;	vCnt++;
+		glm_vec2_copy(pPoints[i], pUI->mpUIBuf[pUI->mNumVerts].Position);
+		pUI->mNumVerts++;	vCnt++;
+	}
+	return	vCnt;
+}
+
+static void	sRender(UIStuff *pUI)
+{
+	if(pUI->mNumVerts <= 0)
+	{
+		return;
+	}
+
+	if(pUI == NULL)
+	{
+		return;
+	}
+
+	if(pUI->mNumVerts <= 0)
+	{
+		return;
+	}
+
+	GD_IASetPrimitiveTopology(pUI->mpGD, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	GD_IASetVertexBuffers(pUI->mpGD, pUI->mpVB, sizeof(UIVert), 0);
+	GD_IASetIndexBuffers(pUI->mpGD, NULL, DXGI_FORMAT_UNKNOWN, 0);
+	GD_IASetInputLayout(pUI->mpGD, pUI->mpLayout);
+
+	GD_VSSetShader(pUI->mpGD, pUI->mpVS);
+	GD_PSSetShader(pUI->mpGD, pUI->mpPS);
+	GD_PSSetSRV(pUI->mpGD, GFont_GetSRV(pUI->mpFont), 0);
+
+	GD_PSSetSampler(pUI->mpGD, pUI->mpSS, 0);
+
+	GD_OMSetDepthStencilState(pUI->mpGD, pUI->mpDSS);
+	GD_OMSetBlendState(pUI->mpGD, pUI->mpBS);
+
+	GD_Draw(pUI->mpGD, pUI->mNumVerts, 0);
+}
+
+static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
+{
+	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
+
+	pDesc->BindFlags			=D3D11_BIND_VERTEX_BUFFER;
+	pDesc->ByteWidth			=byteSize;
+	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_DYNAMIC;
+	pDesc->MiscFlags			=0;
+	pDesc->StructureByteStride	=0;
+	pDesc->Usage				=D3D11_USAGE_DYNAMIC;
 }

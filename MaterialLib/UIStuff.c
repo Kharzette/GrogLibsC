@@ -47,6 +47,7 @@ typedef struct	UIStuff_t
 //statics
 static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize);
 static void	sRender(UIStuff *pUI);
+static int	sAddTri(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C);
 static void	sMakeCornerArcPoints(const vec2 A, const vec2 B, const vec2 C,
 								 int segments, vec2 *pPoints);
 static int	sMakeCornerTris(UIStuff *pUI, int segments,
@@ -325,48 +326,15 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 	seggz		=(seggz > 20)? 20 : seggz;
 
 	//for rounded, there are points along the rect where the straight
-	//lines stop and the arcs begin.
+	//lines stop and the arcs begin.  (A B C D E F G H)
+	//I J K L are the right angle corners of the corner triangles
+	//
 	//        A          B
 	//        ************
 	//    C*  I          J  *D
 	//    E*  K          L  *F
 	//        ************
 	//        G          H
-	//
-	//            A  B
-	//            ****
-	//           *    *
-	//         C*      *D
-	//          *      *
-	//          *      *
-	//          *      *
-	//         E*      *F
-	//           *    *
-	//            ****
-	//            G  H
-	//
-	//Could start with right triangles like CA EG BD FH
-	//and then draw ABHG
-	//
-	//With a roundess of 1 some of those points go away:
-	//
-	//        A          B
-	//        ************
-	//    C*                *D
-	//        ************
-	//        G          H
-	//
-	//             A  
-	//             **
-	//           *    *
-	//         C*      *D
-	//          *      *
-	//          *      *
-	//          *      *
-	//         E*      *F
-	//           *    *
-	//             **
-	//             G
 	//
 
 	//find length of sides
@@ -380,7 +348,8 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 	//scale rad by roundNess factor
 	rad	*=roundNess;
 
-	//assumes wider than taller for now
+	//I started out testing a wider rect, but tests show this works on
+	//tall and even perfect square rects
 	vec2	A	={	r.x + rad,				r.y						};
 	vec2	B	={	(r.x + r.width) - rad,	r.y						};
 	vec2	C	={	r.x,					r.y + rad				};
@@ -397,54 +366,14 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 
 	//in my noggin, this should be the other way around
 	//this seems counterclockwise which should be culled
+	//Might be caused by that negative Z in the shader
 	int	vCnt	=0;
-	//tri 0 AGB
-	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(G, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//tri1 BGH
-	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(G, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(H, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//tri2 CEI
-	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(E, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//tri3 IEK
-	glm_vec2_copy(I, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(E, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(K, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//tri4 DJL
-	glm_vec2_copy(D, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(J, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(L, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-
-	//tri5 DLF
-	glm_vec2_copy(D, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(L, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
-	glm_vec2_copy(F, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	pUI->mNumVerts++;	vCnt++;
+	vCnt	+=sAddTri(pUI, A, G, B);	//tri 0 AGB
+	vCnt	+=sAddTri(pUI, B, G, H);	//tri1 BGH
+	vCnt	+=sAddTri(pUI, C, E, I);	//tri2 CEI
+	vCnt	+=sAddTri(pUI, I, E, K);	//tri3 IEK
+	vCnt	+=sAddTri(pUI, D, J, L);	//tri4 DJL
+	vCnt	+=sAddTri(pUI, D, L, F);	//tri5 DLF
 
 	//that is all of the square bits
 	//find arc points for the 4 corners
@@ -485,6 +414,20 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
 }
 
+
+//Add a triangle to the ui buffer
+//returns num verts added
+static int	sAddTri(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C)
+{
+	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;
+	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;
+	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
+	pUI->mNumVerts++;
+
+	return	3;
+}
 
 //create points on an arc between right triangle verts A and B
 //with C as the 90 degree corner

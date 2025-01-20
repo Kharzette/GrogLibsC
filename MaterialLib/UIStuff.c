@@ -216,7 +216,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 }
 
 void	UI_DrawImage(UIStuff *pUI, const char *szTex, const vec2 pos,
-					 float rotation, float scale, const vec4 color)
+					 const vec2 size, float rotation, const vec4 color)
 {
 	if(pUI == NULL || !pUI->mbDrawStage)
 	{
@@ -229,10 +229,6 @@ void	UI_DrawImage(UIStuff *pUI, const char *szTex, const vec2 pos,
 		printf("No SRV found for %s", szTex);
 		return;
 	}
-
-	//need to get the size of the tex eventually
-	int	texX	=128;
-	int	texY	=128;
 
 	//see if a flush is needed, usually will be
 	if(pUI->mpSRV != pSRV)
@@ -259,16 +255,16 @@ void	UI_DrawImage(UIStuff *pUI, const char *szTex, const vec2 pos,
 
 	//tri 0
 	sAddTriUVC(pUI,
-		(vec2) { pos[0], 		pos[1] 			},		//top left corner
-		(vec2) { pos[0], 		pos[1] + texY	},		//bottom left corner 
-		(vec2) { pos[0] + texX,	pos[1]			},		//top right corner
+		(vec2) { pos[0], 			pos[1] 				},		//top left corner
+		(vec2) { pos[0], 			pos[1] + size[1]	},		//bottom left corner 
+		(vec2) { pos[0] + size[0],	pos[1]				},		//top right corner
 		uv0, uv2, uv1, c);
 
 	//tri1
 	sAddTriUVC(pUI,
-		(vec2) { pos[0] + texX,	pos[1]			},		//top right corner
-		(vec2) { pos[0], 		pos[1] + texY	},		//bottom left corner 
-		(vec2) { pos[0] + texX,	pos[1] + texY	},		//bottom right corner
+		(vec2) { pos[0] + size[0],	pos[1]				},		//top right corner
+		(vec2) { pos[0], 			pos[1] + size[1]	},		//bottom left corner 
+		(vec2) { pos[0] + size[0],	pos[1] + size[1]	},		//bottom right corner
 		uv1, uv2, uv3, c);
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);

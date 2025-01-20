@@ -28,9 +28,11 @@ typedef struct	UIStuff_t
 	ID3D11DepthStencilState		*mpDSS;
 	ID3D11BlendState			*mpBS;
 	ID3D11SamplerState			*mpSS;
+	ID3D11ShaderResourceView	*mpSRV;	//for tex drawing
 
-	//device
+	//device & stuff
 	GraphicsDevice	*mpGD;
+	StuffKeeper		*mpSK;
 
 	//font
 	GrogFont	*mpFont;
@@ -59,14 +61,14 @@ static int	sAddTriUVC(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C,
 
 
 //combined text and shape buffer
-UIStuff	*UI_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
-					GrogFont *pFont, int maxVerts)
+UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
 {
 	UIStuff	*pRet	=malloc(sizeof(UIStuff));
 	memset(pRet, 0, sizeof(UIStuff));
 
 	pRet->mMaxVerts	=maxVerts;
 	pRet->mpGD		=pGD;
+	pRet->mpSK		=pSK;
 
 	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPos2Col0Tex04");
 	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "UIStuffVS");
@@ -74,8 +76,6 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
 	pRet->mpDSS		=StuffKeeper_GetDepthStencilState(pSK, "DisableDepth");
 	pRet->mpBS		=StuffKeeper_GetBlendState(pSK, "AlphaBlending");
 	pRet->mpSS		=StuffKeeper_GetSamplerState(pSK, "PointClamp");
-
-	pRet->mpFont	=pFont;
 
 	//alloc buf
 	pRet->mpUIBuf	=malloc(sizeof(UIVert) * maxVerts);
@@ -136,8 +136,8 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 	vec4	c;
 	Misc_SRGBToLinear(colour, c);
 
-	//see if there is a change of font
-	if(pUI->mpFont != pFont)
+	//see if there is a change of srv
+	if(pUI->mpFont != pFont || pUI->mpSRV != NULL)
 	{
 		//font changed, flush what we have
 		if(pUI->mNumVerts > 0)
@@ -147,6 +147,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 			UI_BeginDraw(pUI);
 		}
 		pUI->mpFont	=pFont;
+		pUI->mpSRV	=NULL;
 	}
 
 	int	curWidth	=0;
@@ -212,6 +213,65 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 
 		curWidth	=nextWidth;
 	}
+}
+
+void	UI_DrawImage(UIStuff *pUI, const char *szTex, const vec2 pos,
+					 float rotation, float scale, const vec4 color)
+{
+	if(pUI == NULL || !pUI->mbDrawStage)
+	{
+		return;
+	}
+
+	ID3D11ShaderResourceView	*pSRV	=StuffKeeper_GetSRV(pUI->mpSK, szTex);
+	if(pSRV == NULL)
+	{
+		printf("No SRV found for %s", szTex);
+		return;
+	}
+
+	//need to get the size of the tex eventually
+	int	texX	=128;
+	int	texY	=128;
+
+	//see if a flush is needed, usually will be
+	if(pUI->mpSRV != pSRV)
+	{
+		if(pUI->mNumVerts > 0)
+		{
+			UI_EndDraw(pUI);
+			UI_BeginDraw(pUI);
+		}
+	}
+
+	//set ui srv
+	pUI->mpSRV	=pSRV;
+
+	//keep the texture with z of 1
+	//set w to 0 for no color boost
+	vec4	uv0	={	0, 0, 1, 0	};
+	vec4	uv1	={	1, 0, 1, 0	};
+	vec4	uv2	={	0, 1, 1, 0	};
+	vec4	uv3	={	1, 1, 1, 0	};
+
+	vec4	c;
+	Misc_SRGBToLinear(color, c);
+
+	//tri 0
+	sAddTriUVC(pUI,
+		(vec2) { pos[0], 		pos[1] 			},		//top left corner
+		(vec2) { pos[0], 		pos[1] + texY	},		//bottom left corner 
+		(vec2) { pos[0] + texX,	pos[1]			},		//top right corner
+		uv0, uv2, uv1, c);
+
+	//tri1
+	sAddTriUVC(pUI,
+		(vec2) { pos[0] + texX,	pos[1]			},		//top right corner
+		(vec2) { pos[0], 		pos[1] + texY	},		//bottom left corner 
+		(vec2) { pos[0] + texX,	pos[1] + texY	},		//bottom right corner
+		uv1, uv2, uv3, c);
+
+	assert(pUI->mNumVerts < pUI->mMaxVerts);
 }
 
 void	UI_DrawRect(UIStuff *pUI, const UIRect r, const vec4 color)
@@ -507,7 +567,16 @@ static void	sRender(UIStuff *pUI)
 
 	GD_VSSetShader(pUI->mpGD, pUI->mpVS);
 	GD_PSSetShader(pUI->mpGD, pUI->mpPS);
-	GD_PSSetSRV(pUI->mpGD, GFont_GetSRV(pUI->mpFont), 0);
+
+	//drawing text?
+	if(pUI->mpSRV == NULL)
+	{
+		GD_PSSetSRV(pUI->mpGD, GFont_GetSRV(pUI->mpFont), 0);
+	}
+	else
+	{
+		GD_PSSetSRV(pUI->mpGD, pUI->mpSRV, 0);
+	}
 
 	GD_PSSetSampler(pUI->mpGD, pUI->mpSS, 0);
 

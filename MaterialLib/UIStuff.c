@@ -58,7 +58,11 @@ static int	sMakeCornerTris(UIStuff *pUI, int segments,
 static int	sAddTriUVC(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C,
 						const vec4 uvA, const vec4 uvB, const vec4 uvC,
 						const vec4 color);
-
+static void sComputeAtoL(const UIRect r, float roundNess, vec2 A, vec2 B, vec2 C, vec2 D, vec2 E, vec2 F, vec2 G, vec2 H, vec2 I, vec2 J, vec2 K, vec2 L);
+static int	sMakeCornerTrisHull(UIStuff *pUI, int segments, int hullSize,
+								const vec2 A, const vec2 B, const vec2 C,
+								const vec2 a, const vec2 b, const vec2 c,
+								const vec2 *pPoints, const vec2 *pPointsInner);
 
 //combined text and shape buffer
 UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
@@ -124,6 +128,7 @@ void	UI_EndDraw(UIStuff *pUI)
 
 	sRender(pUI);
 }
+
 
 void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 						const vec2 pos, const vec4 colour)
@@ -312,6 +317,78 @@ void	UI_DrawRect(UIStuff *pUI, const UIRect r, const vec4 color)
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
 }
 
+void	UI_DrawRectHollow(UIStuff *pUI, const UIRect r, int hullSize, const vec4 color)
+{
+	if(pUI == NULL || !pUI->mbDrawStage)
+	{
+		return;
+	}
+
+	if(hullSize < 1.0f)
+	{
+		return;
+	}
+
+	//if the hull will meet in the middle, just draw a rect
+	if(hullSize >= (r.width * 0.5f))
+	{
+		UI_DrawRect(pUI, r, color);
+		return;
+	}
+	else if(hullSize >= (r.height * 0.5f))
+	{
+		UI_DrawRect(pUI, r, color);
+		return;
+	}
+
+	//  A--------------C
+	//  |a            c|
+	//  |              |
+	//  |b            d|
+	//  B--------------D
+	vec2	A	={	r.x,			r.y				};	//top left corner
+	vec2	B	={	r.x,			r.y + r.height	};	//bottom left corner 
+	vec2	C	={	r.x + r.width,	r.y				};	//top right corner
+	vec2	D	={	r.x + r.width,	r.y + r.height	};	//bottom right corner
+
+	//shrink the rect for the inner verts
+	UIRect	shk	={	r.x + hullSize, r.y + hullSize,
+		r.width - (hullSize * 2), r.height - (hullSize * 2)	};
+
+	vec2	a	={	shk.x,				shk.y				};	//top left corner
+	vec2	b	={	shk.x,				shk.y + shk.height	};	//bottom left corner 
+	vec2	c	={	shk.x + shk.width,	shk.y				};	//top right corner
+	vec2	d	={	shk.x + shk.width,	shk.y + shk.height	};	//bottom right corner
+
+	int	vCnt	=0;	
+	vCnt	+=sAddTri(pUI, A, a, C);	//tri 0 AaC
+	vCnt	+=sAddTri(pUI, c, C, a);	//tri 0 cCa
+	vCnt	+=sAddTri(pUI, a, A, B);	//tri 0 aAB
+	vCnt	+=sAddTri(pUI, B, b, a);	//tri 0 Bba
+	vCnt	+=sAddTri(pUI, b, B, D);	//tri 0 bBD
+	vCnt	+=sAddTri(pUI, d, b, D);	//tri 0 dbD
+	vCnt	+=sAddTri(pUI, C, c, d);	//tri 0 Ccd
+	vCnt	+=sAddTri(pUI, d, D, C);	//tri 0 dDC
+
+	vec4	col;
+	Misc_SRGBToLinear(color, col);
+
+	//zero out the texture with z of 0
+	//set w to 1 to boost to white
+	vec4	uv	={	0, 0, 0, 1	};
+
+	//color and UV
+	for(int i=0;i < vCnt;i++)
+	{
+		int	idx	=(pUI->mNumVerts - vCnt) + i;
+
+		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
+		Misc_ConvertVec4ToF16(col, pUI->mpUIBuf[idx].Color);
+	}
+
+	assert(pUI->mNumVerts < pUI->mMaxVerts);
+}
+
 //roundness 0 to 1 makes the corners more roundy
 //segments makes the curve less polygony
 void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
@@ -347,31 +424,9 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 	//        G          H
 	//
 
-	//find length of sides
-	float	xLen	=r.width;
-	float	yLen	=r.height;
-
-	//at full roundness, the shortest side forms
-	//the diameter of a circle
-	float	rad	=0.5f * ((xLen > yLen)? yLen : xLen);
-
-	//scale rad by roundNess factor
-	rad	*=roundNess;
-
-	//I started out testing a wider rect, but tests show this works on
-	//tall and even perfect square rects
-	vec2	A	={	r.x + rad,				r.y						};
-	vec2	B	={	(r.x + r.width) - rad,	r.y						};
-	vec2	C	={	r.x,					r.y + rad				};
-	vec2	D	={	(r.x + r.width),		r.y + rad				};
-	vec2	E	={	r.x,					(r.y + r.height) - rad	};
-	vec2	F	={	(r.x + r.width),		(r.y + r.height) - rad	};
-	vec2	G	={	r.x + rad,				r.y + r.height			};
-	vec2	H	={	(r.x + r.width) - rad,	r.y + r.height			};
-	vec2	I	={	r.x + rad,				r.y + rad				};
-	vec2	J	={	(r.x + r.width) - rad,	r.y + rad				};
-	vec2	K	={	r.x + rad,				(r.y + r.height) - rad	};
-	vec2	L	={	(r.x + r.width) - rad,	(r.y + r.height) - rad	};
+	//compute above points
+	vec2	A, B, C, D, E, F, G, H, I, J, K, L;
+	sComputeAtoL(r, roundNess, A, B, C, D, E, F, G, H, I, J, K, L);
 
 
 	//in my noggin, this should be the other way around
@@ -419,6 +474,127 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 
 		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
 		Misc_ConvertVec4ToF16(c, pUI->mpUIBuf[idx].Color);
+	}
+
+	assert(pUI->mNumVerts < pUI->mMaxVerts);
+}
+
+//like rectround above, but hollow
+void	UI_DrawRRHollow(UIStuff *pUI, const UIRect r, float hullSize,
+						float roundNess, int segments, const vec4 color)
+{
+	if(pUI == NULL || !pUI->mbDrawStage)
+	{
+		return;
+	}
+
+	if(hullSize < 1.0f)
+	{
+		return;
+	}
+
+	if(roundNess <= 0.0f)
+	{
+		UI_DrawRectHollow(pUI, r, hullSize, color);
+		return;
+	}
+
+	//if the hull will meet in the middle, just draw a rect
+	if(hullSize >= (r.width * 0.5f))
+	{
+		UI_DrawRectRounded(pUI, r, roundNess, segments, color);
+		return;
+	}
+	else if(hullSize >= (r.height * 0.5f))
+	{
+		UI_DrawRectRounded(pUI, r, roundNess, segments, color);
+		return;
+	}
+
+	//roundness should be >0 and <=1
+	glm_clamp(roundNess, 0.0f, 1.0f);
+
+	//segments should be >=1 and <=20
+	int	seggz	=(segments < 1)? 1 : segments;
+	seggz		=(seggz > 20)? 20 : seggz;
+
+	//for rounded, there are points along the rect where the straight
+	//lines stop and the arcs begin.  (A B C D E F G H)
+	//I J K L are the right angle corners of the corner triangles
+	//
+	//        A          B
+	//        ************
+	//    C*  I          J  *D
+	//    E*  K          L  *F
+	//        ************
+	//        G          H
+	//
+
+	//compute above points
+	vec2	A, B, C, D, E, F, G, H, I, J, K, L;
+	sComputeAtoL(r, roundNess, A, B, C, D, E, F, G, H, I, J, K, L);
+
+	//shrink the rect and compute more
+	UIRect	shrunk	={	r.x + hullSize, r.y + hullSize,
+		r.width - (hullSize * 2), r.height - (hullSize * 2)	};
+
+	//lower case for the inner verts
+	vec2	a, b, c, d, e, f, g, h, i, j, k, l;
+	sComputeAtoL(shrunk, roundNess, a, b, c, d, e, f, g, h, i, j, k, l);
+
+	//top		AaB Bab
+	int	vCnt	=sAddTri(pUI, A, a, B);
+	vCnt	+=sAddTri(pUI, B, a, b);
+	//bottom	gGh hGH
+	vCnt	+=sAddTri(pUI, g, G, h);
+	vCnt	+=sAddTri(pUI, h, G, H);
+	//left		CEc cEe
+	vCnt	+=sAddTri(pUI, C, E, c);
+	vCnt	+=sAddTri(pUI, c, E, e);
+	//right		Ddf DfF
+	vCnt	+=sAddTri(pUI, D, d, f);
+	vCnt	+=sAddTri(pUI, D, f, F);
+
+
+	//that is all of the square bits
+	//find arc points for the 4 corners
+	vec2	points[20];
+	vec2	pointsInner[20];
+
+	//ACI on the diagram above, top left
+	sMakeCornerArcPoints(A, C, I, seggz, points);
+	sMakeCornerArcPoints(a, c, i, seggz, pointsInner);
+	vCnt	+=sMakeCornerTrisHull(pUI, seggz, hullSize, A, C, I, a, c, i, points, pointsInner);
+
+	//DBJ, top right
+	sMakeCornerArcPoints(D, B, J, seggz, points);
+	sMakeCornerArcPoints(d, b, j, seggz, pointsInner);
+	vCnt	+=sMakeCornerTrisHull(pUI, seggz, hullSize, D, B, J, d, b, j, points, pointsInner);
+
+	//EGK, bottom left
+	sMakeCornerArcPoints(E, G, K, seggz, points);
+	sMakeCornerArcPoints(e, g, k, seggz, pointsInner);
+	vCnt	+=sMakeCornerTrisHull(pUI, seggz, hullSize, E, G, K, e, g, k, points, pointsInner);
+
+	//HFL, bottom right
+	sMakeCornerArcPoints(H, F, L, seggz, points);
+	sMakeCornerArcPoints(h, f, l, seggz, pointsInner);
+	vCnt	+=sMakeCornerTrisHull(pUI, seggz, hullSize, H, F, L, h, f, l, points, pointsInner);
+
+	vec4	col;
+	Misc_SRGBToLinear(color, col);
+
+	//zero out the texture with z of 0
+	//set w to 1 to boost to white
+	vec4	uv	={	0, 0, 0, 1	};
+
+	//color and UV
+	for(int n=0;n < vCnt;n++)
+	{
+		int	idx	=(pUI->mNumVerts - vCnt) + n;
+
+		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
+		Misc_ConvertVec4ToF16(col, pUI->mpUIBuf[idx].Color);
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
@@ -538,6 +714,34 @@ static int	sMakeCornerTris(UIStuff *pUI, int segments,
 	return	vCnt;
 }
 
+//add corner geometry to ui buf from triangle ABC
+//where C is the 90 degree corner
+//returns num verts added
+static int	sMakeCornerTrisHull(UIStuff *pUI, int segments, int hullSize,
+								const vec2 A, const vec2 B, const vec2 C,
+								const vec2 a, const vec2 b, const vec2 c,
+								const vec2 *pPoints, const vec2 *pPointsInner)
+{
+	int	vCnt	=0;
+
+	//make triangles for the endpoints of the arc
+	//B b p0  b p0 pi0
+	vCnt	+=sAddTri(pUI, B, b, pPoints[0]);
+	vCnt	+=sAddTri(pUI, pPoints[0], b, pPointsInner[0]);
+
+	//A a p  a p pi
+	vCnt	+=sAddTri(pUI, a, A, pPoints[segments - 1]);
+	vCnt	+=sAddTri(pUI, a, pPoints[segments - 1], pPointsInner[segments - 1]);
+
+	//rest of the triangles come from points
+	for(int i=1;i < segments;i++)
+	{
+		vCnt	+=sAddTri(pUI, pPoints[i-1], pPointsInner[i], pPoints[i]);
+		vCnt	+=sAddTri(pUI, pPointsInner[i], pPoints[i - 1], pPointsInner[i - 1]);
+	}
+	return	vCnt;
+}
+
 static void	sRender(UIStuff *pUI)
 {
 	if(pUI->mNumVerts <= 0)
@@ -592,4 +796,31 @@ static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 	pDesc->MiscFlags			=0;
 	pDesc->StructureByteStride	=0;
 	pDesc->Usage				=D3D11_USAGE_DYNAMIC;
+}
+
+static void sComputeAtoL(const UIRect r, float roundNess, vec2 A, vec2 B, vec2 C, vec2 D, vec2 E, vec2 F, vec2 G, vec2 H, vec2 I, vec2 J, vec2 K, vec2 L)
+{
+	//find length of sides
+	float	xLen	=r.width;
+	float	yLen	=r.height;
+
+	//at full roundness, the shortest side forms
+	//the diameter of a circle
+	float	rad	=0.5f * ((xLen > yLen)? yLen : xLen);
+
+	//scale rad by roundNess factor
+	rad	*=roundNess;
+
+	A[0]	=r.x + rad;				A[1]	=r.y;
+	B[0]	=(r.x + r.width) - rad;	B[1]	=r.y;
+	C[0]	=r.x;					C[1]	=r.y + rad;
+	D[0]	=(r.x + r.width);		D[1]	=r.y + rad;
+	E[0]	=r.x;					E[1]	=(r.y + r.height) - rad;
+	F[0]	=(r.x + r.width);		F[1]	=(r.y + r.height) - rad;
+	G[0]	=r.x + rad;				G[1]	=r.y + r.height;
+	H[0]	=(r.x + r.width) - rad;	H[1]	=r.y + r.height;
+	I[0]	=r.x + rad;				I[1]	=r.y + rad;
+	J[0]	=(r.x + r.width) - rad;	J[1]	=r.y + rad;
+	K[0]	=r.x + rad;				K[1]	=(r.y + r.height) - rad;
+	L[0]	=(r.x + r.width) - rad;	L[1]	=(r.y + r.height) - rad;
 }

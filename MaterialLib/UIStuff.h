@@ -1,6 +1,8 @@
 #pragma once
 #include	<stdint.h>
 #include	<cglm/call.h>
+#define CLAY_IMPLEMENTATION
+#include 	"../clay/clay.h"
 
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	StuffKeeper_t		StuffKeeper;
@@ -30,3 +32,11 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 						   int segments, const vec4 color);
 void	UI_DrawRRHollow(UIStuff *pUI, const UIRect r, float hullSize,
 						float roundNess, int segments, const vec4 color);
+
+//clay specific stuff
+void	UI_AddFont(UIStuff *pUI, const char *szFontName, uint16_t id);
+void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands);
+void	ClayColorToVec4(Clay_Color in, vec4 out);
+
+Clay_Dimensions	UI_MeasureText(Clay_StringSlice pText,
+	Clay_TextElementConfig *pConfig, uintptr_t userData);

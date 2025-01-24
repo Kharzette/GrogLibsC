@@ -9,6 +9,17 @@
 #include	"../UtilityLib/MiscStuff.h"
 
 
+//clay uses uint16 ids for fonts
+//but I'm storing the key in int
+typedef struct	UIFonts_t
+{
+	int	id;
+
+	GrogFont	*mpFont;
+
+	UT_hash_handle	hh;
+}	UIFonts;
+
 //This is for stateless text/shapes drawn for UI
 //The draw data is rebuilt every frame
 typedef struct	UIVert_t
@@ -30,12 +41,18 @@ typedef struct	UIStuff_t
 	ID3D11SamplerState			*mpSS;
 	ID3D11ShaderResourceView	*mpSRV;	//for tex drawing
 
+	//scissory stuff
+	ID3D11RasterizerState	*mpNormalRast, *mpScissorRast;
+
 	//device & stuff
 	GraphicsDevice	*mpGD;
 	StuffKeeper		*mpSK;
 
-	//font
+	//font for text draw
 	GrogFont	*mpFont;
+
+	//hashy list of fonts
+	UIFonts	*mpFonts;
 
 	int		mMaxVerts, mNumVerts;
 
@@ -80,6 +97,26 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
 	pRet->mpDSS		=StuffKeeper_GetDepthStencilState(pSK, "DisableDepth");
 	pRet->mpBS		=StuffKeeper_GetBlendState(pSK, "AlphaBlending");
 	pRet->mpSS		=StuffKeeper_GetSamplerState(pSK, "PointClamp");
+
+	//make scissor rast states
+	D3D11_RASTERIZER_DESC	rastDesc;
+	rastDesc.AntialiasedLineEnable	=false;
+	rastDesc.CullMode				=D3D11_CULL_BACK;
+	rastDesc.FillMode				=D3D11_FILL_SOLID;
+	rastDesc.FrontCounterClockwise	=true;
+	rastDesc.MultisampleEnable		=false;
+	rastDesc.DepthBias				=0;
+	rastDesc.DepthBiasClamp			=0;
+	rastDesc.DepthClipEnable		=true;
+	rastDesc.ScissorEnable			=false;
+	rastDesc.SlopeScaledDepthBias	=0;
+
+	//create the usual
+	pRet->mpNormalRast	=GD_CreateRasterizerState(pGD, &rastDesc);
+
+	//this one is for scissory
+	rastDesc.ScissorEnable	=true;
+	pRet->mpScissorRast	=GD_CreateRasterizerState(pGD, &rastDesc);
 
 	//alloc buf
 	pRet->mpUIBuf	=malloc(sizeof(UIVert) * maxVerts);
@@ -823,4 +860,210 @@ static void sComputeAtoL(const UIRect r, float roundNess, vec2 A, vec2 B, vec2 C
 	J[0]	=(r.x + r.width) - rad;	J[1]	=r.y + rad;
 	K[0]	=r.x + rad;				K[1]	=(r.y + r.height) - rad;
 	L[0]	=(r.x + r.width) - rad;	L[1]	=(r.y + r.height) - rad;
+}
+
+
+//clay stuff!
+
+
+void	UI_AddFont(UIStuff *pUI, const char *szFontName, uint16_t id)
+{
+	if(pUI == NULL || pUI->mpSK == NULL || szFontName == NULL)
+	{
+		return;
+	}
+
+	GrogFont	*pFont	=StuffKeeper_GetFont(pUI->mpSK, szFontName);
+	if(pFont == NULL)
+	{
+		printf("Font not found! %s\n", szFontName);
+		return;
+	}
+
+	int	key	=(int)id;
+
+	UIFonts	*pF;
+
+	//check if already in the list
+	HASH_FIND_INT(pUI->mpFonts, &key, pF);
+	if(pF == NULL)
+	{
+		pF	=malloc(sizeof(UIFonts));
+		memset(pF, 0, sizeof(UIFonts));
+
+		pF->id		=key;
+		pF->mpFont	=pFont;
+
+		HASH_ADD_INT(pUI->mpFonts, id, pF);
+	}
+}
+
+static GrogFont	*sGetFont(const UIStuff *pUI, uint16_t fontID)
+{
+	UIFonts	*pF;
+
+	int	key	=(int)fontID;
+
+	HASH_FIND_INT(pUI->mpFonts, &key, pF);
+
+	return	pF->mpFont;
+}
+
+Clay_Dimensions	UI_MeasureText(Clay_StringSlice text,
+	Clay_TextElementConfig *pConfig, uintptr_t userData)
+{
+	//Measure string size for Font
+	Clay_Dimensions	textSize	={ 0 };
+
+	UIStuff	*pUI	=(UIStuff *)userData;
+	if(pUI == NULL)
+	{
+		printf("Bad userData in UI_MeasureText!\n");
+		return	textSize;
+	}
+	
+	float	maxTextWidth	=0.0f;
+	
+	float	textHeight	=pConfig->fontSize;
+
+	GrogFont	*pFontToUse	=sGetFont(pUI, pConfig->fontId);
+	if(pFontToUse == NULL)
+	{
+		printf("Font not found in MeasureText! %u\n", (uint32_t)pConfig->fontId);
+		return	textSize;
+	}
+
+	maxTextWidth	=GFont_MeasureTextClay(pFontToUse, text.chars, text.length);
+	
+	//TODO: uiscale?
+	float	scaleFactor	=1.0f;
+	
+	textSize.width	=maxTextWidth * scaleFactor;
+	textSize.height	=textHeight;
+	
+	return	textSize;
+}
+
+void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
+{
+	for(int j=0;j < renderCommands.length;j++)
+	{
+		Clay_RenderCommand	*pRC		=Clay_RenderCommandArray_Get(&renderCommands, j);
+		Clay_BoundingBox	boundingBox	=pRC->boundingBox;
+		
+		switch(pRC->commandType)
+		{
+			case CLAY_RENDER_COMMAND_TYPE_TEXT:
+			{
+				GrogFont	*pFontToUse	=sGetFont(pUI, pRC->config.textElementConfig->fontId);
+				if(pFontToUse == NULL)
+				{
+					printf("Font not found! %u\n", (uint32_t)pRC->config.textElementConfig->fontId);
+					continue;
+				}
+
+				vec2	pos		={ boundingBox.x, boundingBox.y };
+				vec4	colour;
+
+				ClayColorToVec4(pRC->config.textElementConfig->textColor, colour);
+				UI_DrawString(pUI, pRC->text.chars, pRC->text.length, pFontToUse, pos, colour);
+				break;
+			}
+			
+			case CLAY_RENDER_COMMAND_TYPE_IMAGE:
+			{
+				UI_DrawImage(pUI, pRC->config.imageElementConfig->imageData,
+					(vec2){ boundingBox.x, boundingBox.y },
+					(vec2){ pRC->config.imageElementConfig->sourceDimensions.width, pRC->config.imageElementConfig->sourceDimensions.height},
+					0.0f, (vec4){1,1,1,1});
+				break;
+			}
+			case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
+			{
+				//flush 2D stuff
+				UI_EndDraw(pUI);
+				UI_BeginDraw(pUI);
+
+				//d3d rects are all coords, not width/height
+				D3D11_RECT	r[1]	={{
+					(int)roundf(boundingBox.x), (int)roundf(boundingBox.y),
+					(int)roundf(boundingBox.width + boundingBox.x),
+					(int)roundf(boundingBox.height + boundingBox.y) }};
+				GD_RSSetScissorRects(pUI->mpGD, 1, r);
+				GD_RSSetState(pUI->mpGD, pUI->mpScissorRast);
+				break;
+			}
+			case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END:
+			{
+				//flush 2D stuff
+				UI_EndDraw(pUI);
+				UI_BeginDraw(pUI);
+
+				GD_RSSetState(pUI->mpGD, pUI->mpNormalRast);
+				break;
+			}
+			case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
+			{
+				Clay_RectangleElementConfig	*pConfig	=pRC->config.rectangleElementConfig;
+				vec4	color;
+				ClayColorToVec4(pConfig->color, color);
+				if(pConfig->cornerRadius.topLeft > 0)
+				{
+					//TODO: find some formulae for roundness and segments
+					float	radius	=(pConfig->cornerRadius.topLeft * 2) / (float)((boundingBox.width > boundingBox.height) ? boundingBox.height : boundingBox.width);
+					UI_DrawRectRounded(pUI, (UIRect) { boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height }, 0.75f, 3, color);
+				}
+				else
+				{
+					UI_DrawRect(pUI, (UIRect) { boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height }, color);
+				}
+				break;
+			}
+			case	CLAY_RENDER_COMMAND_TYPE_BORDER:
+			{
+				Clay_BorderElementConfig *pConf = pRC->config.borderElementConfig;
+
+				vec4	leftCol, rightCol, topCol, botCol;
+				ClayColorToVec4(pConf->left.color, leftCol);
+				ClayColorToVec4(pConf->right.color, rightCol);
+				ClayColorToVec4(pConf->top.color, topCol);
+				ClayColorToVec4(pConf->bottom.color, botCol);
+
+				if(pConf->cornerRadius.topLeft > 0)
+				{
+					UI_DrawRRHollow(pUI, (UIRect){ boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height}, pConf->left.width, 0.5, 3, topCol);
+				}
+				else
+				{
+					UI_DrawRectHollow(pUI, (UIRect){ boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height}, pConf->left.width, topCol);
+				}
+				break;
+			}
+
+			case	CLAY_RENDER_COMMAND_TYPE_CUSTOM:
+			{
+				printf("CLAY_RENDER_COMMAND_TYPE_CUSTOM?\n");
+				break;
+			}
+			default:
+			{
+				printf("Error: unhandled render command.");
+#ifdef CLAY_OVERFLOW_TRAP
+				raise(SIGTRAP);
+#endif
+				exit(1);
+			}
+		}
+	}
+}
+
+//doesn't do any linear/srgb stuff
+void	ClayColorToVec4(Clay_Color in, vec4 out)
+{
+	float	oo255	=1.0f / 255.0f;
+
+	out[0]	=in.r * oo255;
+	out[1]	=in.g * oo255;
+	out[2]	=in.b * oo255;
+	out[3]	=in.a * oo255;
 }

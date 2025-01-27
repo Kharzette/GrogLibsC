@@ -138,3 +138,25 @@ void	GSNode_SetBoneIndexes(GSNode *pNode, int *pIndex)
 	pNode->mIndex	=*pIndex;
 	(*pIndex)++;
 }
+
+
+void	GSNode_Iterate(const GSNode *pNode, Skeleton_IterateCB sicb, void *pContext)
+{
+	if(pNode == NULL)
+	{
+		return;
+	}
+
+	for(int i=0;i < pNode->mNumChildren;i++)
+	{
+		sicb(pNode->mpChildren[i]->szName, pNode->szName, pContext);
+
+		GSNode_Iterate(pNode->mpChildren[i], sicb, pContext);
+	}
+}
+
+
+const UT_string	*GSNode_GetName(const GSNode *pNode)
+{
+	return	pNode->szName;
+}

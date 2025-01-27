@@ -250,20 +250,16 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 #ifdef	__AVX__
 	pRet->mpPerObject	=aligned_alloc(32, sizeof(PerObject));
 	pRet->mpPerFrame	=aligned_alloc(32, sizeof(PerFrame));
-	pRet->mpTwoD		=aligned_alloc(32, sizeof(TwoD));
-	pRet->mpPost		=aligned_alloc(32, sizeof(Post));
-	pRet->mpPerShadow	=aligned_alloc(32, sizeof(PerShadow));
-	pRet->mpTextMode	=aligned_alloc(32, sizeof(TextMode));
-	pRet->mpCelStuff	=aligned_alloc(32, sizeof(CelStuff));
 #else
 	pRet->mpPerObject	=aligned_alloc(16, sizeof(PerObject));
 	pRet->mpPerFrame	=aligned_alloc(16, sizeof(PerFrame));
-	pRet->mpTwoD		=aligned_alloc(16, sizeof(TwoD));
-	pRet->mpPost		=aligned_alloc(16, sizeof(Post));
-	pRet->mpPerShadow	=aligned_alloc(16, sizeof(PerShadow));
-	pRet->mpTextMode	=aligned_alloc(16, sizeof(TextMode));
-	pRet->mpCelStuff	=aligned_alloc(16, sizeof(CelStuff));
 #endif
+
+	pRet->mpTwoD		=malloc(sizeof(TwoD));
+	pRet->mpPost		=malloc(sizeof(Post));
+	pRet->mpPerShadow	=malloc(sizeof(PerShadow));
+	pRet->mpTextMode	=malloc(sizeof(TextMode));
+	pRet->mpCelStuff	=malloc(sizeof(CelStuff));
 	return	pRet;
 }
 

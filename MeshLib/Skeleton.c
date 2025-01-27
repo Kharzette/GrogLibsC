@@ -1,6 +1,8 @@
 #include	<stdint.h>
-#include	<stdio.h>
 #include	"GSNode.h"
+#include	"Skeleton.h"
+#include	"../UtilityLib/ListStuff.h"
+
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
@@ -77,5 +79,31 @@ void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones)
 	for(int i=0;i < MAX_BONES;i++)
 	{
 		GetMatrixForBoneIndex(pSkel, i, pBones[i]);
+	}
+}
+
+
+const StringList	*Skeleton_GetRootNames(const Skeleton *pSkel)
+{
+	StringList	*pRet	=SZList_New();
+
+	for(int i=0;i < pSkel->mNumRoots;i++)
+	{
+		SZList_AddUT(&pRet,	GSNode_GetName(pSkel->mpRoots[i]));
+	}
+	return	pRet;
+}
+
+
+void	Skeleton_Iterate(const Skeleton *pSkel, Skeleton_IterateCB sicb, void *pContext)
+{
+	if(pSkel == NULL)
+	{
+		return;
+	}
+
+	for(int i=0;i < pSkel->mNumRoots;i++)
+	{
+		GSNode_Iterate(pSkel->mpRoots[i], sicb, pContext);
 	}
 }

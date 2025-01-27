@@ -918,7 +918,7 @@ Clay_Dimensions	UI_MeasureText(Clay_StringSlice text,
 	UIStuff	*pUI	=(UIStuff *)userData;
 	if(pUI == NULL)
 	{
-		printf("Bad userData in UI_MeasureText!\n");
+		printf("Bad userData in UI_MeasureText!  String is %s\n", text.chars);
 		return	textSize;
 	}
 	

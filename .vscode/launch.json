@@ -7,30 +7,15 @@
 		{
 			"type": "cppdbg",
 			"request": "launch",
-			"preLaunchTask": "aud make",
-			"name": "test audio",
-			"program": "${workspaceFolder}/AudioLib/AudioLib",
-			"args": [],
-			"stopAtEntry": false,
-			"externalConsole": true,
-			"cwd": "/mnt/SkyFather/Games/CurrentGame",
-			"additionalSOLibSearchPath": "${workspaceFolder}/AudioLib/FAudio/build",
-			"MIMode": "gdb",
-			//"miDebuggerPath": "C:/cygwin64/bin/gdb.exe"
-		},
-		{
-			"type": "cppdbg",
-			"request": "launch",
 			"preLaunchTask": "teststuff make",
 			"name": "teststuff",
 			"program": "${workspaceFolder}/TestStuff",
 			"args": [],
 			"stopAtEntry": false,
 			"externalConsole": true,
-			"cwd": "/mnt/SkyFather/Games/CurrentGame",
-			"additionalSOLibSearchPath": "/mnt/SkyFather/Games/CurrentGame/libs",
-			"MIMode": "gdb",
-			//"miDebuggerPath": "C:/cygwin64/bin/gdb.exe"
+			"cwd": "${config:CurrentGame}",
+			"additionalSOLibSearchPath": "${config:CurrentGameLibs}",
+			"MIMode": "gdb"
 		},
 		{
 			"type": "cppdbg",
@@ -41,9 +26,8 @@
 			"args": [],
 			"stopAtEntry": false,
 			"externalConsole": true,
-			"cwd": "/mnt/SkyFather/Games/CurrentGame",
-			"MIMode": "gdb",
-			//"miDebuggerPath": "C:/cygwin64/bin/gdb.exe"
+			"cwd": "${config:CurrentGame}",
+			"MIMode": "gdb"
 		},
 		{
 			"type": "cppdbg",
@@ -53,18 +37,8 @@
 			"args": [],
 			"stopAtEntry": false,
 			"externalConsole": true,
-			"cwd": "/mnt/SkyFather/Games/CurrentGame",
-			"MIMode": "gdb",
-			//"miDebuggerPath": "C:/cygwin64/bin/gdb.exe"
-		},
-		{
-			"type": "cppdbg",
-			"request": "attach",
-			"name": "Attach to Process",
-			"program": "/home/kharzette/everquest_rof2/eqgame.exe",
-			"processId": "410598",
-			"MIMode": "gdb",
-			//"miDebuggerPath": "C:/cygwin64/bin/gdb.exe"
+			"cwd": "${config:CurrentGame}",
+			"MIMode": "gdb"
 		},
 		{
 			"type": "gdb",

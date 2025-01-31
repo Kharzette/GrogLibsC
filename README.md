@@ -7,7 +7,7 @@ Game libraries using C language, often ported from my C# libraries of the same n
 - Animated character style meshes
 - Really basic input
 - Very simple terrain generation / rendering
-- Onscreen strings
+- UI Module using [Clay](https://github.com/nicbarker/clay)
 
 # Not Working Stuff
 - Terrain raycasts
@@ -17,7 +17,6 @@ Game libraries using C language, often ported from my C# libraries of the same n
 - Integration of a physics library of some sort
 - Better collision / physics on characters
 - Static meshes with various collision shapes
-- Some kind of UI
 - Windows
 
 # Building

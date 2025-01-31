@@ -8,7 +8,7 @@
             "options": {"cwd": "${workspaceFolder}"},
             "problemMatcher": [],
             "detail": "make build task",
-			"dependsOn": [ "copyGLibs", "copySDL", "copyFAudio", "copyDXGI", "copyD3D11" ]
+			"dependsOn": [ "copyGLibs", "copyDXGI", "copyD3D11" ]
         },
         {
             "type": "shell",
@@ -18,22 +18,6 @@
             "options": {"cwd": "${workspaceFolder}"},
             "dependsOn" : [ "aud make", "inp make", "mat make", "mesh make", "ter make", "util make"],
             "detail": "Copy grog libs to game libs directory for testing."
-        },
-        {
-            "type": "shell",
-            "label": "copySDL",
-            "command": "cp SDL/build/libSDL3.so.0 ${config:CurrentGameLibs}",
-            "group": "none",
-            "options": {"cwd": "${workspaceFolder}"},
-            "detail": "Copy SDL lib to game libs directory for testing."
-        },
-        {
-            "type": "shell",
-            "label": "copyFAudio",
-            "command": "cp AudioLib/FAudio/build/libFAudio.so.0 ${config:CurrentGameLibs}",
-            "group": "none",
-            "options": {"cwd": "${workspaceFolder}"},
-            "detail": "Copy FAudio lib to game libs directory for testing."
         },
         {
             "type": "shell",
@@ -113,7 +97,7 @@
             "command": "${workspaceFolder}/GrogHLSLCompileTool/bin/Debug/net6.0/GrogHLSLCompileTool",
             "args": ["${workspaceFolder}/ShaderLib", "SM4", "SM41", "SM5"],    //add more if you want SM2 SM4 etc
             "group": "build",
-            "options": {"cwd": "/mnt/SkyFather/Games/CurrentGame"},
+            "options": {"cwd": "${config:CurrentGame}"},
             "problemMatcher": [
                 {
                     "owner": "fxc",

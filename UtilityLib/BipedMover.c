@@ -1,5 +1,6 @@
 #include	<stdint.h>
 #include	<stdbool.h>
+#include	<string.h>
 #include	<assert.h>
 #include	<cglm/call.h>
 #include	"GameCamera.h"
@@ -67,6 +68,8 @@ typedef struct  BipedMover_t
 BipedMover	*BPM_Create(GameCamera *pGCam)
 {
 	BipedMover	*pRet	=malloc(sizeof(BipedMover));
+
+	memset(pRet, 0, sizeof(BipedMover));
 
 	pRet->mpGCam		=pGCam;
 	pRet->mMoveMethod	=MOVE_GROUND;	//default

@@ -1,16 +1,11 @@
 #include	<stdint.h>
-#include	<stdio.h>
 #include	"GSNode.h"
+#include	"Skeleton.h"
+#include	"../UtilityLib/ListStuff.h"
+
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
-
-
-typedef struct	Skeleton_t
-{
-	GSNode	**mpRoots;
-	int		mNumRoots;
-}	Skeleton;
 
 
 Skeleton	*Skeleton_Read(FILE *f)
@@ -42,6 +37,21 @@ void	Skeleton_Write(const Skeleton *pSkel, FILE *f)
 }
 
 
+const GSNode	*Skeleton_GetConstBoneByName(const Skeleton *pSkel, const char *szName)
+{
+	const GSNode	*pRet	=NULL;
+	for(int i=0;i < pSkel->mNumRoots;i++)
+	{
+		pRet	=GSNode_GetConstNodeByName(pSkel->mpRoots[i], szName);
+
+		if(pRet != NULL)
+		{
+			return	pRet;	//found!
+		}
+	}
+	return	NULL;
+}
+
 KeyFrame	*Skeleton_GetBoneKey(const Skeleton *pSkel, const char *szName)
 {
 	KeyFrame	*pRet	=NULL;
@@ -58,7 +68,7 @@ KeyFrame	*Skeleton_GetBoneKey(const Skeleton *pSkel, const char *szName)
 }
 
 
-static	bool	GetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat)
+static	bool	sGetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat)
 {
 	for(int i=0;i < pSkel->mNumRoots;i++)
 	{
@@ -71,11 +81,10 @@ static	bool	GetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat)
 	return	false;
 }
 
-
 void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones)
 {
 	for(int i=0;i < MAX_BONES;i++)
 	{
-		GetMatrixForBoneIndex(pSkel, i, pBones[i]);
+		sGetMatrixForBoneIndex(pSkel, i, pBones[i]);
 	}
 }

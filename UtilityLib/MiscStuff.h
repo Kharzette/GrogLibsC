@@ -42,6 +42,8 @@ extern void		Misc_BuildBasisVecsFromDirection(const vec3 direction, vec3 baseX, 
 extern float	Misc_ComputeAngleSum(const vec3 pointOnPlane, const vec3 *pVerts, int numVerts);
 extern bool		Misc_CompareVec4s(const vec4 a, const vec4 b);
 extern bool		Misc_CompareVec3s(const vec3 a, const vec3 b);
+extern void		Misc_LinearToSRGB(const vec4 vLin, vec4 vSRGB);
+extern void		Misc_SRGBToLinear(const vec4 vSRGB, vec4 vLin);
 
 //collision stuff
 extern bool	Misc_CheckTwoAABBOverlap(const vec3 aMin, const vec3 aMax, const vec3 bMin, const vec3 bMax);

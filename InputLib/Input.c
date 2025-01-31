@@ -178,7 +178,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_MOUSEMOTION)
+		else if(evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEWHEEL)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)

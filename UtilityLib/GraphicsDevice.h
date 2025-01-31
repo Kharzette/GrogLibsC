@@ -82,6 +82,7 @@ extern void GD_PSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *
 extern void	GD_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot);
 extern void GD_RSSetState(GraphicsDevice *pGD, ID3D11RasterizerState *pRS);
 extern void GD_RSSetViewPort(GraphicsDevice *pGD, const D3D11_VIEWPORT *pVP);
+extern void GD_RSSetScissorRects(GraphicsDevice *pGD, UINT numRects, const D3D11_RECT *pRects);
 extern void GD_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV, int slot);
 extern void GD_IASetVertexBuffers(GraphicsDevice *pGD,
 	ID3D11Buffer *pVB, uint32_t stride, uint32_t offset);

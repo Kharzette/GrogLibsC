@@ -42,7 +42,7 @@ static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
 }
 
-static void	MakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
+static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 {
 	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
 
@@ -185,7 +185,7 @@ static void	VBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts, uint32_t w, uin
 	//make vertex buffer
 	D3D11_BUFFER_DESC	bufDesc;
 
-	MakeVBDesc(&bufDesc, sizeof(TerrainVert) * w * h);
+	sMakeVBDesc(&bufDesc, sizeof(TerrainVert) * w * h);
 
 	*ppVB	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
 

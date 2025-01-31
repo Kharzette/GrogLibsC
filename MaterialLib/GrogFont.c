@@ -1,3 +1,4 @@
+#include	"d3d11.h"
 #include	<stdint.h>
 #include	<stdio.h>
 #include	<ctype.h>
@@ -12,12 +13,19 @@ typedef struct	GrogFont_t
 	int		mCellWidth, mCellHeight;
 	uint8_t	mStartChar;
 
+	ID3D11ShaderResourceView	*mpSRV;
+
 	uint8_t	*mpWidths;
 }	GrogFont;
 
 
-GrogFont	*Font_Create(UT_string *pPath)
+GrogFont	*GFont_Create(const UT_string *pPath)
 {
+	if(pPath == NULL)
+	{
+		return	NULL;
+	}
+
 	FILE	*f	=fopen(utstring_body(pPath), "rb");
 	if(f == NULL)
 	{
@@ -38,20 +46,43 @@ GrogFont	*Font_Create(UT_string *pPath)
 
 	fclose(f);
 
+	pRet->mpSRV	=NULL;
+
 	return	pRet;
 }
 
-int	Font_GetCharacterWidth(const GrogFont *pFont, char c)
+void	GFont_SetSRV(GrogFont *pFont, ID3D11ShaderResourceView *pSRV)
+{
+	if(pFont == NULL)
+	{
+		return;
+	}
+
+	pFont->mpSRV	=pSRV;
+}
+
+ID3D11ShaderResourceView	*GFont_GetSRV(const GrogFont *pFont)
+{
+	if(pFont == NULL)
+	{
+		return	NULL;
+	}
+
+	return	pFont->mpSRV;
+}
+
+int	GFont_GetCharacterWidth(const GrogFont *pFont, char c)
 {
 	return	pFont->mpWidths[(int)c];
 }
 
-int	Font_GetCharacterHeight(const GrogFont *pFont)
+int	GFont_GetCharacterHeight(const GrogFont *pFont)
 {
 	return	pFont->mCellHeight;
 }
 
-void	Font_GetUV(const GrogFont *pFont, char letter, int triIndex, vec2 uv)
+void	GFont_GetUV(const GrogFont *pFont, char letter,
+					int triIndex, vec2 uv)
 {
 	int	posOffset	=letter - pFont->mStartChar;
 	if(posOffset < 0)
@@ -71,7 +102,7 @@ void	Font_GetUV(const GrogFont *pFont, char letter, int triIndex, vec2 uv)
 	uv[0]	=posOffset * pFont->mCellHeight;
 	uv[1]	=yOffset * pFont->mCellHeight;
 
-	int	charWidth	=Font_GetCharacterWidth(pFont, letter);
+	int	charWidth	=GFont_GetCharacterWidth(pFont, letter);
 
 	switch(triIndex)
 	{
@@ -100,4 +131,39 @@ void	Font_GetUV(const GrogFont *pFont, char letter, int triIndex, vec2 uv)
 
 	uv[0]	/=pFont->mWidth;
 	uv[1]	/=pFont->mHeight;
+}
+
+//Returns the longest line width in the string
+float	GFont_MeasureTextClay(const GrogFont *pFont, const char *pText, int len)
+{
+	if(len <= 0)
+	{
+		return	0.0f;
+	}
+
+	float	maxWidth	=0.0f;
+	float	lineWidth	=0.0f;
+
+	for(int i=0;i < len;i++)
+	{
+		char	c	=pText[i];
+
+		if(c == '\n')
+		{
+			maxWidth	=fmax(maxWidth, lineWidth);
+			lineWidth	=0;
+			continue;
+		}
+		lineWidth	+=GFont_GetCharacterWidth(pFont, c);
+	}
+
+	return	fmax(maxWidth, lineWidth);
+}
+
+//Returns the longest line width in the string
+float	GFont_MeasureText(const GrogFont *pFont, const char *pText)
+{
+	int	len	=strlen(pText);
+
+	return	GFont_MeasureTextClay(pFont, pText, len);
 }

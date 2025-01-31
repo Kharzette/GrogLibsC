@@ -2,19 +2,6 @@
 #include	<cglm/call.h>
 
 
-typedef struct	GSNode_t
-{
-	UT_string	*szName;
-	int			mIndex;
-
-	struct GSNode_t	**mpChildren;	//list of children
-	int				mNumChildren;
-
-	//current pos / rot / scale
-	KeyFrame	mKeyValue;
-}	GSNode;
-
-
 GSNode	*GSNode_Read(FILE *f)
 {
 	GSNode	*pRet	=malloc(sizeof(GSNode));
@@ -61,25 +48,54 @@ void	GSNode_Write(const GSNode *pNode, FILE *f)
 }
 
 
-KeyFrame	*GSNode_GetKeyByName(GSNode *pNode, const char *pName)
+const GSNode	*GSNode_GetConstNodeByName(const GSNode *pNode, const char * pName)
 {
 	if(strncmp(utstring_body(pNode->szName), pName, pNode->szName->i) == 0)
 	{
-		return	&pNode->mKeyValue;
+		return	pNode;
 	}
 
 	for(int i=0;i < pNode->mNumChildren;i++)
 	{
-		KeyFrame	*pKF	=GSNode_GetKeyByName(pNode->mpChildren[i], pName);
+		const GSNode	*pN	=GSNode_GetConstNodeByName(pNode->mpChildren[i], pName);
 
-		if(pKF != NULL)
+		if(pN != NULL)
 		{
-			return	pKF;	//found!
+			return	pN;	//found!
 		}
 	}
 	return	NULL;
 }
 
+GSNode	*GSNode_GetNodeByName(GSNode *pNode, const char * pName)
+{
+	if(strncmp(utstring_body(pNode->szName), pName, pNode->szName->i) == 0)
+	{
+		return	pNode;
+	}
+
+	for(int i=0;i < pNode->mNumChildren;i++)
+	{
+		GSNode	*pN	=GSNode_GetNodeByName(pNode->mpChildren[i], pName);
+
+		if(pN != NULL)
+		{
+			return	pN;	//found!
+		}
+	}
+	return	NULL;
+}
+
+KeyFrame	*GSNode_GetKeyByName(GSNode *pNode, const char *pName)
+{
+	GSNode	*pN	=GSNode_GetNodeByName(pNode, pName);
+	if(pN == NULL)
+	{
+		return	NULL;
+	}
+
+	return	&pN->mKeyValue;
+}
 
 bool	GSNode_GetMatrixForBoneIndex(const GSNode *pNode, int index, mat4 mat)
 {

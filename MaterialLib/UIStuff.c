@@ -1040,6 +1040,12 @@ void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
 				break;
 			}
 
+			case	CLAY_RENDER_COMMAND_TYPE_NONE:
+			{
+				printf("CLAY_RENDER_COMMAND_TYPE_NONE?\n");
+				break;
+			}
+
 			case	CLAY_RENDER_COMMAND_TYPE_CUSTOM:
 			{
 				printf("CLAY_RENDER_COMMAND_TYPE_CUSTOM?\n");

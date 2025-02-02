@@ -121,6 +121,8 @@ void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
 						const MaterialLib *pML, const AnimLib *pAL,
 						GraphicsDevice *pGD, CBKeeper *pCBK)
 {
+	assert(pChar != NULL);
+
 	//set bones from anim lib / skin
 	Skin_FillBoneArray(pChar->mpSkin, AnimLib_GetSkeleton(pAL), pChar->mBones);
 
@@ -144,11 +146,15 @@ void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
 
 int	Character_GetNumParts(const Character *pChar)
 {
+	assert(pChar != NULL);
+
 	return	pChar->mNumParts;
 }
 
 StringList	*Character_GetPartList(const Character *pChar)
 {
+	assert(pChar != NULL);
+
 	StringList	*pRet	=SZList_New();
 
 	for(int i=0;i < pChar->mNumParts;i++)
@@ -161,6 +167,8 @@ StringList	*Character_GetPartList(const Character *pChar)
 
 void	Character_ReNamePart(Character *pChar, const char *pOldName, const char *pNewName)
 {
+	assert(pChar != NULL);
+
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
 		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), pOldName);
@@ -174,6 +182,7 @@ void	Character_ReNamePart(Character *pChar, const char *pOldName, const char *pN
 
 void	Character_DeletePartIndex(Character *pChar, int idx)
 {
+	assert(pChar != NULL);
 	assert(idx >= 0 && idx < pChar->mNumParts);
 
 	if(pChar->mNumParts > 1)
@@ -208,6 +217,8 @@ void	Character_DeletePartIndex(Character *pChar, int idx)
 
 void	Character_DeletePart(Character *pChar, const char *szName)
 {
+	assert(pChar != NULL);
+
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
 		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), szName);
@@ -222,6 +233,8 @@ void	Character_DeletePart(Character *pChar, const char *szName)
 
 void	Character_Destroy(Character *pChar)
 {
+	assert(pChar != NULL);
+
 	free(pChar->mBones);
 
 	for(int i=0;i < pChar->mNumParts;i++)
@@ -243,6 +256,7 @@ void	Character_Destroy(Character *pChar)
 
 void	Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatName)
 {
+	assert(pChar != NULL);
 	assert(partIndex < pChar->mNumParts);
 
 	utstring_clear(pChar->mpParts[partIndex].mpMatName);
@@ -252,6 +266,8 @@ void	Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatN
 
 const char	*Character_GetMaterialForPart(const Character *pChar, const char *szPartName)
 {
+	assert(pChar != NULL);
+
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
 		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), szPartName);
@@ -261,4 +277,11 @@ const char	*Character_GetMaterialForPart(const Character *pChar, const char *szP
 		}
 	}
 	return	NULL;
+}
+
+const Skin	*Character_GetSkin(const Character *pChar)
+{
+	assert(pChar != NULL);
+	
+	return	pChar->mpSkin;
 }

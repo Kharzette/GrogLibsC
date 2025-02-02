@@ -3,6 +3,7 @@
 #include	<string.h>
 #include	<cglm/call.h>
 #include	"Skeleton.h"
+#include	"Skin.h"	//shape defines
 
 
 //should match CommonFunctions.hlsli
@@ -131,4 +132,18 @@ void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
 		glm_mat4_mul(pBones[i], pSkin->mInverseBindPoses[i], pBones[i]);
 		glm_mat4_mul(pSkin->mScaleMat, pBones[i], pBones[i]);
 	}
+}
+
+int		Skin_GetBoundChoice(const Skin *pSkin, int boneIdx)
+{
+	assert(pSkin != NULL);
+
+	//can have bones that aren't listed for bounds
+	//like maybe root bones?
+	if(boneIdx < 0 || boneIdx >= pSkin->mNumShapes)
+	{
+		return	BONE_COL_SHAPE_INVALID;
+	}
+	
+	return	pSkin->mpBoneColShapes[boneIdx];
 }

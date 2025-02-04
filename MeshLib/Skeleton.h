@@ -24,3 +24,4 @@ KeyFrame		*Skeleton_GetBoneKey(const Skeleton *pSkel, const char *szName);
 const GSNode	*Skeleton_GetConstBoneByName(const Skeleton *pSkel, const char *szName);
 
 void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones);
+bool	Skeleton_GetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat);

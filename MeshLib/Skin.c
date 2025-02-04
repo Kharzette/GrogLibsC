@@ -27,6 +27,7 @@ typedef struct	Skin_t
 	int	*mpBoneColShapes;	//which shape chosen for each bone in CC
 
 	mat4	mRootTransform;	//art prog -> grogspace
+	mat4	mScaledRoot;	//scaleMat * root
 }	Skin;
 
 
@@ -88,6 +89,8 @@ Skin	*Skin_Read(FILE *f)
 
 	fread(pRet->mRootTransform, sizeof(mat4), 1, f);
 
+	glm_mat4_mul(pRet->mScaleMat, pRet->mRootTransform, pRet->mScaledRoot);
+
 	return	pRet;
 }
 
@@ -146,4 +149,20 @@ int		Skin_GetBoundChoice(const Skin *pSkin, int boneIdx)
 	}
 	
 	return	pSkin->mpBoneColShapes[boneIdx];
+}
+
+void	Skin_GetBoundSize(const Skin *pSkin, int boneIdx, vec2 size)
+{
+	glm_vec2_copy(pSkin->mpBoneCapsules[boneIdx], size);
+}
+
+void	Skin_GetBoneByIndexNoBind(const Skin *pSkin, const Skeleton *pSkel,
+									int boneIdx, mat4 outMat)
+{
+	if(!Skeleton_GetMatrixForBoneIndex(pSkel, boneIdx, outMat))
+	{
+		glm_mat4_identity(outMat);
+	}
+
+	glm_mat4_mul(outMat, pSkin->mScaledRoot, outMat);
 }

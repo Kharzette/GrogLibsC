@@ -68,7 +68,7 @@ KeyFrame	*Skeleton_GetBoneKey(const Skeleton *pSkel, const char *szName)
 }
 
 
-static	bool	sGetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat)
+bool	Skeleton_GetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat)
 {
 	for(int i=0;i < pSkel->mNumRoots;i++)
 	{
@@ -85,6 +85,6 @@ void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones)
 {
 	for(int i=0;i < MAX_BONES;i++)
 	{
-		sGetMatrixForBoneIndex(pSkel, i, pBones[i]);
+		Skeleton_GetMatrixForBoneIndex(pSkel, i, pBones[i]);
 	}
 }

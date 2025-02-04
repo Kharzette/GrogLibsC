@@ -36,7 +36,7 @@ void	UI_DrawRRHollow(UIStuff *pUI, const UIRect r, float hullSize,
 //clay specific stuff
 void	UI_AddFont(UIStuff *pUI, const char *szFontName, uint16_t id);
 void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands);
-void	ClayColorToVec4(Clay_Color in, vec4 out);
+void	UI_ClayColorToVec4(Clay_Color in, vec4 out);
 
 Clay_Dimensions	UI_MeasureText(Clay_StringSlice pText,
-	Clay_TextElementConfig *pConfig, uintptr_t userData);
+	Clay_TextElementConfig *pConfig, void *pUserData);

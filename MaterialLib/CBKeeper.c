@@ -74,6 +74,8 @@ typedef struct PerObject_t
 	//a force vector for doing physicsy stuff
 	//integer material id in w
 	vec4	mDanglyForceMID;
+	vec4	mLocalScale;		//didn't want a full object mat
+	vec4	mPOPad;
 }	PerObject;
 
 //CommonFunctions.hlsli
@@ -471,6 +473,12 @@ void CBK_SetMaterialID(CBKeeper *pCBK, int matID)
 void CBK_SetDanglyForce(CBKeeper *pCBK, const vec3 force)
 {
 	glm_vec3_copy(force, pCBK->mpPerObject->mDanglyForceMID);
+}
+
+void CBK_SetLocalScale(CBKeeper *pCBK, const vec3 scale)
+{
+	glm_vec3_copy(scale, pCBK->mpPerObject->mLocalScale);
+	pCBK->mpPerObject->mLocalScale[3]	=1.0f;
 }
 
 

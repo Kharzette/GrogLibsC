@@ -23,6 +23,7 @@ typedef struct	Material_t
 	vec4	mSolidColour;
 	vec3	mSpecular;
 	vec3	mDanglyForce;
+	vec3	mLocalScale;
 	int		mMaterialID;
 	float	mSpecPower;
 
@@ -50,6 +51,7 @@ Material	*MAT_Create(GraphicsDevice *pGD)
 	glm_vec3_normalize(pRet->mLightDirection);
 
 	glm_vec3_copy(GLM_VEC3_ONE, pRet->mSpecular);
+	glm_vec3_copy(GLM_VEC3_ONE, pRet->mLocalScale);
 	glm_vec4_copy(GLM_VEC4_ONE, pRet->mSolidColour);
 
 	pRet->mSpecPower	=3.0f;
@@ -77,6 +79,8 @@ void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD)
 	CBK_SetSpecular(pCBK, pMat->mSpecular, pMat->mSpecPower);
 
 	CBK_SetDanglyForce(pCBK, pMat->mDanglyForce);
+
+	CBK_SetLocalScale(pCBK, pMat->mLocalScale);
 
 	CBK_SetMaterialID(pCBK, pMat->mMaterialID);
 
@@ -127,6 +131,11 @@ void	MAT_SetLights(Material *pMat, const vec3 tri0, const vec3 tri1,
 void	MAT_SetLightDirection(Material *pMat, const vec3 lightDir)
 {
 	glm_vec3_copy(lightDir, pMat->mLightDirection);
+}
+
+void	MAT_SetLocalScale(Material *pMat, const vec3 scale)
+{
+	glm_vec3_copy(scale, pMat->mLocalScale);
 }
 
 void	MAT_SetSolidColour(Material *pMat, const vec4 col)
@@ -230,6 +239,7 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 
 	fread(pRet->mLightDirection, sizeof(vec3), 1, f);
 	fread(pRet->mDanglyForce, sizeof(vec3), 1, f);
+//	fread(pRet->mLocalScale, sizeof(vec3), 1, f);
 	fread(&pRet->mSpecPower, sizeof(float), 1, f);
 
 	//these can sometimes have \\ style paths from windows
@@ -293,6 +303,7 @@ void	MAT_Write(const Material *pMat, FILE *f, const StuffKeeper *pSK)
 
 	fwrite(pMat->mLightDirection, sizeof(vec3), 1, f);
 	fwrite(pMat->mDanglyForce, sizeof(vec3), 1, f);
+	fwrite(pMat->mLocalScale, sizeof(vec3), 1, f);
 	fwrite(&pMat->mSpecPower, sizeof(float), 1, f);
 
 	const UT_string	*szSRV0	=StuffKeeper_GetSRVName(pSK, pMat->mpSRV0);

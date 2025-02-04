@@ -16,8 +16,6 @@
 #include	"../UtilityLib/DictionaryStuff.h"
 #include	"../UtilityLib/GraphicsDevice.h"
 
-//should match CommonFunctions.hlsli
-#define	MAX_BONES		55
 
 typedef struct	Character_t
 {

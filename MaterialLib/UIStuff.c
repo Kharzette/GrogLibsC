@@ -96,7 +96,7 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
 	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "UIStuffPS");
 	pRet->mpDSS		=StuffKeeper_GetDepthStencilState(pSK, "DisableDepth");
 	pRet->mpBS		=StuffKeeper_GetBlendState(pSK, "AlphaBlending");
-	pRet->mpSS		=StuffKeeper_GetSamplerState(pSK, "PointClamp");
+	pRet->mpSS		=StuffKeeper_GetSamplerState(pSK, "LinearClamp");
 
 	//make scissor rast states
 	D3D11_RASTERIZER_DESC	rastDesc;
@@ -910,12 +910,12 @@ static GrogFont	*sGetFont(const UIStuff *pUI, uint16_t fontID)
 }
 
 Clay_Dimensions	UI_MeasureText(Clay_StringSlice text,
-	Clay_TextElementConfig *pConfig, uintptr_t userData)
+	Clay_TextElementConfig *pConfig, void *pUserData)
 {
 	//Measure string size for Font
 	Clay_Dimensions	textSize	={ 0 };
 
-	UIStuff	*pUI	=(UIStuff *)userData;
+	UIStuff	*pUI	=(UIStuff *)pUserData;
 	if(pUI == NULL)
 	{
 		printf("Bad userData in UI_MeasureText!  String is %s\n", text.chars);
@@ -955,27 +955,33 @@ void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
 		{
 			case CLAY_RENDER_COMMAND_TYPE_TEXT:
 			{
-				GrogFont	*pFontToUse	=sGetFont(pUI, pRC->config.textElementConfig->fontId);
+				GrogFont	*pFontToUse	=sGetFont(pUI, pRC->renderData.text.fontId);
 				if(pFontToUse == NULL)
 				{
-					printf("Font not found! %u\n", (uint32_t)pRC->config.textElementConfig->fontId);
+					printf("Font not found! %u\n", (uint32_t)pRC->renderData.text.fontId);
 					continue;
 				}
 
+				Clay_StringSlice	*pCss	=&pRC->renderData.text.stringContents;
+
 				vec2	pos		={ boundingBox.x, boundingBox.y };
 				vec4	colour;
-
-				ClayColorToVec4(pRC->config.textElementConfig->textColor, colour);
-				UI_DrawString(pUI, pRC->text.chars, pRC->text.length, pFontToUse, pos, colour);
+				UI_ClayColorToVec4(pRC->renderData.text.textColor, colour);
+				UI_DrawString(pUI, pCss->chars, pCss->length, pFontToUse, pos, colour);
 				break;
 			}
 			
 			case CLAY_RENDER_COMMAND_TYPE_IMAGE:
 			{
-				UI_DrawImage(pUI, pRC->config.imageElementConfig->imageData,
+				Clay_ImageRenderData	*pCird	=&pRC->renderData.image;
+
+				vec4	colour;
+				UI_ClayColorToVec4(pCird->backgroundColor, colour);
+
+				UI_DrawImage(pUI, pCird->imageData,
 					(vec2){ boundingBox.x, boundingBox.y },
-					(vec2){ pRC->config.imageElementConfig->sourceDimensions.width, pRC->config.imageElementConfig->sourceDimensions.height},
-					0.0f, (vec4){1,1,1,1});
+					(vec2){ pCird->sourceDimensions.width, pCird->sourceDimensions.height },
+					0.0f, colour);
 				break;
 			}
 			case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START:
@@ -1004,13 +1010,13 @@ void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
 			}
 			case CLAY_RENDER_COMMAND_TYPE_RECTANGLE:
 			{
-				Clay_RectangleElementConfig	*pConfig	=pRC->config.rectangleElementConfig;
+				Clay_RectangleRenderData	*pCrrd	=&pRC->renderData.rectangle;
 				vec4	color;
-				ClayColorToVec4(pConfig->color, color);
-				if(pConfig->cornerRadius.topLeft > 0)
+				UI_ClayColorToVec4(pCrrd->backgroundColor, color);
+				if(pCrrd->cornerRadius.topLeft > 0)
 				{
 					//TODO: find some formulae for roundness and segments
-					float	radius	=(pConfig->cornerRadius.topLeft * 2) / (float)((boundingBox.width > boundingBox.height) ? boundingBox.height : boundingBox.width);
+					float	radius	=(pCrrd->cornerRadius.topLeft * 2) / (float)((boundingBox.width > boundingBox.height) ? boundingBox.height : boundingBox.width);
 					UI_DrawRectRounded(pUI, (UIRect) { boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height }, 0.75f, 3, color);
 				}
 				else
@@ -1021,21 +1027,23 @@ void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
 			}
 			case	CLAY_RENDER_COMMAND_TYPE_BORDER:
 			{
-				Clay_BorderElementConfig *pConf = pRC->config.borderElementConfig;
+				//I don't think I'm fully doing all cases here
+				//the raylib renderererrer is way more complicated
+				Clay_BorderRenderData	*pCbrd	=&pRC->renderData.border;
 
-				vec4	leftCol, rightCol, topCol, botCol;
-				ClayColorToVec4(pConf->left.color, leftCol);
-				ClayColorToVec4(pConf->right.color, rightCol);
-				ClayColorToVec4(pConf->top.color, topCol);
-				ClayColorToVec4(pConf->bottom.color, botCol);
-
-				if(pConf->cornerRadius.topLeft > 0)
+				vec4	col;
+				UI_ClayColorToVec4(pCbrd->color, col);
+				if(pCbrd->cornerRadius.topLeft > 0)
 				{
-					UI_DrawRRHollow(pUI, (UIRect){ boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height}, pConf->left.width, 0.5, 3, topCol);
+					UI_DrawRRHollow(pUI,
+						(UIRect){ boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height},
+						pCbrd->width.left, 0.5, 3, col);
 				}
 				else
 				{
-					UI_DrawRectHollow(pUI, (UIRect){ boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height}, pConf->left.width, topCol);
+					UI_DrawRectHollow(pUI,
+						(UIRect){ boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height},
+						pCbrd->width.left, col);
 				}
 				break;
 			}
@@ -1064,7 +1072,7 @@ void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
 }
 
 //doesn't do any linear/srgb stuff
-void	ClayColorToVec4(Clay_Color in, vec4 out)
+void	UI_ClayColorToVec4(Clay_Color in, vec4 out)
 {
 	float	oo255	=1.0f / 255.0f;
 

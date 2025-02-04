@@ -43,6 +43,7 @@ void CBK_SetSolidColour(CBKeeper *pCBK, const vec4 sc);
 void CBK_SetSpecular(CBKeeper *pCBK, const vec3 specColour, float specPow);
 void CBK_SetSpecularPower(CBKeeper *pCBK, float specPow);
 void CBK_SetWorldMat(CBKeeper *pCBK, const mat4 world);
+void CBK_SetLocalScale(CBKeeper *pCBK, const vec3 ls);
 void CBK_SetTransposedWorldMat(CBKeeper *pCBK, const mat4 world);
 void CBK_SetMaterialID(CBKeeper *pCBK, int matID);
 void CBK_SetDanglyForce(CBKeeper *pCBK, const vec3 force);

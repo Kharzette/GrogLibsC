@@ -1,6 +1,9 @@
 #pragma once
 #include	<cglm/call.h>
 
+//should match CommonFunctions.hlsli
+#define	MAX_BONES		55
+
 typedef struct	AnimLib_t		AnimLib;
 typedef struct	Skeleton_t		Skeleton;
 typedef struct	StringList_t	StringList;

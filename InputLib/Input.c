@@ -11,6 +11,8 @@
 #include	"utlist.h"
 #include	"Input.h"
 
+//call event callback with either update context or stored in bind
+#define	EVENTCB(pIB,pEvt,pContext)	if(pIB->mpContext != NULL) pIB->EventCB(pIB->mpContext, pEvt); else pIB->EventCB(pContext, pEvt);
 
 //binding types...
 //Hold down for a constant effect per frame
@@ -21,6 +23,7 @@
 //specific button down/up events
 typedef struct	InputBinding_t
 {
+	void	*mpContext;
 	int		mBindType;
 	bool	mbActive;	//for hold type, held last check
 
@@ -47,7 +50,8 @@ Input	*INP_CreateInput(void)
 }
 
 
-void	INP_MakeBinding(Input *pInp, int bindType, uint32_t code, InputCB cb)
+//for a context related to the binding
+void	INP_MakeBindingCTX(Input *pInp, int bindType, uint32_t code, InputCB cb, void *pContext)
 {
 	assert(bindType >= INP_BIND_TYPE_HELD
 		&& bindType <= INP_BIND_TYPE_RELEASE);
@@ -58,8 +62,15 @@ void	INP_MakeBinding(Input *pInp, int bindType, uint32_t code, InputCB cb)
 	pBind->mBindType	=bindType;
 	pBind->mCode		=code;
 	pBind->EventCB		=cb;
+	pBind->mpContext	=pContext;
 
 	LL_APPEND(pInp->mpBindings, pBind);
+}
+
+//will use context from update function
+void	INP_MakeBinding(Input *pInp, int bindType, uint32_t code, InputCB cb)
+{
+	INP_MakeBindingCTX(pInp, bindType, code, cb, NULL);
 }
 
 
@@ -78,7 +89,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				{
 					if(pBind->mCode == evt.key.keysym.sym)
 					{
-						pBind->EventCB(pContext, &evt);
+						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 				else if(pBind->mBindType == INP_BIND_TYPE_HELD)
@@ -92,7 +103,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				{
 					if(pBind->mCode == evt.key.keysym.sym)
 					{
-						pBind->EventCB(pContext, &evt);
+						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 			}
@@ -117,7 +128,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				{
 					if(pBind->mCode == evt.key.keysym.sym)
 					{
-						pBind->EventCB(pContext, &evt);
+						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 			}
@@ -131,7 +142,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				{
 					if(pBind->mCode == evt.button.button)
 					{
-						pBind->EventCB(pContext, &evt);
+						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 				else if(pBind->mBindType == INP_BIND_TYPE_HELD)
@@ -145,7 +156,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				{
 					if(pBind->mCode == evt.button.button)
 					{
-						pBind->EventCB(pContext, &evt);
+						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 			}
@@ -173,7 +184,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				{
 					if(pBind->mCode == evt.button.button)
 					{
-						pBind->EventCB(pContext, &evt);
+						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 			}
@@ -190,7 +201,7 @@ void	INP_Update(Input *pInp, void *pContext)
 
 				if(pBind->mCode == evt.type)
 				{
-					pBind->EventCB(pContext, &evt);
+					EVENTCB(pBind, &evt, pContext);
 				}
 			}
 		}
@@ -207,7 +218,7 @@ void	INP_Update(Input *pInp, void *pContext)
 
 		if(pBind->mbActive)
 		{
-			pBind->EventCB(pContext, NULL);
+			EVENTCB(pBind, NULL, pContext);
 		}
 	}
 }

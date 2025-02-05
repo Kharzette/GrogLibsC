@@ -3,7 +3,6 @@ CFLAGS=-std=gnu23 -g -O0 -march=native -fpic -shared	\
 	-DCGLM_FORCE_DEPTH_ZERO_TO_ONE	\
 	-DCGLM_FORCE_LEFT_HANDED	\
 	-I../dxvk-native/include/native/directx \
-	-I../libpng/build/include	\
 	-I../dxvk-native/include/native/windows	\
 	-I../dxvk-native/include/native	\
 	-I../uthash/src		\

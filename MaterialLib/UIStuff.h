@@ -1,7 +1,8 @@
+//be sure to define CLAY_IMPLEMENTATION in a single
+//spot before including this, in whatever exe is being made
 #pragma once
 #include	<stdint.h>
 #include	<cglm/call.h>
-#define CLAY_IMPLEMENTATION
 #include 	"../clay/clay.h"
 
 typedef struct	GraphicsDevice_t	GraphicsDevice;

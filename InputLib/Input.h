@@ -18,6 +18,7 @@ typedef void (*InputCB)(void *pContext, const SDL_Event *pEvt);
 
 extern Input	*INP_CreateInput(void);
 
+extern void	INP_MakeBindingCTX(Input *pInp, int bindType, uint32_t code, InputCB cb, void *pContext);
 extern void	INP_MakeBinding(Input *pInp, int bindType, uint32_t code, InputCB cb);
 
 extern void	INP_Update(Input *pInp, void *pContext);

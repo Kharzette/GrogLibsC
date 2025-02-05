@@ -151,9 +151,24 @@ int		Skin_GetBoundChoice(const Skin *pSkin, int boneIdx)
 	return	pSkin->mpBoneColShapes[boneIdx];
 }
 
-void	Skin_GetBoundSize(const Skin *pSkin, int boneIdx, vec2 size)
+void	Skin_GetBoundSize(const Skin *pSkin, int boneIdx, vec4 size)
 {
-	glm_vec2_copy(pSkin->mpBoneCapsules[boneIdx], size);
+	glm_vec4_copy(pSkin->mpBoneSpheres[boneIdx], size);
+}
+
+void	Skin_GetBoneByIndex(const Skin *pSkin, const Skeleton *pSkel,
+									int boneIdx, mat4 outMat)
+{
+	if(!Skeleton_GetMatrixForBoneIndex(pSkel, boneIdx, outMat))
+	{
+		glm_mat4_identity(outMat);
+	}
+
+	//On windows side this is: bone	=ibp * bone * rootXForm * scale
+	//here it seems to be root * bone * ibp * scale
+	glm_mat4_mul(pSkin->mRootTransform, outMat, outMat);
+	glm_mat4_mul(outMat, pSkin->mInverseBindPoses[boneIdx], outMat);
+	glm_mat4_mul(pSkin->mScaleMat, outMat, outMat);
 }
 
 void	Skin_GetBoneByIndexNoBind(const Skin *pSkin, const Skeleton *pSkel,
@@ -164,5 +179,5 @@ void	Skin_GetBoneByIndexNoBind(const Skin *pSkin, const Skeleton *pSkel,
 		glm_mat4_identity(outMat);
 	}
 
-	glm_mat4_mul(outMat, pSkin->mScaledRoot, outMat);
+	glm_mat4_mul(pSkin->mScaledRoot, outMat, outMat);
 }

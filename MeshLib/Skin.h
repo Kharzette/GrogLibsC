@@ -15,5 +15,6 @@ void	Skin_Write(const Skin *pSkin, FILE *f);
 void	Skin_Destroy(Skin *pSkin);
 void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones);
 int		Skin_GetBoundChoice(const Skin *pSkin, int boneIdx);
-void	Skin_GetBoundSize(const Skin *pSkin, int boneIdx, vec2 size);
+void	Skin_GetBoundSize(const Skin *pSkin, int boneIdx, vec4 size);
+void	Skin_GetBoneByIndex(const Skin *pSkin, const Skeleton *pSkel, int boneIdx, mat4 outMat);
 void	Skin_GetBoneByIndexNoBind(const Skin *pSkin, const Skeleton *pSkel, int boneIdx, mat4 outMat);

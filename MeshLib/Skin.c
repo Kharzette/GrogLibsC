@@ -151,8 +151,50 @@ int		Skin_GetBoundChoice(const Skin *pSkin, int boneIdx)
 	return	pSkin->mpBoneColShapes[boneIdx];
 }
 
-void	Skin_GetBoundSize(const Skin *pSkin, int boneIdx, vec4 size)
+void	Skin_GetBoxBoundSize(const Skin *pSkin, int boneIdx, vec3 min, vec3 max)
 {
+	assert(pSkin != NULL);
+
+	//can have bones that aren't listed for bounds
+	//like maybe root bones?
+	if(boneIdx < 0 || boneIdx >= pSkin->mNumShapes)
+	{
+		glm_vec3_zero(min);
+		glm_vec3_zero(max);
+		return;
+	}
+
+	glm_vec3_copy(pSkin->mpBoneBoxes[boneIdx * 2], min);
+	glm_vec3_copy(pSkin->mpBoneBoxes[(boneIdx * 2) + 1], max);
+}
+
+void	Skin_GetCapsuleBoundSize(const Skin *pSkin, int boneIdx, vec2 size)
+{
+	assert(pSkin != NULL);
+
+	//can have bones that aren't listed for bounds
+	//like maybe root bones?
+	if(boneIdx < 0 || boneIdx >= pSkin->mNumShapes)
+	{
+		glm_vec2_zero(size);
+		return;
+	}
+
+	glm_vec2_copy(pSkin->mpBoneCapsules[boneIdx], size);
+}
+
+void	Skin_GetSphereBoundSize(const Skin *pSkin, int boneIdx, vec4 size)
+{
+	assert(pSkin != NULL);
+
+	//can have bones that aren't listed for bounds
+	//like maybe root bones?
+	if(boneIdx < 0 || boneIdx >= pSkin->mNumShapes)
+	{
+		glm_vec4_zero(size);
+		return;
+	}
+
 	glm_vec4_copy(pSkin->mpBoneSpheres[boneIdx], size);
 }
 
@@ -198,4 +240,47 @@ void	Skin_SetBoundChoice(Skin *pSkin, int boneIdx, int choice)
 	assert(choice >= BONE_COL_SHAPE_BOX && choice <= BONE_COL_SHAPE_INVALID);
 
 	pSkin->mpBoneColShapes[boneIdx]	=choice;
+}
+
+void	Skin_SetBoxBoundSize(Skin *pSkin, int boneIdx, const vec3 min, const vec3 max)
+{
+	assert(pSkin != NULL);
+
+	//can have bones that aren't listed for bounds
+	//like maybe root bones?
+	if(boneIdx < 0 || boneIdx >= pSkin->mNumShapes)
+	{
+		return;
+	}
+
+	glm_vec3_copy(min, pSkin->mpBoneBoxes[boneIdx * 2]);
+	glm_vec3_copy(max, pSkin->mpBoneBoxes[(boneIdx * 2) + 1]);
+}
+
+void	Skin_SetCapsuleBoundSize(Skin *pSkin, int boneIdx, const vec2 size)
+{
+	assert(pSkin != NULL);
+
+	//can have bones that aren't listed for bounds
+	//like maybe root bones?
+	if(boneIdx < 0 || boneIdx >= pSkin->mNumShapes)
+	{
+		return;
+	}
+
+	glm_vec2_copy(size, pSkin->mpBoneCapsules[boneIdx]);
+}
+
+void	Skin_SetSphereBoundSize(Skin *pSkin, int boneIdx, const vec4 size)
+{
+	assert(pSkin != NULL);
+
+	//can have bones that aren't listed for bounds
+	//like maybe root bones?
+	if(boneIdx < 0 || boneIdx >= pSkin->mNumShapes)
+	{
+		return;
+	}
+
+	glm_vec4_copy(size, pSkin->mpBoneSpheres[boneIdx]);
 }

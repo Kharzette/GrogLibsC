@@ -277,7 +277,14 @@ const char	*Character_GetMaterialForPart(const Character *pChar, const char *szP
 	return	NULL;
 }
 
-const Skin	*Character_GetSkin(const Character *pChar)
+const Skin	*Character_GetConstSkin(const Character *pChar)
+{
+	assert(pChar != NULL);
+	
+	return	pChar->mpSkin;
+}
+
+Skin	*Character_GetSkin(const Character *pChar)
 {
 	assert(pChar != NULL);
 	

@@ -181,3 +181,21 @@ void	Skin_GetBoneByIndexNoBind(const Skin *pSkin, const Skeleton *pSkel,
 
 	glm_mat4_mul(pSkin->mScaledRoot, outMat, outMat);
 }
+
+
+void	Skin_SetBoundChoice(Skin *pSkin, int boneIdx, int choice)
+{
+	assert(pSkin != NULL);
+
+	//can have bones that aren't listed for bounds
+	//like maybe root bones?
+	if(boneIdx < 0 || boneIdx >= pSkin->mNumShapes)
+	{
+		printf("Invalid index in Skin_SetBoundChoice()!\n");
+		return;
+	}
+
+	assert(choice >= BONE_COL_SHAPE_BOX && choice <= BONE_COL_SHAPE_INVALID);
+
+	pSkin->mpBoneColShapes[boneIdx]	=choice;
+}

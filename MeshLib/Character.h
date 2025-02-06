@@ -23,7 +23,8 @@ void		Character_DeletePart(Character *pChar, const char *szName);
 int			Character_GetNumParts(const Character *pChar);
 StringList	*Character_GetPartList(const Character *pChar);
 const char	*Character_GetMaterialForPart(const Character *pChar, const char *szPartName);
-const Skin	*Character_GetSkin(const Character *pChar);
+const Skin	*Character_GetConstSkin(const Character *pChar);
+Skin		*Character_GetSkin(const Character *pChar);
 
 void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
 						const MaterialLib *pML, const AnimLib *pAL,

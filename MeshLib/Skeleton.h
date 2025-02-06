@@ -22,6 +22,7 @@ void		Skeleton_Write(const Skeleton *pSkel, FILE *f);
 //searches
 KeyFrame		*Skeleton_GetBoneKey(const Skeleton *pSkel, const char *szName);
 const GSNode	*Skeleton_GetConstBoneByName(const Skeleton *pSkel, const char *szName);
+GSNode			*Skeleton_GetBoneMirror(const Skeleton *pSkel, const UT_string *pName);
 
 void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones);
 bool	Skeleton_GetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat);

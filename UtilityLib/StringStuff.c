@@ -1,8 +1,5 @@
-#include	<stdint.h>
-#include	<stdbool.h>
-#include	<stdio.h>
+#include	"StringStuff.h"
 #include	<ctype.h>
-#include	"utstring.h"
 
 
 //an attempt to do C# style string manip stuffs
@@ -10,6 +7,37 @@
 //ConvertPathSlashes, ConvertPathBackSlashes, StringToVec234,
 //StringToMatrix, FloatToString, FloatArrayToString, VecToString,
 
+//does pSZ contain pszThing?
+bool	SZ_ContainsUTCC(const UT_string *pSZ, const char *pszThing)
+{
+	if(pSZ == NULL || pszThing == NULL)
+	{
+		return	false;
+	}
+
+	int	len	=strlen(pszThing);
+
+	int	res	=utstring_find(pSZ, 0, pszThing, len);
+
+	return	(res != -1);
+}
+
+bool	SZ_EndsWithUT(const UT_string *pSZ, char c)
+{
+	int	len	=utstring_len(pSZ);
+
+	int	lastIdx	=SZ_LastIndexOfUT(pSZ, c);
+
+	if(lastIdx == -1)
+	{
+		return	false;
+	}
+	if(lastIdx < (len - 1))
+	{
+		return	false;
+	}
+	return	true;
+}
 
 //does pSZ start with Thing?
 bool	SZ_StartsWith(const char *pSZ, const char *pszThing)
@@ -220,6 +248,50 @@ UT_string	*SZ_SubStringUTStartEnd(const UT_string *pSZ, int startPos, int endPos
 	return	SZ_SubStringStartEnd(utstring_body(pSZ), startPos, endPos);
 }
 
+bool	SZ_ReplaceUTCCCC(UT_string *pSZ, const char *pszTarget, const char *pszReplace)
+{
+	if(pSZ == NULL || pszTarget == NULL || pszReplace == NULL)
+	{
+		return	false;
+	}
+
+	int	lenTarg	=strlen(pszTarget);
+
+	int	res	=utstring_find(pSZ, 0, pszTarget, lenTarg);
+	if(res == -1)
+	{
+		return	false;
+	}
+
+	//lazy
+	UT_string	*pBeg	=SZ_SubStringUTStartEnd(pSZ, 0, res);
+	UT_string	*pAfter	=SZ_SubStringUTStart(pSZ, res + lenTarg);
+
+	utstring_clear(pSZ);
+
+	if(pAfter == NULL)
+	{
+		utstring_printf(pSZ, "%s%s",
+			utstring_body(pBeg),
+			pszReplace);
+	}
+	else
+	{
+		utstring_printf(pSZ, "%s%s%s",
+			utstring_body(pBeg),
+			pszReplace,
+			utstring_body(pAfter));
+	}
+	
+	utstring_done(pBeg);
+	if(pAfter != NULL)
+	{
+		utstring_done(pAfter);
+	}
+
+	return	true;
+}
+
 
 //return the extension of a filename or NULL if none
 UT_string	*SZ_GetExtension(const char *pSZ)
@@ -243,7 +315,7 @@ UT_string	*SZ_GetExtension(const char *pSZ)
 	return	pRet;
 }
 
-UT_string	*SZ_GetExtensionUT(UT_string *pSZ)
+UT_string	*SZ_GetExtensionUT(const UT_string *pSZ)
 {
 	return	SZ_GetExtension(utstring_body(pSZ));
 }

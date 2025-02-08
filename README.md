@@ -34,3 +34,10 @@ ninja
 Grog's makefiles will look for the libs there in dxvk-native/build/etc
 
 So something really annoying I do that I should probably fix is using .vscode launch.json and tasks.json to copy the shared libraries around.  I should either commit those or stop doing that and have the makefiles do something more reasonable.
+
+# Coordinate System
+I've fairly recently switched from right to left handed.  Since early directX used left, my brain is just wired to work in left handed.  Right made it much easier to get data in and out of blender, but when doing gameplay and cameras and such I was having a rough time of it.
+
+Doing a Ludum Dare on the old original XBox kind of brought me back to the left hand way of doing things.
+
+Z is forward, X is right and Y is up.

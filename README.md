@@ -14,7 +14,7 @@ Game libraries using C language, often ported from my C# libraries of the same n
 
 # TODO
 - BSP Maps
-- Integration of a physics library of some sort
+- Integration of a physics library of some sort (evaluating jolt)
 - Better collision / physics on characters
 - Static meshes with various collision shapes
 - Windows
@@ -25,13 +25,26 @@ For awhile I had every dependency as a submodule, but that made it annoying for 
 - FAudio
 - pnglib
 
+My awful .vscode makefile stuff needs a libs dir (see below)
+```bash
+mkdir libs
+```
+
 The dxvk-native submodule needs building:
 ```bash
+cd dxvk-native
 meson --buildtype "debug" build
 cd build
 ninja
 ```
 Grog's makefiles will look for the libs there in dxvk-native/build/etc
+
+Build joltc:
+```bash
+cd joltc/build
+cmake -S "./../" -G "Unix Makefiles"
+make
+```
 
 So something really annoying I do that I should probably fix is using .vscode launch.json and tasks.json to copy the shared libraries around.  I should either commit those or stop doing that and have the makefiles do something more reasonable.
 

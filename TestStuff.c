@@ -15,6 +15,7 @@
 #include	"MaterialLib/PostProcess.h"
 #include	"MaterialLib/Material.h"
 #include	"MaterialLib/MaterialLib.h"
+#define CLAY_IMPLEMENTATION
 #include	"MaterialLib/UIStuff.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
@@ -31,6 +32,7 @@
 #include	"MeshLib/CommonPrims.h"
 #include	"InputLib/Input.h"
 #include	"UtilityLib/BipedMover.h"
+#include	"joltc.h"
 
 
 #define	RESX			1280
@@ -70,6 +72,8 @@ typedef struct	TestStuff_t
 	bool	mbMouseLooking;
 	bool	mbRunning;
 	bool	mbFlyMode;
+
+	
 
 	//character movement
 	vec3	mCharMoveVec;
@@ -123,6 +127,13 @@ static void sEscEH(void *pContext, const SDL_Event *pEvt);
 int main(void)
 {
 	printf("DirectX action!\n");
+
+	bool	bJPH	=JPH_Init();
+	if(!bJPH)
+	{
+		printf("JPH Init failed.\n");
+		return	EXIT_FAILURE;
+	}
 
 	Audio	*pAud	=Audio_Create(2);
 

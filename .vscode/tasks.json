@@ -8,7 +8,7 @@
             "options": {"cwd": "${workspaceFolder}"},
             "problemMatcher": [],
             "detail": "make build task",
-			"dependsOn": [ "copyGLibs", "copyDXGI", "copyD3D11" ]
+			"dependsOn": [ "copyGLibs", "copyDXGI", "copyD3D11", "copyJoltc" ]
         },
         {
             "type": "shell",
@@ -34,6 +34,14 @@
             "group": "none",
             "options": {"cwd": "${workspaceFolder}"},
             "detail": "Copy d3d lib to game libs directory for testing."
+        },
+        {
+            "type": "shell",
+            "label": "copyJoltc",
+            "command": "cp joltc/build/lib/libjoltc.so ${config:CurrentGameLibs}",
+            "group": "none",
+            "options": {"cwd": "${workspaceFolder}"},
+            "detail": "Copy joltc lib to game libs directory for testing."
         },
         {
             "type": "shell",

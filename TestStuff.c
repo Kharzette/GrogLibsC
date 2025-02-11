@@ -51,6 +51,8 @@
 #define	START_CAM_DIST	5.0f
 #define	MAX_CAM_DIST	25.0f
 #define	MIN_CAM_DIST	0.25f
+#define	SPHERE_SIZE		(1.0f)
+#define	MAX_SPHERES		50
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES		55
@@ -62,8 +64,6 @@ typedef struct	TestStuff_t
 	GraphicsDevice	*mpGD;
 	Terrain			*mpTer;
 	GameCamera		*mpCam;
-	PrimObject		*mpManyRays;
-	PrimObject		*mpManyImpacts;
 	UIStuff			*mpUI;
 	BipedMover		*mpBPM;
 
@@ -76,6 +76,17 @@ typedef struct	TestStuff_t
 	//jolt stuff
 	JPH_HeightFieldShape	*mpHFS;
 	JPH_BodyID				mTerBodyID;
+	JPH_BodyID				mSphereIDs[MAX_SPHERES];
+	int						mNumSpheres;
+	JPH_BodyInterface		*mpBI;
+
+	JPH_ObjectLayer		mNonMoving;
+	JPH_ObjectLayer		mMoving;
+	JPH_BroadPhaseLayer	mBPNonMoving;
+	JPH_BroadPhaseLayer	mBPMoving;
+	
+	//prims
+	PrimObject	*mpSphere;
 
 	//character movement
 	vec3	mCharMoveVec;
@@ -92,6 +103,7 @@ typedef struct	TestStuff_t
 //static forward decs
 static void		sSetupKeyBinds(Input *pInp);
 static void		sSetupRastVP(GraphicsDevice *pGD);
+static void		sMakeSphere(TestStuff *pTS);
 static void		sMoveCharacter(TestStuff *pTS, const vec3 moveVec);
 static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
 
@@ -101,6 +113,7 @@ static void	sJoltTrace(const char *szMsg);
 //material setups
 static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK);
 
 //input event handlers
@@ -109,6 +122,7 @@ static void	sDangleDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sDangleUpEH(void *pContext, const SDL_Event *pEvt);
 static void	sToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt);
 static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt);
+static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt);
 static void	sRightMouseDownEH(void *pContext, const SDL_Event *pEvt);
@@ -142,27 +156,33 @@ int main(void)
 		}
 	}
 
+	//store a bunch of vars in a struct
+	//for ref/modifying by input handlers
+	TestStuff	*pTS	=malloc(sizeof(TestStuff));
+	memset(pTS, 0, sizeof(TestStuff));
+
 	//init stuff borrowed from helloworld sample
 	JPH_SetTraceHandler(sJoltTrace);
 
-	JPH_ObjectLayer		nonMoving	=0;
-	JPH_ObjectLayer		moving		=1;
-	JPH_BroadPhaseLayer	BPNonMoving	=0;
-	JPH_BroadPhaseLayer	BPMoving	=1;
+	pTS->mNonMoving		=0;
+	pTS->mMoving		=1;
+	pTS->mBPNonMoving	=0;
+	pTS->mBPMoving		=1;
 	
 	JPH_JobSystem	*pJS	=JPH_JobSystemThreadPool_Create(NULL);
 	
 	//We use only 2 layers: one for non-moving objects and one for moving objects
-	JPH_ObjectLayerPairFilter	*pOLPFT	=JPH_ObjectLayerPairFilterTable_Create(2);
-	JPH_ObjectLayerPairFilterTable_EnableCollision(pOLPFT, nonMoving, moving);
-	JPH_ObjectLayerPairFilterTable_EnableCollision(pOLPFT, moving, nonMoving);
+	JPH_ObjectLayerPairFilter	*pOLPFT	=JPH_ObjectLayerPairFilterTable_Create(3);
+	JPH_ObjectLayerPairFilterTable_EnableCollision(pOLPFT, pTS->mNonMoving, pTS->mMoving);
+	JPH_ObjectLayerPairFilterTable_EnableCollision(pOLPFT, pTS->mMoving, pTS->mNonMoving);
+	JPH_ObjectLayerPairFilterTable_EnableCollision(pOLPFT, pTS->mMoving, pTS->mMoving);
 
 	// We use a 1-to-1 mapping between object layers and broadphase layers
 	JPH_BroadPhaseLayerInterface	*pBPLIT	=JPH_BroadPhaseLayerInterfaceTable_Create(2, 2);
-	JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(pBPLIT, nonMoving, BPNonMoving);
-	JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(pBPLIT, moving, BPMoving);
+	JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(pBPLIT, pTS->mNonMoving, pTS->mBPNonMoving);
+	JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(pBPLIT, pTS->mMoving, pTS->mBPMoving);
 	
-	JPH_ObjectVsBroadPhaseLayerFilter	*pObjVsBPLF	=JPH_ObjectVsBroadPhaseLayerFilterTable_Create(pBPLIT, 2, pOLPFT, 2);
+	JPH_ObjectVsBroadPhaseLayerFilter	*pObjVsBPLF	=JPH_ObjectVsBroadPhaseLayerFilterTable_Create(pBPLIT, 2, pOLPFT, 3);
 
 	JPH_PhysicsSystemSettings	ps;
 	ps.maxBodies						=65536;
@@ -174,14 +194,11 @@ int main(void)
 	ps.objectVsBroadPhaseLayerFilter	=pObjVsBPLF;
 
 	JPH_PhysicsSystem	*pPS	=JPH_PhysicsSystem_Create(&ps);
-	JPH_BodyInterface	*pBI	=JPH_PhysicsSystem_GetBodyInterface(pPS);
+
+	pTS->mpBI	=JPH_PhysicsSystem_GetBodyInterface(pPS);
 
 	Audio	*pAud	=Audio_Create(2);
 
-	//store a bunch of vars in a struct
-	//for ref/modifying by input handlers
-	TestStuff	*pTS	=malloc(sizeof(TestStuff));
-	memset(pTS, 0, sizeof(TestStuff));
 
 	//start in fly mode?
 	pTS->mbFlyMode	=true;
@@ -231,7 +248,6 @@ int main(void)
 
 		JPH_Vec3	zeroVec	={0};
 		JPH_Vec3	oneVec	={1,1,1};
-		JPH_Quat	zeroRot	={0, 0, 0, 1};
 
 		assert(w == h);
 
@@ -241,10 +257,16 @@ int main(void)
 
 		JPH_BodyCreationSettings	*pTBSettings	=JPH_BodyCreationSettings_Create2(
 			(const JPH_ShapeSettings *)pHFSS,
-			&zeroVec, &zeroRot, JPH_MotionType_Static, nonMoving);
+			&zeroVec, NULL, JPH_MotionType_Static, pTS->mNonMoving);
 
-		pTS->mTerBodyID	=JPH_BodyInterface_CreateAndAddBody(pBI, pTBSettings,
+		pTS->mTerBodyID	=JPH_BodyInterface_CreateAndAddBody(pTS->mpBI, pTBSettings,
 						JPH_Activation_DontActivate);
+
+		JPH_BodyCreationSettings_Destroy(pTBSettings);
+	}
+
+	//make a test sphere to roll around
+	{
 	}
 
 	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
@@ -276,12 +298,15 @@ __attribute_maybe_unused__
 
 	float	aspect	=(float)RESX / (float)RESY;
 
+	pTS->mpSphere	=PF_CreateSphere(GLM_VEC3_ZERO, SPHERE_SIZE, false, pTS->mpGD);
+
 	//these need align
 	__attribute((aligned(32)))	mat4	charMat, camProj;
 	__attribute((aligned(32)))	mat4	textProj, viewMat;
 
-	pTS->mEyePos[1]	=0.6f;
-	pTS->mEyePos[2]	=4.5f;
+	pTS->mEyePos[0]	=185.0f;
+	pTS->mEyePos[1]	=36.0f;
+	pTS->mEyePos[2]	=180.0f;
 
 	//game camera
 	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
@@ -317,6 +342,7 @@ __attribute_maybe_unused__
 	//materials
 	Material	*pTerMat	=sMakeTerrainMat(pTS, pSK);
 	Material	*pBoxesMat	=sMakeNodeBoxesMat(pTS, pSK);
+	Material	*pSphereMat	=sMakeSphereMat(pTS, pSK);	
 	Material	*pSkyBoxMat	=sMakeSkyBoxMat(pTS, pSK);
 
 	//character stuffs
@@ -353,6 +379,9 @@ __attribute_maybe_unused__
 					SoundEffectPlay("jump", pTS->mPlayerPos);
 				}
 			}
+
+			JPH_PhysicsSystem_Update(pPS, secDelta, 1, pJS);
+
 			sMoveCharacter(pTS, pTS->mCharMoveVec);
 
 			UpdateTimer_UpdateDone(pUT);
@@ -361,6 +390,7 @@ __attribute_maybe_unused__
 		//update materials incase light changed
 		MAT_SetLightDirection(pTerMat, pTS->mLightDir);
 		MAT_SetLightDirection(pBoxesMat, pTS->mLightDir);
+		MAT_SetLightDirection(pSphereMat, pTS->mLightDir);
 
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
@@ -493,6 +523,24 @@ __attribute_maybe_unused__
 
 		Character_Draw(pChar, pMeshes, pCharMats, pALib, pTS->mpGD, pCBK);
 
+		for(int i=0;i < pTS->mNumSpheres;i++)
+		{
+			JPH_Vec3	jpos;
+			JPH_BodyInterface_GetCenterOfMassPosition(pTS->mpBI, pTS->mSphereIDs[i], &jpos);
+
+			mat4	wPos;
+			vec3	pos	={	jpos.x, jpos.y, jpos.z	};
+			glm_translate_make(wPos, pos);
+
+			MAT_SetWorld(pSphereMat, wPos);
+
+			//draw test spheres (could instance these, but lazy)
+			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpSphere->mpVB, pTS->mpSphere->mVertSize, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpSphere->mpIB, DXGI_FORMAT_R16_UINT, 0);
+			MAT_Apply(pSphereMat, pCBK, pTS->mpGD);
+			GD_DrawIndexed(pTS->mpGD, pTS->mpSphere->mIndexCount, 0, 0);
+		}
+
 		//set proj for 2D
 		CBK_SetProjection(pCBK, textProj);
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
@@ -504,7 +552,13 @@ __attribute_maybe_unused__
 		GD_Present(pTS->mpGD);
 	}
 
-	JPH_BodyInterface_RemoveAndDestroyBody(pBI, pTS->mTerBodyID);
+	JPH_BodyInterface_RemoveAndDestroyBody(pTS->mpBI, pTS->mTerBodyID);
+
+	for(int i=0;i < pTS->mNumSpheres;i++)
+	{
+		JPH_BodyInterface_RemoveAndDestroyBody(pTS->mpBI, pTS->mSphereIDs[i]);
+	}
+	pTS->mNumSpheres	=0;
 
 	JPH_JobSystem_Destroy(pJS);
 
@@ -565,6 +619,15 @@ static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt)
 	pTS->mbFlyMode	=!pTS->mbFlyMode;
 
 	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
+}
+
+static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	sMakeSphere(pTS);
 }
 
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt)
@@ -774,6 +837,25 @@ static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
 	return	pRet;
 }
 
+static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f		};
+	vec3	light1		={	0.5f, 0.5f, 0.5f		};
+	vec3	light2		={	0.2f, 0.2f, 0.2f		};
+	vec4	col			={	1.0f, 1.0f, 1.0f, 1.0f	};
+
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetSolidColour(pRet, col);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 16.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
 static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK)
 {
 	Material	*pRet	=MAT_Create(pTS->mpGD);
@@ -792,6 +874,7 @@ static void	sSetupKeyBinds(Input *pInp)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, sToggleDrawTerNodesEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_f, sToggleFlyModeEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, sEscEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_p, sSpawnSphereEH);
 
 	//held bindings
 	//movement
@@ -910,4 +993,31 @@ static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, co
 static void	sJoltTrace(const char *szMsg)
 {
 	printf("%s", szMsg);
+}
+
+static void sMakeSphere(TestStuff *pTS)
+{
+	if(pTS->mNumSpheres >= MAX_SPHERES)
+	{
+		return;	//no moar!
+	}
+
+	JPH_SphereShape	*pSShape	=JPH_SphereShape_Create(SPHERE_SIZE);
+
+	vec3	mins	={	200, 20, 200	};
+	vec3	maxs	={	300, 30, 300	};
+	vec3	randPoint;
+
+	Misc_RandomPointInBound(mins, maxs, randPoint);
+
+	JPH_Vec3	spPos	={randPoint[0], randPoint[1], randPoint[2]};
+
+	JPH_BodyCreationSettings	*pSS	=JPH_BodyCreationSettings_Create3(
+		(const JPH_Shape *)pSShape, &spPos, NULL, JPH_MotionType_Dynamic, pTS->mMoving);
+
+	pTS->mSphereIDs[pTS->mNumSpheres]	=JPH_BodyInterface_CreateAndAddBody(pTS->mpBI, pSS, JPH_Activation_Activate);
+
+	pTS->mNumSpheres++;
+
+	JPH_BodyCreationSettings_Destroy(pSS);
 }

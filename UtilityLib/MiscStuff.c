@@ -296,6 +296,8 @@ void	Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result)
 	result[0]	=scalarX * x;
 	result[1]	=scalarY * y;
 	result[2]	=scalarZ * z;
+
+	glm_vec3_add(mins, result, result);
 }
 
 //return a radiuslike distance to adjust a plane by to keep the AABB just touching it

@@ -1081,7 +1081,7 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	return	pObj;
 }
 
-PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
+PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDevice *pGD)
 {
 	int	theta, phi;
 
@@ -1159,21 +1159,41 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 
 				glm_vec3_copy(pos, pPoints[pIdx++]);
 
-				pInds[iIdx++]	=curIdx;
-				pInds[iIdx++]	=curIdx + 2;
-				pInds[iIdx++]	=curIdx + 1;
-				pInds[iIdx++]	=curIdx;
-				pInds[iIdx++]	=curIdx + 3;
-				pInds[iIdx++]	=curIdx + 2;
+				if(bFlipped)
+				{
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 2;
+					pInds[iIdx++]	=curIdx + 1;
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 3;
+					pInds[iIdx++]	=curIdx + 2;
+				}
+				else
+				{
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 1;
+					pInds[iIdx++]	=curIdx + 2;
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 2;
+					pInds[iIdx++]	=curIdx + 3;
+				}
 
 				curIdx	+=4;
 			}
 			else
 			{
-				pInds[iIdx++]	=curIdx;
-				pInds[iIdx++]	=curIdx + 2;
-				pInds[iIdx++]	=curIdx + 1;
-
+				if(bFlipped)
+				{
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 2;
+					pInds[iIdx++]	=curIdx + 1;
+				}
+				else
+				{
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 1;
+					pInds[iIdx++]	=curIdx + 2;
+				}
 				curIdx	+=3;
 			}
 		}
@@ -1212,9 +1232,18 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 	//index other half, flip winding
 	for(int i=indCount;i < (indCount * 2);i+=3)
 	{
-		pInds[i]		=vertCount + pInds[i - indCount];
-		pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
-		pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
+		if(bFlipped)
+		{
+			pInds[i]		=vertCount + pInds[i - indCount];
+			pInds[i + 1]	=vertCount + pInds[(i + 1) - indCount];
+			pInds[i + 2]	=vertCount + pInds[(i + 2) - indCount];
+		}
+		else
+		{
+			pInds[i]		=vertCount + pInds[i - indCount];
+			pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
+			pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
+		}
 	}
 
 	//return object

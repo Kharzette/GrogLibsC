@@ -53,6 +53,7 @@
 #define	MIN_CAM_DIST	0.25f
 #define	SPHERE_SIZE		(1.0f)
 #define	MAX_SPHERES		50
+#define	BOUNCINESS		(0.8f)
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES		55
@@ -1016,6 +1017,8 @@ static void sMakeSphere(TestStuff *pTS)
 		(const JPH_Shape *)pSShape, &spPos, NULL, JPH_MotionType_Dynamic, pTS->mMoving);
 
 	pTS->mSphereIDs[pTS->mNumSpheres]	=JPH_BodyInterface_CreateAndAddBody(pTS->mpBI, pSS, JPH_Activation_Activate);
+
+	JPH_BodyInterface_SetRestitution(pTS->mpBI, pTS->mSphereIDs[pTS->mNumSpheres], BOUNCINESS);
 
 	pTS->mNumSpheres++;
 

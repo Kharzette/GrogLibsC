@@ -35,7 +35,8 @@
 		"avxintrin.h": "c",
 		"array": "cpp",
 		"stringstuff.h": "c",
-		"faudio.h": "c"
+		"faudio.h": "c",
+		"stdbool.h": "c"
 	},
 	"terminal.integrated.profiles.windows": {
 

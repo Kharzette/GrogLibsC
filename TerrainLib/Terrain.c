@@ -26,6 +26,9 @@ typedef struct	Terrain_t
 	ID3D11ShaderResourceView	*mpSRV;
 	int							mNumVerts, mNumTriangles, mVertSize;
 
+	float	*mpHeights;	//keep for jolt
+	int		mHWidth, mHHeight;
+
 	QuadTree	*mpQT;
 }	Terrain;
 
@@ -375,6 +378,11 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 	}
 	free(pRows);
 
+	//store heights for jolt
+	pRet->mpHeights	=malloc(sizeof(float) * (hp1 * wp1));
+	pRet->mHHeight	=hp1;
+	pRet->mHWidth	=wp1;
+
 	//compute normals
 	for(int y=0;y < hp1;y++)
 	{
@@ -390,6 +398,9 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 			int	upY		=(y > 0)?	y - 1 : y;
 			int	rightX	=(x < w)?	x + 1 : x;
 			int	downY	=(y < h)?	y + 1 : y;
+
+			//copy height
+			pRet->mpHeights[idx]	=pVerts[idx].mPosition[1];
 
 			//indexes of the nearby clamped
 			leftIdx		=(y * wp1) + leftX;
@@ -480,6 +491,13 @@ void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const M
 void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs)
 {
 	QT_GetBounds(pTer->mpQT, mins, maxs);
+}
+
+void	Terrain_GetHeightData(const Terrain *pTer, int *pWidth, int *pHeight, float **ppHeights)
+{
+	*pWidth		=pTer->mHWidth;
+	*pHeight	=pTer->mHHeight;
+	*ppHeights	=pTer->mpHeights;
 }
 
 void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds)

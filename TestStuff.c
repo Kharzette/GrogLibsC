@@ -73,7 +73,9 @@ typedef struct	TestStuff_t
 	bool	mbRunning;
 	bool	mbFlyMode;
 
-	
+	//jolt stuff
+	JPH_HeightFieldShape	*mpHFS;
+	JPH_BodyID				mTerBodyID;
 
 	//character movement
 	vec3	mCharMoveVec;
@@ -92,6 +94,9 @@ static void		sSetupKeyBinds(Input *pInp);
 static void		sSetupRastVP(GraphicsDevice *pGD);
 static void		sMoveCharacter(TestStuff *pTS, const vec3 moveVec);
 static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
+
+//jolt statics
+static void	sJoltTrace(const char *szMsg);
 
 //material setups
 static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
@@ -128,12 +133,48 @@ int main(void)
 {
 	printf("DirectX action!\n");
 
-	bool	bJPH	=JPH_Init();
-	if(!bJPH)
 	{
-		printf("JPH Init failed.\n");
-		return	EXIT_FAILURE;
+		bool	bJPH	=JPH_Init();
+		if(!bJPH)
+		{
+			printf("JPH Init failed.\n");
+			return	EXIT_FAILURE;
+		}
 	}
+
+	//init stuff borrowed from helloworld sample
+	JPH_SetTraceHandler(sJoltTrace);
+
+	JPH_ObjectLayer		nonMoving	=0;
+	JPH_ObjectLayer		moving		=1;
+	JPH_BroadPhaseLayer	BPNonMoving	=0;
+	JPH_BroadPhaseLayer	BPMoving	=1;
+	
+	JPH_JobSystem	*pJS	=JPH_JobSystemThreadPool_Create(NULL);
+	
+	//We use only 2 layers: one for non-moving objects and one for moving objects
+	JPH_ObjectLayerPairFilter	*pOLPFT	=JPH_ObjectLayerPairFilterTable_Create(2);
+	JPH_ObjectLayerPairFilterTable_EnableCollision(pOLPFT, nonMoving, moving);
+	JPH_ObjectLayerPairFilterTable_EnableCollision(pOLPFT, moving, nonMoving);
+
+	// We use a 1-to-1 mapping between object layers and broadphase layers
+	JPH_BroadPhaseLayerInterface	*pBPLIT	=JPH_BroadPhaseLayerInterfaceTable_Create(2, 2);
+	JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(pBPLIT, nonMoving, BPNonMoving);
+	JPH_BroadPhaseLayerInterfaceTable_MapObjectToBroadPhaseLayer(pBPLIT, moving, BPMoving);
+	
+	JPH_ObjectVsBroadPhaseLayerFilter	*pObjVsBPLF	=JPH_ObjectVsBroadPhaseLayerFilterTable_Create(pBPLIT, 2, pOLPFT, 2);
+
+	JPH_PhysicsSystemSettings	ps;
+	ps.maxBodies						=65536;
+	ps.numBodyMutexes					=0;
+	ps.maxBodyPairs						=65536;
+	ps.maxContactConstraints			=65536;
+	ps.broadPhaseLayerInterface			=pBPLIT;
+	ps.objectLayerPairFilter			=pOLPFT;
+	ps.objectVsBroadPhaseLayerFilter	=pObjVsBPLF;
+
+	JPH_PhysicsSystem	*pPS	=JPH_PhysicsSystem_Create(&ps);
+	JPH_BodyInterface	*pBI	=JPH_PhysicsSystem_GetBodyInterface(pPS);
 
 	Audio	*pAud	=Audio_Create(2);
 
@@ -181,6 +222,30 @@ int main(void)
 	int		numBounds;
 	vec3	*pMins, *pMaxs;
 	Terrain_GetQuadTreeLeafBoxes(pTS->mpTer, &pMins, &pMaxs, &numBounds);
+
+	//set up terrain's physics body
+	{
+		int		w, h;
+		float	*pHeights;
+		Terrain_GetHeightData(pTS->mpTer, &w, &h, &pHeights);
+
+		JPH_Vec3	zeroVec	={0};
+		JPH_Vec3	oneVec	={1,1,1};
+		JPH_Quat	zeroRot	={0, 0, 0, 1};
+
+		assert(w == h);
+
+		JPH_HeightFieldShapeSettings	*pHFSS	=JPH_HeightFieldShapeSettings_Create(pHeights, &zeroVec, &oneVec, w);
+
+		pTS->mpHFS	=JPH_HeightFieldShapeSettings_CreateShape(pHFSS);
+
+		JPH_BodyCreationSettings	*pTBSettings	=JPH_BodyCreationSettings_Create2(
+			(const JPH_ShapeSettings *)pHFSS,
+			&zeroVec, &zeroRot, JPH_MotionType_Static, nonMoving);
+
+		pTS->mTerBodyID	=JPH_BodyInterface_CreateAndAddBody(pBI, pTBSettings,
+						JPH_Activation_DontActivate);
+	}
 
 	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
 
@@ -438,6 +503,13 @@ __attribute_maybe_unused__
 
 		GD_Present(pTS->mpGD);
 	}
+
+	JPH_BodyInterface_RemoveAndDestroyBody(pBI, pTS->mTerBodyID);
+
+	JPH_JobSystem_Destroy(pJS);
+
+	JPH_PhysicsSystem_Destroy(pPS);
+	JPH_Shutdown();
 
 	GD_Destroy(&pTS->mpGD);
 
@@ -833,4 +905,9 @@ static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, co
 	SZList_Clear(&pParts);
 
 	return	pMeshes;
+}
+
+static void	sJoltTrace(const char *szMsg)
+{
+	printf("%s", szMsg);
 }

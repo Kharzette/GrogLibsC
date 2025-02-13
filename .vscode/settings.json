@@ -36,7 +36,8 @@
 		"array": "cpp",
 		"stringstuff.h": "c",
 		"faudio.h": "c",
-		"stdbool.h": "c"
+		"stdbool.h": "c",
+		"terrain.h": "c"
 	},
 	"terminal.integrated.profiles.windows": {
 

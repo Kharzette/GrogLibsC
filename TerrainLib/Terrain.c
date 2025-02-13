@@ -11,8 +11,6 @@
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"../MaterialLib/Material.h"
 #include	"../UtilityLib/PlaneMath.h"
-#include	"QuadTree.h"
-#include	"QuadNode.h"	//for testing splits
 #include	"Terrain.h"
 
 #define	FOOT_CHECK	0.1f
@@ -29,7 +27,6 @@ typedef struct	Terrain_t
 	float	*mpHeights;	//keep for jolt
 	int		mHWidth, mHHeight;
 
-	QuadTree	*mpQT;
 }	Terrain;
 
 
@@ -430,9 +427,6 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 		}
 	}
 
-	//build quadtree
-	pRet->mpQT	=QT_Create(pVerts, wp1, hp1);
-
 	VBAndIndex(pGD, pVerts, wp1, hp1, &pRet->mpVerts, &pRet->mpIndexs);
 
 	pRet->mNumTriangles	=numTris;
@@ -488,157 +482,9 @@ void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const M
 }
 
 
-void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs)
-{
-	QT_GetBounds(pTer->mpQT, mins, maxs);
-}
-
 void	Terrain_GetHeightData(const Terrain *pTer, int *pWidth, int *pHeight, float **ppHeights)
 {
 	*pWidth		=pTer->mHWidth;
 	*pHeight	=pTer->mHHeight;
 	*ppHeights	=pTer->mpHeights;
-}
-
-void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds)
-{
-	assert(pTer != NULL);
-	assert(pTer->mpQT != NULL);
-
-	QT_GatherLeafBounds(pTer->mpQT, ppMins, ppMaxs, pNumBounds);
-}
-
-/*
-int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-							vec3 intersection, vec4 planeHit)
-{
-	return	QT_LineIntersect(pTer->mpQT, start, end, intersection, planeHit);
-}*/
-
-int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-									float radius, vec3 intersection, vec4 planeHit)
-{
-	return	QT_SweptSphereIntersect(pTer->mpQT, start, end, radius, intersection, planeHit);
-}
-
-//keep a list of the planes struck
-void	Terrain_SweptSphereIntersectPL(const Terrain *pTer, const vec3 start, const vec3 end,
-										float radius, Vec4List **ppPlanesHit)
-{
-	return	QT_SweptSphereIntersectPL(pTer->mpQT, start, end, radius, ppPlanesHit);
-}
-
-int	Terrain_SphereIntersect(const Terrain *pTer, const vec3 pos, float radius, vec4 planeHit)
-{
-	return	QT_SphereIntersect(pTer->mpQT, pos, radius, planeHit);
-}
-
-/*
-int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-								const vec3 min, const vec3 max,
-								vec3 intersection, vec4 planeHit)
-{
-	//box needs to be centered
-	vec3	diff;
-	glm_vec3_add(max, min, diff);
-
-	assert(glm_vec3_eq_eps(diff, 0.0f));
-
-	return	QT_SweptBoundIntersect(pTer->mpQT, start, end, min, max, intersection, planeHit);
-}*/
-
-//return 1 if on ground, 0 for in air, 2 for bad footing
-static int	FootCheck(const Terrain *pTer, const vec3 pos, float radius)
-{
-	vec4	plane;
-	int	res	=Terrain_SphereIntersect(pTer, pos, radius, plane);
-	if(res == TER_INSIDE)
-	{
-		return	2;	//bad
-	}
-
-	if(res == TER_HIT || res == TER_HIT_INSIDE)
-	{
-		//probably shouldn't be hitting, but whateva
-		if(!PM_IsGround(plane))
-		{
-			return	2;	//probably bad
-		}
-	}
-
-	//if in air, expand the radius slightly to
-	//check if the sphere is just off the ground
-	res	=Terrain_SphereIntersect(pTer, pos, radius + FOOT_CHECK, plane);
-	if(res == TER_HIT || res == TER_HIT_INSIDE)
-	{
-		if(PM_IsGround(plane))
-		{
-			return	1;
-		}
-	}
-	else if(res == TER_INSIDE)
-	{
-		return	2;
-	}
-	return	0;
-}
-
-
-int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
-					   float radius, vec3 finalPos)
-{
-	int	i	=0;
-
-	vec3	newEnd, newStart;
-	glm_vec3_copy(start, newStart);
-	glm_vec3_copy(end, newEnd);
-
-
-
-	//make this plane list or skip it
-	//force newStart to valid
-//	for(;;)
-//	{
-//		vec4	plane;
-//		int	hit	=Terrain_SphereIntersect(pTer, newStart, radius, plane);
-//		if(hit == TER_MISS)
-//		{
-//			break;
-//		}
-//
-//		PM_ReflectSphere(plane, radius, newStart);
-//	}
-
-	int	maxIter	=5;
-
-	Vec4List	*pPlanesHit	=V4List_New();
-
-	Terrain_SweptSphereIntersectPL(pTer, newStart, newEnd, radius, &pPlanesHit);
-
-	int	count	=V4List_Count(pPlanesHit);
-	if(count == 0)
-	{
-		glm_vec3_copy(newEnd, finalPos);
-
-		return	FootCheck(pTer, finalPos, radius);
-	}
-
-	const Vec4List	*pVIter	=V4List_Iterate(pPlanesHit);
-	for(int i=0;i < count;i++)
-	{
-		vec4	hitPlane;
-		vec3	intersect;
-
-		glm_vec4_copy(V4List_IteratorVal(pVIter), hitPlane);
-
-		PM_ReflectMoveSphere(hitPlane, newStart, newEnd, radius, intersect);
-
-		glm_vec3_copy(newEnd, newStart);
-
-		glm_vec3_copy(intersect, newStart);
-	}
-
-	glm_vec3_copy(newStart, finalPos);
-
-	return	FootCheck(pTer, finalPos, radius);
 }

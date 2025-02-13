@@ -113,7 +113,6 @@ static void	sJoltTrace(const char *szMsg);
 
 //material setups
 static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
-static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK);
 
@@ -121,7 +120,6 @@ static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK);
 static void	sRandLightEH(void *pContext, const SDL_Event *pEvt);
 static void	sDangleDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sDangleUpEH(void *pContext, const SDL_Event *pEvt);
-static void	sToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt);
 static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt);
 static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt);
@@ -236,11 +234,6 @@ int main(void)
 	//a terrain chunk
 	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/HeightMap.png", 10, HEIGHT_SCALAR);
 
-	//debugdraw quadtree boxes
-	int		numBounds;
-	vec3	*pMins, *pMaxs;
-	Terrain_GetQuadTreeLeafBoxes(pTS->mpTer, &pMins, &pMaxs, &numBounds);
-
 	//set up terrain's physics body
 	{
 		int		w, h;
@@ -269,8 +262,6 @@ int main(void)
 	//make a test sphere to roll around
 	{
 	}
-
-	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
 
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
@@ -342,7 +333,6 @@ __attribute_maybe_unused__
 
 	//materials
 	Material	*pTerMat	=sMakeTerrainMat(pTS, pSK);
-	Material	*pBoxesMat	=sMakeNodeBoxesMat(pTS, pSK);
 	Material	*pSphereMat	=sMakeSphereMat(pTS, pSK);	
 	Material	*pSkyBoxMat	=sMakeSkyBoxMat(pTS, pSK);
 
@@ -390,7 +380,6 @@ __attribute_maybe_unused__
 
 		//update materials incase light changed
 		MAT_SetLightDirection(pTerMat, pTS->mLightDir);
-		MAT_SetLightDirection(pBoxesMat, pTS->mLightDir);
 		MAT_SetLightDirection(pSphereMat, pTS->mLightDir);
 
 		//render update
@@ -492,15 +481,6 @@ __attribute_maybe_unused__
 		//draw xyz axis
 		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
 
-		//debug draw quadtree leaf cubes
-		if(pTS->mbDrawTerNodes)
-		{
-			GD_IASetVertexBuffers(pTS->mpGD, pQTBoxes->mpVB, pQTBoxes->mVertSize, 0);
-			GD_IASetIndexBuffers(pTS->mpGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
-			MAT_Apply(pBoxesMat, pCBK, pTS->mpGD);
-			GD_DrawIndexed(pTS->mpGD, pQTBoxes->mIndexCount, 0, 0);
-		}
-
 		//terrain draw
 		Terrain_DrawMat(pTS->mpTer, pTS->mpGD, pCBK, pTerMat);
 
@@ -600,15 +580,6 @@ static void	sDangleUpEH(void *pContext, const SDL_Event *pEvt)
 	assert(pTS);
 
 	pTS->mDanglyForce[0]	+=UVSCALE_RATE;
-}
-
-static void	sToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt)
-{
-	TestStuff	*pTS	=(TestStuff *)pContext;
-
-	assert(pTS);
-
-	pTS->mbDrawTerNodes	=!pTS->mbDrawTerNodes;
 }
 
 static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt)
@@ -819,25 +790,6 @@ static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	return	pRet;
 }
 
-static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
-{
-	Material	*pRet	=MAT_Create(pTS->mpGD);
-
-	vec3	light0		={	1.0f, 1.0f, 1.0f		};
-	vec3	light1		={	0.5f, 0.5f, 0.5f		};
-	vec3	light2		={	0.2f, 0.2f, 0.2f		};
-	vec4	ghosty		={	1.0f, 1.0f, 1.0f, 0.5f	};
-
-	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
-	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
-	MAT_SetSolidColour(pRet, ghosty);
-	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 6.0f);
-	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
-
-	return	pRet;
-}
-
 static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
 {
 	Material	*pRet	=MAT_Create(pTS->mpGD);
@@ -872,7 +824,6 @@ static void	sSetupKeyBinds(Input *pInp)
 {
 	//event style bindings
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_l, sRandLightEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, sToggleDrawTerNodesEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_f, sToggleFlyModeEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, sEscEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_p, sSpawnSphereEH);
@@ -946,9 +897,9 @@ static void	sMoveCharacter(TestStuff *pTS, const vec3 moveVec)
 		vec3	end, newPos;
 		glm_vec3_add(pTS->mPlayerPos, moveVec, end);
 
-		int	footing	=Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos);
+//		int	footing	=Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos);
 		
-		BPM_SetFooting(pTS->mpBPM, footing);
+//		BPM_SetFooting(pTS->mpBPM, footing);
 
 		//watch for a glitchy move
 		float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);

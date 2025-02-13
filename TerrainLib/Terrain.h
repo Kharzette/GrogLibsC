@@ -31,25 +31,4 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD,
 void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat);
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);
 void	Terrain_SetSRVAndLayout(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK);
-void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds);
-void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs);
 void	Terrain_GetHeightData(const Terrain *pTer, int *pWidth, int *pHeight, float **ppHeights);
-
-//collision
-//int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-//							vec3 intersection, vec4 planeHit);
-int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-									float radius, vec3 intersection, vec4 planeHit);
-int	Terrain_SphereIntersect(const Terrain *pTer, const vec3 pos, float radius, vec4 planeHit);
-//int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-//								const vec3 min, const vec3 max,
-//								vec3 intersection, vec4 planeHit);
-
-//movement
-//return footing
-int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
-					   float radius, vec3 finalPos);
-
-
-void	Terrain_SweptSphereIntersectPL(const Terrain *pTer, const vec3 start, const vec3 end,
-										float radius, Vec4List **ppPlanesHit);

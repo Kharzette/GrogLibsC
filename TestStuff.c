@@ -69,17 +69,14 @@ typedef struct	TestStuff_t
 	BipedMover		*mpBPM;
 
 	//toggles
-	bool	mbDrawTerNodes;
 	bool	mbMouseLooking;
 	bool	mbRunning;
 	bool	mbFlyMode;
 
 	//jolt stuff
-	JPH_HeightFieldShape	*mpHFS;
-	JPH_BodyID				mTerBodyID;
-	JPH_BodyID				mSphereIDs[MAX_SPHERES];
-	int						mNumSpheres;
-	JPH_BodyInterface		*mpBI;
+	JPH_BodyID			mSphereIDs[MAX_SPHERES];
+	int					mNumSpheres;
+	JPH_BodyInterface	*mpBI;
 
 	JPH_ObjectLayer		mNonMoving;
 	JPH_ObjectLayer		mMoving;
@@ -107,6 +104,7 @@ static void		sSetupRastVP(GraphicsDevice *pGD);
 static void		sMakeSphere(TestStuff *pTS);
 static void		sMoveCharacter(TestStuff *pTS, const vec3 moveVec);
 static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
+static void		sFreeCharacterMeshParts(DictSZ **ppMeshes);
 
 //jolt statics
 static void	sJoltTrace(const char *szMsg);
@@ -232,36 +230,9 @@ int main(void)
 	}
 
 	//a terrain chunk
-	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/HeightMap.png", 10, HEIGHT_SCALAR);
-
-	//set up terrain's physics body
-	{
-		int		w, h;
-		float	*pHeights;
-		Terrain_GetHeightData(pTS->mpTer, &w, &h, &pHeights);
-
-		JPH_Vec3	zeroVec	={0};
-		JPH_Vec3	oneVec	={1,1,1};
-
-		assert(w == h);
-
-		JPH_HeightFieldShapeSettings	*pHFSS	=JPH_HeightFieldShapeSettings_Create(pHeights, &zeroVec, &oneVec, w);
-
-		pTS->mpHFS	=JPH_HeightFieldShapeSettings_CreateShape(pHFSS);
-
-		JPH_BodyCreationSettings	*pTBSettings	=JPH_BodyCreationSettings_Create2(
-			(const JPH_ShapeSettings *)pHFSS,
-			&zeroVec, NULL, JPH_MotionType_Static, pTS->mNonMoving);
-
-		pTS->mTerBodyID	=JPH_BodyInterface_CreateAndAddBody(pTS->mpBI, pTBSettings,
-						JPH_Activation_DontActivate);
-
-		JPH_BodyCreationSettings_Destroy(pTBSettings);
-	}
-
-	//make a test sphere to roll around
-	{
-	}
+	pTS->mpTer	=Terrain_Create(pTS->mpGD, pTS->mpBI, "Blort",
+		"Textures/Terrain/HeightMaps/HeightMap.png", pTS->mNonMoving,
+		10, HEIGHT_SCALAR);
 
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
@@ -533,7 +504,12 @@ __attribute_maybe_unused__
 		GD_Present(pTS->mpGD);
 	}
 
-	JPH_BodyInterface_RemoveAndDestroyBody(pTS->mpBI, pTS->mTerBodyID);
+	Terrain_Destroy(&pTS->mpTer, pTS->mpBI);
+
+	Character_Destroy(pChar);
+	sFreeCharacterMeshParts(&pMeshes);
+
+	MatLib_Destroy(&pCharMats);
 
 	for(int i=0;i < pTS->mNumSpheres;i++)
 	{
@@ -940,6 +916,23 @@ static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, co
 	SZList_Clear(&pParts);
 
 	return	pMeshes;
+}
+
+static void	FreeMeshCB(void *pValue)
+{
+	Mesh	*pMesh	=(Mesh *)pValue;
+	if(pMesh == NULL)
+	{
+		printf("Null mesh in FreeMeshCB!\n");
+		return;
+	}
+
+	Mesh_Destroy(pMesh);
+}
+
+static void	sFreeCharacterMeshParts(DictSZ **ppMeshes)
+{
+	DictSZ_ClearCB(ppMeshes, FreeMeshCB);
 }
 
 static void	sJoltTrace(const char *szMsg)

@@ -6,6 +6,7 @@ CFLAGS=-std=gnu23 -g -O0 -march=native -fpic -shared	\
 	-I../dxvk-native/include/native/windows	\
 	-I../uthash/src		\
 	-I../cglm/include	\
+	-I../joltc/include	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
 SOURCES=$(wildcard *.c)
@@ -16,4 +17,5 @@ all: TerrainLib
 TerrainLib: $(SOURCES)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libTerrainLib.so -lm $(LIBS) \
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
-	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so
+	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so	\
+	../joltc/build/lib/libjoltc.so

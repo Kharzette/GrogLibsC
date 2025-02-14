@@ -4,15 +4,23 @@
 #include	<stdio.h>
 #include	<string.h>
 #include	<assert.h>
-#include	"../UtilityLib/FileStuff.h"
 #include	"../UtilityLib/MiscStuff.h"
-#include	"../UtilityLib/ListStuff.h"
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"../MaterialLib/Material.h"
-#include	"../UtilityLib/PlaneMath.h"
 #include	"Terrain.h"
 
+
+typedef struct	TerrainVert_t
+{
+	vec3		mPosition;
+	uint16_t	mNormal[4];		//16 bit float4
+
+	//these are percentages of each texture in the 8 way atlas
+	uint16_t	mTexFactor0[4];	//16 bit float4
+	uint16_t	mTexFactor1[4];	//16 bit float4
+
+}	TerrainVert;
 
 typedef struct	Terrain_t
 {

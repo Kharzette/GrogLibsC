@@ -20,21 +20,7 @@ Goals
 			Black rock?
 
 Collision
-	Initial non moving resolve into empty space
-		Establish footing and do rotation
-	AABB quadtree for nodes
-		Fast reject, no accuracy needed
-		Could do all 4 child nodes at once
-	Leaf Nodes
-		Big Tri collision best for current terrain
-			Not so great if do diggery later
-			Not so great if more detail
-		Convex volumes
-			Extra hits on fake side planes
-			Complicates runtime editing and diggery
-		2D bsp?
-			faces might get split
-	Octree for volumey / diggy diggy
+	Just use jolt
 
 BigMaps
 	9 Heightmaps loaded?

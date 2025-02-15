@@ -3,7 +3,8 @@
 #include	<string.h>
 #include	<assert.h>
 #include	<cglm/call.h>
-#include	"GameCamera.h"
+#include	"../UtilityLib/GameCamera.h"
+#include	"BipedMover.h"
 
 
 //physical constants
@@ -46,13 +47,25 @@ static const	vec3	Down	={	0.0f, -1.0f, 0.0f	};
 
 typedef struct  BipedMover_t
 {
+	JPH_CharacterVirtual	*mpCV;
+
+	//shapes of characters
+	JPH_CapsuleShape	*mpStanding;
+	JPH_CapsuleShape	*mpCrouching;
+
+	//collision stuff
+	JPH_ObjectLayer	mObjLayer;
+
+	//jolt settings
+	bool	mbCanPushOthers;
+	bool	mbCanBePushed;
+	float	mStepHeight;
+
 	vec3	mVelocity;
 	vec3	mCamVelocity;
 
 	int		mMoveMethod;	//ground/fly/swim
 	bool	mbMovedThisFrame;
-	bool	mbOnGround;		//player starts frame on ground?
-	bool	mbBadFooting;	//unstable or steep ground underfoot
 	bool	mbSprint;		//sprinting?
 
 	//single frame inputs
@@ -65,7 +78,12 @@ typedef struct  BipedMover_t
 }	BipedMover;
 
 
-BipedMover	*BPM_Create(GameCamera *pGCam)
+BipedMover	*BPM_Create(GameCamera *pGCam,
+						JPH_PhysicsSystem *pPS,
+						JPH_ObjectLayer objLayer,
+						float radius, float height,
+						float stepHeight,
+						const vec3 initialPos)
 {
 	BipedMover	*pRet	=malloc(sizeof(BipedMover));
 
@@ -73,6 +91,33 @@ BipedMover	*BPM_Create(GameCamera *pGCam)
 
 	pRet->mpGCam		=pGCam;
 	pRet->mMoveMethod	=MOVE_GROUND;	//default
+	pRet->mStepHeight	=stepHeight;
+	pRet->mObjLayer		=objLayer;
+
+	//center of biped capsule
+	JPH_Vec3	center	={	0, height * 0.5f, 0	};
+
+	//upvec
+	JPH_Vec3	up	={	0, 1, 0	};
+
+	//any contact behind this plane will "support"
+	JPH_Plane	sup	={	up, -(height * 0.5f)	};
+
+	pRet->mpStanding	=JPH_CapsuleShape_Create(height * 0.5f, radius);
+	pRet->mpCrouching	=JPH_CapsuleShape_Create(height * 0.25f, radius);
+
+	JPH_RotatedTranslatedShape	*pRTS	=JPH_RotatedTranslatedShape_Create(
+		&center, NULL, (const JPH_Shape *) pRet->mpStanding);
+
+	JPH_CharacterVirtualSettings	cvs;
+	JPH_CharacterVirtualSettings_Init(&cvs);
+
+	cvs.base.shape				=(const JPH_Shape *)pRTS;
+	cvs.base.supportingVolume	=sup;
+
+	JPH_Vec3	pos	={	initialPos[0], initialPos[1], initialPos[2]	};
+
+	pRet->mpCV	=JPH_CharacterVirtual_Create(&cvs, &pos, NULL, 0, pPS);
 
 	return	pRet;
 }
@@ -84,26 +129,10 @@ void	BPM_SetMoveMethod(BipedMover *pBM, int method)
 
 bool    BPM_IsGoodFooting(const BipedMover *pBPM)
 {
-	return	(pBPM->mbOnGround && !pBPM->mbBadFooting);
-}
+//	JPH_GroundState	gs	=JPH_CharacterBase_GetGroundState(pBPM->mpCV);
 
-void	BPM_SetFooting(BipedMover *pBPM, int footing)
-{
-	if(footing == 0)
-	{
-		pBPM->mbBadFooting	=false;
-		pBPM->mbOnGround	=false;
-	}
-	else if(footing == 1)
-	{
-		pBPM->mbBadFooting	=false;
-		pBPM->mbOnGround	=true;
-	}
-	else
-	{
-		pBPM->mbBadFooting	=true;
-		pBPM->mbOnGround	=true;
-	}
+//	return	(gs == JPH_GroundState_OnGround);
+	return	true;
 }
 
 
@@ -247,133 +276,45 @@ static void	UpdateFlying(BipedMover *pBPM, float secDelta, vec3 move)
 }
 
 //return a bool indicating jumped
-static bool	UpdateWalking(BipedMover *pBPM, float secDelta, vec3 move)
+static bool	UpdateWalking(BipedMover *pBPM,
+	JPH_PhysicsSystem *pPS,
+	float secDelta)
 {
-	bool	bGravity	=false;
-	float	friction	=GROUND_FRICTION;
-	bool	bJumped		=false;
+	JPH_ExtendedUpdateSettings	eus	={0};
 
-	if(pBPM->mbOnGround)
-	{
-		if(!pBPM->mbBadFooting)
-		{
-			friction	=GROUND_FRICTION;
-		}
-		else
-		{
-			friction	=AIR_FRICTION;
-		}
-	}
-	else
-	{
-		bGravity	=true;
-		friction	=AIR_FRICTION;
-	}
+	eus.stickToFloorStepDown.y	=-pBPM->mStepHeight;
+	eus.walkStairsStepUp.y		=pBPM->mStepHeight;
 
-	if(pBPM->mbJump && pBPM->mbOnGround)
-	{
-		bJumped				=true;
-		friction			=AIR_FRICTION;
-		pBPM->mbOnGround	=false;
-	}
+	JPH_CharacterVirtual_ExtendedUpdate(pBPM->mpCV,
+		secDelta, &eus, pBPM->mObjLayer, pPS, NULL, NULL);
 
-	vec3	forward, right, up, moveVec;
-	GameCam_GetForwardVec(pBPM->mpGCam, forward);
-	GameCam_GetRightVec(pBPM->mpGCam, right);
-	GameCam_GetUpVec(pBPM->mpGCam, up);
-
-	GroundMove(pBPM, forward, right, up, moveVec);
-
-	if(pBPM->mbOnGround)
-	{
-		if(pBPM->mbSprint)
-		{
-			glm_vec3_scale(moveVec, JOG_MOVE_FORCE * 2.0f * secDelta, moveVec);
-		}
-		else
-		{
-			glm_vec3_scale(moveVec, JOG_MOVE_FORCE * secDelta, moveVec);
-		}
-	}
-	else if(pBPM->mbBadFooting)
-	{
-		glm_vec3_scale(moveVec, STUMBLE_MOVE_FORCE * secDelta, moveVec);
-	}
-	else
-	{
-		glm_vec3_scale(moveVec, MIDAIR_MOVE_FORCE * secDelta, moveVec);
-	}
-
-	AccumulateVelocity(pBPM, moveVec);
-	ApplyFriction(pBPM, secDelta, friction);
-
-	if(bGravity)
-	{
-		ApplyForce(pBPM, GRAVITY_FORCE, Down, secDelta);
-	}
-
-	if(bJumped)
-	{
-		ApplyForce(pBPM, JUMP_FORCE, UnitY, secDelta);
-
-		//move vector for the frame
-		//jump uses a 60fps delta time for consistency
-		glm_vec3_scale(pBPM->mCamVelocity, (1.0f / 60.0f), move);
-	}
-	else
-	{
-		glm_vec3_scale(pBPM->mCamVelocity, secDelta, move);
-//		glm_vec3_muladds(pBPM->mCamVelocity, secDelta, pos);
-	}
-
-	AccumulateVelocity(pBPM, moveVec);
-	ApplyFriction(pBPM, secDelta, friction);
-	if(bGravity)
-	{
-		ApplyForce(pBPM, GRAVITY_FORCE, Down, secDelta);
-	}
-
-	if(bJumped)
-	{
-		ApplyForce(pBPM, JUMP_FORCE, UnitY, secDelta);
-	}
-
-	return	bJumped;
+	return	false;
 }
 
 
-bool	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec)
+bool	BPM_Update(BipedMover *pBPM, JPH_PhysicsSystem *pPS, float secDelta)
 {
 	pBPM->mbMovedThisFrame	=false;
 
-	glm_vec3_zero(moveVec);
-
 	bool	bJumped	=false;
 
-	if(pBPM->mMoveMethod == MOVE_FLY)
+//	if(pBPM->mMoveMethod == MOVE_FLY)
+//	{
+//		UpdateFlying(pBPM, secDelta, moveVec);
+//	}
+//	else if(pBPM->mMoveMethod == MOVE_GROUND)
 	{
-		UpdateFlying(pBPM, secDelta, moveVec);
+		bJumped	=UpdateWalking(pBPM, pPS, secDelta);
 	}
-	else if(pBPM->mMoveMethod == MOVE_GROUND)
-	{
-		bJumped	=UpdateWalking(pBPM, secDelta, moveVec);
-	}
-	else if(pBPM->mMoveMethod == MOVE_SWIM)
-	{
-		UpdateSwimming(pBPM, secDelta, moveVec);
-	}
-	else
-	{
-		assert(false);
-	}
+//	else if(pBPM->mMoveMethod == MOVE_SWIM)
+//	{
+//		UpdateSwimming(pBPM, secDelta, moveVec);
+//	}
+//	else
+//	{
+//		assert(false);
+//	}
 
-	float	len	=glm_vec3_norm(moveVec);
-	if(len <= MIN_MOVE_LENGTH && pBPM->mbOnGround)
-	{
-		glm_vec3_zero(moveVec);
-	}
-	
-//	glm_vec3_muladds(pBPM->mCamVelocity, secDelta, pos);
 
 	//reset variables for next frame
 	pBPM->mbForward	=false;

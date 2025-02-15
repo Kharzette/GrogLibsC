@@ -31,7 +31,7 @@
 #include	"MeshLib/Character.h"
 #include	"MeshLib/CommonPrims.h"
 #include	"InputLib/Input.h"
-#include	"UtilityLib/BipedMover.h"
+#include	"PhysicsLib/BipedMover.h"
 #include	"joltc.h"
 
 
@@ -198,7 +198,7 @@ int main(void)
 
 
 	//start in fly mode?
-	pTS->mbFlyMode	=true;
+	pTS->mbFlyMode	=false;
 	pTS->mCamDist	=START_CAM_DIST;
 	
 	//set player on corner near origin
@@ -275,7 +275,7 @@ __attribute_maybe_unused__
 	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
 
 	//biped mover
-	pTS->mpBPM	=BPM_Create(pTS->mpCam);
+	pTS->mpBPM	=BPM_Create(pTS->mpCam, pPS, pTS->mMoving, 0.25f, 1.75f, 0.25f, (vec3){25,25,25});
 
 	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
 
@@ -335,7 +335,7 @@ __attribute_maybe_unused__
 			INP_Update(pInp, pTS);
 
 			{
-				bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+				bool	bJumped	=BPM_Update(pTS->mpBPM, pPS, secDelta);
 				if(bJumped)
 				{
 					SoundEffectPlay("jump", pTS->mPlayerPos);

@@ -1,5 +1,6 @@
 #pragma once
 #include	<cglm/call.h>
+#include	"joltc.h"
 
 //movement modes
 #define	MOVE_GROUND	1
@@ -11,13 +12,18 @@ typedef struct  GameCamera_t    GameCamera;
 
 
 //creation
-BipedMover	*BPM_Create(GameCamera *pGC);
+BipedMover	*BPM_Create(GameCamera *pGCam,
+	JPH_PhysicsSystem *pPS,
+	JPH_ObjectLayer objLayer,
+	float radius, float height,
+	float stepHeight,
+	const vec3 initialPos);
 
 //move method
 void	BPM_SetMoveMethod(BipedMover *pBM, int method);
 
 //update
-bool	BPM_Update(BipedMover *pBPM, float secDelta, vec3 moveVec);
+bool	BPM_Update(BipedMover *pBPM, JPH_PhysicsSystem *pPS, float secDelta);
 
 //set footing
 void    BPM_SetFooting(BipedMover *pBPM, int footing);

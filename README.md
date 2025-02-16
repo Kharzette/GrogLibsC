@@ -25,6 +25,11 @@ For awhile I had every dependency as a submodule, but that made it annoying for 
 - FAudio
 - pnglib
 
+My awful .vscode makefile stuff needs a libs dir (see below)
+```bash
+mkdir libs
+```
+
 The dxvk-native submodule needs building:
 ```bash
 meson --buildtype "debug" build
@@ -32,6 +37,14 @@ cd build
 ninja
 ```
 Grog's makefiles will look for the libs there in dxvk-native/build/etc
+
+Build JoltPhysics
+```bash
+cd JoltPhysics/Build
+cmake -S . -B Linux_Debug -G "Unix Makefiles" -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++
+cd Linux_Debug
+make -j3
+```
 
 So something really annoying I do that I should probably fix is using .vscode launch.json and tasks.json to copy the shared libraries around.  I should either commit those or stop doing that and have the makefiles do something more reasonable.
 

@@ -25,8 +25,8 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [],
-            "cStandard": "gnu17",
-            "cppStandard": "gnu++17",
+            "cStandard": "gnu23",
+            "cppStandard": "gnu++23",
             "intelliSenseMode": "linux-gcc-x64"
         }
     ],

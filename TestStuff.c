@@ -15,6 +15,7 @@
 #include	"MaterialLib/PostProcess.h"
 #include	"MaterialLib/Material.h"
 #include	"MaterialLib/MaterialLib.h"
+#define	CLAY_IMPLEMENTATION
 #include	"MaterialLib/UIStuff.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
@@ -30,7 +31,8 @@
 #include	"MeshLib/Character.h"
 #include	"MeshLib/CommonPrims.h"
 #include	"InputLib/Input.h"
-#include	"UtilityLib/BipedMover.h"
+//#include	"PhysicsLib/BipedMover.h"
+#include	"PhysicsLib/PhysicsStuff.h"
 
 
 #define	RESX			1280
@@ -63,7 +65,7 @@ typedef struct	TestStuff_t
 	PrimObject		*mpManyRays;
 	PrimObject		*mpManyImpacts;
 	UIStuff			*mpUI;
-	BipedMover		*mpBPM;
+//	BipedMover		*mpBPM;
 
 	//toggles
 	bool	mbDrawTerNodes;
@@ -119,10 +121,13 @@ static void	sKeyTurnDownEH(void *pContext, const SDL_Event *pEvt);
 static void sMouseMoveEH(void *pContext, const SDL_Event *pEvt);
 static void sEscEH(void *pContext, const SDL_Event *pEvt);
 
+//extern PhysicsStuff	*_Z11Phys_Createv();
 
 int main(void)
 {
 	printf("DirectX action!\n");
+
+	PhysicsStuff	*pPhys	=Phys_Create();
 
 	Audio	*pAud	=Audio_Create(2);
 
@@ -211,9 +216,9 @@ __attribute_maybe_unused__
 	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
 
 	//biped mover
-	pTS->mpBPM	=BPM_Create(pTS->mpCam);
+//	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
-	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
+//	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
 
 	SoundEffectPlay("synth", pTS->mPlayerPos);
 
@@ -271,11 +276,11 @@ __attribute_maybe_unused__
 			INP_Update(pInp, pTS);
 
 			{
-				bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
-				if(bJumped)
-				{
-					SoundEffectPlay("jump", pTS->mPlayerPos);
-				}
+//				bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+//				if(bJumped)
+//				{
+//					SoundEffectPlay("jump", pTS->mPlayerPos);
+//				}
 			}
 			sMoveCharacter(pTS, pTS->mCharMoveVec);
 
@@ -297,14 +302,14 @@ __attribute_maybe_unused__
 
 		if(moving > 0.0f)
 		{
-			if(BPM_IsGoodFooting(pTS->mpBPM))
+//			if(BPM_IsGoodFooting(pTS->mpBPM))
 			{
 				animTime	+=dt * moving * 200.0f;
 			}
-			else
-			{
-				animTime	+=dt * moving * 10.0f;
-			}
+//			else
+//			{
+//				animTime	+=dt * moving * 10.0f;
+//			}
 			AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
 		}
 		else
@@ -481,7 +486,7 @@ static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt)
 
 	pTS->mbFlyMode	=!pTS->mbFlyMode;
 
-	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
+//	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
 }
 
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt)
@@ -539,7 +544,7 @@ static void	sKeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputForward(pTS->mpBPM);
+//	BPM_InputForward(pTS->mpBPM);
 }
 
 static void	sKeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
@@ -548,7 +553,7 @@ static void	sKeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputBack(pTS->mpBPM);
+//	BPM_InputBack(pTS->mpBPM);
 }
 
 static void	sKeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
@@ -557,7 +562,7 @@ static void	sKeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputLeft(pTS->mpBPM);
+//	BPM_InputLeft(pTS->mpBPM);
 }
 
 static void	sKeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
@@ -566,7 +571,7 @@ static void	sKeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputRight(pTS->mpBPM);
+//	BPM_InputRight(pTS->mpBPM);
 }
 
 static void	sKeyMoveUpEH(void *pContext, const SDL_Event *pEvt)
@@ -575,7 +580,7 @@ static void	sKeyMoveUpEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputUp(pTS->mpBPM);
+//	BPM_InputUp(pTS->mpBPM);
 }
 
 static void	sKeyMoveDownEH(void *pContext, const SDL_Event *pEvt)
@@ -584,7 +589,7 @@ static void	sKeyMoveDownEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputDown(pTS->mpBPM);
+//	BPM_InputDown(pTS->mpBPM);
 }
 
 static void	sKeyMoveJumpEH(void *pContext, const SDL_Event *pEvt)
@@ -593,7 +598,7 @@ static void	sKeyMoveJumpEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputJump(pTS->mpBPM);
+//	BPM_InputJump(pTS->mpBPM);
 }
 
 static void	sKeySprintEH(void *pContext, const SDL_Event *pEvt)
@@ -602,7 +607,7 @@ static void	sKeySprintEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	BPM_InputSprint(pTS->mpBPM, true);
+//	BPM_InputSprint(pTS->mpBPM, true);
 }
 
 static void	sKeyTurnLeftEH(void *pContext, const SDL_Event *pEvt)
@@ -781,7 +786,7 @@ static void	sMoveCharacter(TestStuff *pTS, const vec3 moveVec)
 
 		int	footing	=Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos);
 		
-		BPM_SetFooting(pTS->mpBPM, footing);
+//		BPM_SetFooting(pTS->mpBPM, footing);
 
 		//watch for a glitchy move
 		float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);

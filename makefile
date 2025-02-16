@@ -7,10 +7,10 @@ CFLAGS=-std=gnu23 -g -O0 -march=native	\
 	-Idxvk-native/include/native/directx \
 	-Icglm/include	\
 	-Wall				\
-	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
+	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in . for shared libs
 #	-Xlinker --verbose	
 SOURCES=$(wildcard *.c)
-LIBS=-lm -lvulkan -lUtilityLib -lMaterialLib -lMeshLib -lTerrainLib -lInputLib -lAudioLib -lFAudio -lSDL2 -lpng
+LIBS=-lm -lvulkan -lUtilityLib -lPhysicsLib -lMaterialLib -lMeshLib -lTerrainLib -lInputLib -lAudioLib -lFAudio -lSDL2 -lpng
 LDFLAGS=-Llibs
 
 all: TestStuff

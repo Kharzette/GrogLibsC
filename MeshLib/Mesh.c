@@ -263,5 +263,15 @@ void	Mesh_Destroy(Mesh *pMesh, GraphicsDevice *pGD)
 
 	utstring_done(pMesh->mpName);
 
+	//free extra editor data if needed
+	if(pMesh->mpVertData != NULL)
+	{
+		free(pMesh->mpVertData);
+	}
+	if(pMesh->mpIndData != NULL)
+	{
+		free(pMesh->mpIndData);
+	}
+
 	free(pMesh);
 }

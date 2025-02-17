@@ -30,7 +30,7 @@ PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD);
 PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD);
 
 //round stuff
-PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD);
+PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDevice *pGD);
 PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD);
 
 //other shapes

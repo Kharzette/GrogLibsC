@@ -51,6 +51,9 @@
 #define	START_CAM_DIST	5.0f
 #define	MAX_CAM_DIST	25.0f
 #define	MIN_CAM_DIST	0.25f
+#define	SPHERE_SIZE		(1.0f)
+#define	MAX_SPHERES		50
+#define	BOUNCINESS		(0.8f)
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES		55
@@ -65,6 +68,7 @@ typedef struct	TestStuff_t
 	PrimObject		*mpManyRays;
 	PrimObject		*mpManyImpacts;
 	UIStuff			*mpUI;
+	PhysicsStuff	*mpPhys;
 //	BipedMover		*mpBPM;
 
 	//toggles
@@ -72,7 +76,14 @@ typedef struct	TestStuff_t
 	bool	mbMouseLooking;
 	bool	mbRunning;
 	bool	mbFlyMode;
-
+	
+	//jolt stuff
+	uint32_t	mSphereIDs[MAX_SPHERES];
+	int			mNumSpheres;
+	
+	//prims
+	PrimObject      *mpSphere;
+	
 	//character movement
 	vec3	mCharMoveVec;
 
@@ -89,10 +100,13 @@ typedef struct	TestStuff_t
 static void		sSetupKeyBinds(Input *pInp);
 static void		sSetupRastVP(GraphicsDevice *pGD);
 static void		sMoveCharacter(TestStuff *pTS, const vec3 moveVec);
+static void		sMakeSphere(TestStuff *pTS);
 static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
+static void		sFreeCharacterMeshParts(DictSZ **ppMeshes);
 
 //material setups
 static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK);
 
@@ -102,6 +116,7 @@ static void	sDangleDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sDangleUpEH(void *pContext, const SDL_Event *pEvt);
 static void	sToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt);
 static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt);
+static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt);
 static void	sRightMouseDownEH(void *pContext, const SDL_Event *pEvt);
@@ -139,6 +154,7 @@ int main(void)
 	//start in fly mode?
 	pTS->mbFlyMode	=true;
 	pTS->mCamDist	=START_CAM_DIST;
+	pTS->mpPhys		=pPhys;
 	
 	//set player on corner near origin
 	glm_vec3_scale(GLM_VEC3_ONE, 13.0f, pTS->mPlayerPos);
@@ -169,14 +185,7 @@ int main(void)
 	}
 
 	//a terrain chunk
-	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/HeightMap.png", 10, HEIGHT_SCALAR);
-
-	//debugdraw quadtree boxes
-	int		numBounds;
-	vec3	*pMins, *pMaxs;
-	Terrain_GetQuadTreeLeafBoxes(pTS->mpTer, &pMins, &pMaxs, &numBounds);
-
-	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
+	pTS->mpTer	=Terrain_Create(pTS->mpGD, pPhys, "Blort", "Textures/Terrain/HeightMaps/HeightMap.png", 10, HEIGHT_SCALAR);
 
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
@@ -204,13 +213,16 @@ __attribute_maybe_unused__
 	PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
 
 	float	aspect	=(float)RESX / (float)RESY;
+	
+	pTS->mpSphere	=PF_CreateSphere(GLM_VEC3_ZERO, SPHERE_SIZE, false, pTS->mpGD);
 
 	//these need align
 	__attribute((aligned(32)))	mat4	charMat, camProj;
 	__attribute((aligned(32)))	mat4	textProj, viewMat;
 
-	pTS->mEyePos[1]	=0.6f;
-	pTS->mEyePos[2]	=4.5f;
+	pTS->mEyePos[0] =185.0f;
+	pTS->mEyePos[1] =36.0f;
+	pTS->mEyePos[2] =180.0f;
 
 	//game camera
 	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
@@ -245,6 +257,7 @@ __attribute_maybe_unused__
 
 	//materials
 	Material	*pTerMat	=sMakeTerrainMat(pTS, pSK);
+	Material	*pSphereMat	=sMakeSphereMat(pTS, pSK);
 	Material	*pBoxesMat	=sMakeNodeBoxesMat(pTS, pSK);
 	Material	*pSkyBoxMat	=sMakeSkyBoxMat(pTS, pSK);
 
@@ -282,6 +295,8 @@ __attribute_maybe_unused__
 //					SoundEffectPlay("jump", pTS->mPlayerPos);
 //				}
 			}
+			Phys_Update(pPhys, secDelta);
+
 			sMoveCharacter(pTS, pTS->mCharMoveVec);
 
 			UpdateTimer_UpdateDone(pUT);
@@ -289,6 +304,7 @@ __attribute_maybe_unused__
 
 		//update materials incase light changed
 		MAT_SetLightDirection(pTerMat, pTS->mLightDir);
+		MAT_SetLightDirection(pSphereMat, pTS->mLightDir);
 		MAT_SetLightDirection(pBoxesMat, pTS->mLightDir);
 
 		//render update
@@ -390,15 +406,6 @@ __attribute_maybe_unused__
 		//draw xyz axis
 		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
 
-		//debug draw quadtree leaf cubes
-		if(pTS->mbDrawTerNodes)
-		{
-			GD_IASetVertexBuffers(pTS->mpGD, pQTBoxes->mpVB, pQTBoxes->mVertSize, 0);
-			GD_IASetIndexBuffers(pTS->mpGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
-			MAT_Apply(pBoxesMat, pCBK, pTS->mpGD);
-			GD_DrawIndexed(pTS->mpGD, pQTBoxes->mIndexCount, 0, 0);
-		}
-
 		//terrain draw
 		Terrain_DrawMat(pTS->mpTer, pTS->mpGD, pCBK, pTerMat);
 
@@ -421,6 +428,23 @@ __attribute_maybe_unused__
 		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
 		Character_Draw(pChar, pMeshes, pCharMats, pALib, pTS->mpGD, pCBK);
+		
+		for(int i=0;i < pTS->mNumSpheres;i++)
+		{
+			__attribute((aligned(32)))	mat4	wPos;
+
+			vec3	pos;
+			Phys_GetBodyPos(pPhys, pTS->mSphereIDs[i], pos);
+
+			glm_translate_make(wPos, pos);
+			MAT_SetWorld(pSphereMat, wPos);
+			
+			//draw test spheres (could instance these, but lazy)
+			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpSphere->mpVB, pTS->mpSphere->mVertSize, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpSphere->mpIB, DXGI_FORMAT_R16_UINT, 0);
+			MAT_Apply(pSphereMat, pCBK, pTS->mpGD);
+			GD_DrawIndexed(pTS->mpGD, pTS->mpSphere->mIndexCount, 0, 0);
+		}
 
 		//set proj for 2D
 		CBK_SetProjection(pCBK, textProj);
@@ -432,6 +456,20 @@ __attribute_maybe_unused__
 
 		GD_Present(pTS->mpGD);
 	}
+
+	Terrain_Destroy(&pTS->mpTer, pPhys);
+
+	Character_Destroy(pChar);
+	sFreeCharacterMeshParts(&pMeshes);
+
+	MatLib_Destroy(&pCharMats);
+
+	for(int i=0;i < pTS->mNumSpheres;i++)
+	{
+		Phys_RemoveAndDestroyBody(pPhys, pTS->mSphereIDs[i]);
+	}
+
+	Phys_Destroy(&pPhys);
 
 	GD_Destroy(&pTS->mpGD);
 
@@ -487,6 +525,15 @@ static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt)
 	pTS->mbFlyMode	=!pTS->mbFlyMode;
 
 //	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
+}
+
+static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	sMakeSphere(pTS);
 }
 
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt)
@@ -677,6 +724,25 @@ static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	return	pRet;
 }
 
+static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f		};
+	vec3	light1		={	0.5f, 0.5f, 0.5f		};
+	vec3	light2		={	0.2f, 0.2f, 0.2f		};
+	vec4	col			={	1.0f, 1.0f, 1.0f, 1.0f	};
+
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetSolidColour(pRet, col);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 16.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+
+	return	pRet;
+}
+
 static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
 {
 	Material	*pRet	=MAT_Create(pTS->mpGD);
@@ -714,6 +780,7 @@ static void	sSetupKeyBinds(Input *pInp)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, sToggleDrawTerNodesEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_f, sToggleFlyModeEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, sEscEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_p, sSpawnSphereEH);
 
 	//held bindings
 	//movement
@@ -784,7 +851,7 @@ static void	sMoveCharacter(TestStuff *pTS, const vec3 moveVec)
 		vec3	end, newPos;
 		glm_vec3_add(pTS->mPlayerPos, moveVec, end);
 
-		int	footing	=Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos);
+//		int	footing	=Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos);
 		
 //		BPM_SetFooting(pTS->mpBPM, footing);
 
@@ -827,4 +894,43 @@ static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, co
 	SZList_Clear(&pParts);
 
 	return	pMeshes;
+}
+
+static void	FreeMeshCB(void *pValue)
+{
+	Mesh	*pMesh	=(Mesh *)pValue;
+	if(pMesh == NULL)
+	{
+		printf("Null mesh in FreeMeshCB!\n");
+		return;
+	}
+	
+	Mesh_Destroy(pMesh);
+}
+
+static void	sFreeCharacterMeshParts(DictSZ **ppMeshes)
+{
+	DictSZ_ClearCB(ppMeshes, FreeMeshCB);
+}
+
+static void sMakeSphere(TestStuff *pTS)
+{
+	if(pTS->mNumSpheres >= MAX_SPHERES)
+	{
+		return; //no moar!
+	}
+//	JPH_SphereShape *pSShape        =JPH_SphereShape_Create(SPHERE_SIZE);
+	
+	vec3	mins	={	200, 20, 200	};
+	vec3	maxs	={	300, 30, 300	};
+	vec3	randPoint;
+	
+	Misc_RandomPointInBound(mins, maxs, randPoint);
+	
+	pTS->mSphereIDs[pTS->mNumSpheres]	=Phys_CreateAndAddSphere(pTS->mpPhys, SPHERE_SIZE, randPoint);
+
+	Phys_SetRestitution(pTS->mpPhys, pTS->mSphereIDs[pTS->mNumSpheres], BOUNCINESS);
+	
+	pTS->mNumSpheres++;
+//	JPH_BodyCreationSettings_Destroy(pSS);
 }

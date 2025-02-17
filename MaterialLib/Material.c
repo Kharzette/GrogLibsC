@@ -61,6 +61,12 @@ Material	*MAT_Create(GraphicsDevice *pGD)
 	return	pRet;
 }
 
+void	MAT_Destroy(Material *pMat)
+{
+	//all resources are just pointers, not addrefd
+	free(pMat);
+}
+
 
 void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD)
 {

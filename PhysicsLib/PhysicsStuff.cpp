@@ -15,6 +15,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 
@@ -25,6 +26,7 @@
 
 //include the h file to make sure things are extern c'd
 #include	"PhysicsStuff.h"
+
 
 // Disable common warnings triggered by Jolt, you can use JPH_SUPPRESS_WARNING_PUSH / JPH_SUPPRESS_WARNING_POP to store and restore the warning state
 JPH_SUPPRESS_WARNINGS
@@ -217,6 +219,7 @@ typedef struct	PhysicsStuff_t
 
 	PhysicsSystem			*mpPhys;
 	JobSystemThreadPool		*mpJobs;
+	TempAllocatorImpl		*mpTAlloc;
 
 	//layer collision stuff
 	BPLayerInterfaceImpl				mBroadI;
@@ -261,7 +264,7 @@ PhysicsStuff	*Phys_Create(void)
 	// B.t.w. 10 MB is way too much for this example but it is a typical value you can use.
 	// If you don't want to pre-allocate you can also use TempAllocatorMalloc to fall back to
 	// malloc / free.
-	TempAllocatorImpl temp_allocator(10 * 1024 * 1024);
+	pRet->mpTAlloc	=new TempAllocatorImpl(10 * 1024 * 1024);
 
 	// We need a job system that will execute physics jobs on multiple threads. Typically
 	// you would implement the JobSystem interface yourself and let Jolt Physics run on top
@@ -402,6 +405,9 @@ void	Phys_Destroy(PhysicsStuff **ppPS)
 {
 	PhysicsStuff	*pPS	=*ppPS;
 
+	//delete temp allocator
+	delete	pPS->mpTAlloc;
+
 	//nuke job system
 	delete	pPS->mpJobs;
 
@@ -417,4 +423,117 @@ void	Phys_Destroy(PhysicsStuff **ppPS)
 	Factory::sInstance	=nullptr;
 
 	*ppPS	=NULL;
+}
+
+
+void	Phys_Update(PhysicsStuff *pPS, float secDelta)
+{
+	pPS->mpPhys->Update(secDelta, 1, pPS->mpTAlloc, pPS->mpJobs);
+}
+
+
+//returns the ID
+uint32_t	Phys_CreateAndAddHeightField(PhysicsStuff *pPS,
+	const float *pHeights,
+	const vec3 org, uint32_t squareSize)
+{
+	//The main way to interact with the bodies in the physics system
+	//is through the body interface. There is a locking and a non-locking
+	//variant of this. We're going to use the locking version (even
+	//though we're not planning to access bodies from multiple threads)
+	BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+	Vec3Arg	VOrg(org[0], org[1], org[2]);
+	Vec3Arg	VScale(1,1,1);
+
+	//I truly despise C++, why do I have to cast all this crap!?
+	HeightFieldShapeSettings	hfss((const float *)pHeights,
+		(Vec3Arg)VOrg, (Vec3Arg)VScale, squareSize);
+
+	//A ref counted object on the stack (base class RefTarget) should
+	//be marked as such to prevent it from being freed when its reference
+	//count goes to 0.
+	hfss.SetEmbedded();
+
+	//Create the shape
+	ShapeSettings::ShapeResult	hfSR	=hfss.Create();
+
+	//We don't expect an error here, but you can check result for
+	//HasError() / GetError()
+	ShapeRefC	hfS	=hfSR.Get();
+
+	//Create the settings for the body itself. Note that here you can
+	//also set other properties like the restitution / friction.
+	BodyCreationSettings	hfb_settings(hfS, VOrg,
+	Quat::sIdentity(), EMotionType::Static, Layers::NON_MOVING);
+
+	//Create the actual rigid body
+	//Note that if we run out of bodies this can return nullptr
+	Body	*pHFB	=body_interface.CreateBody(hfb_settings);
+
+	assert(pHFB);
+
+	//Add it to the world
+	body_interface.AddBody(pHFB->GetID(), EActivation::DontActivate);
+
+	return	pHFB->GetID().GetIndexAndSequenceNumber();
+}
+
+//returns the ID
+uint32_t	Phys_CreateAndAddSphere(PhysicsStuff *pPS, float radius, const vec3 org)
+{
+	BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+	Vec3Arg	VOrg(org[0], org[1], org[2]);
+
+	//Now create a dynamic body to bounce on the floor
+	//Note that this uses the shorthand version of creating and adding
+	//a body to the world
+	BodyCreationSettings	ss(new SphereShape(radius), VOrg,
+		Quat::sIdentity(), EMotionType::Dynamic, Layers::MOVING);
+
+	BodyID	sphere_id	=body_interface.CreateAndAddBody(ss, EActivation::Activate);
+
+	//Now you can interact with the dynamic body, in this case we're
+	//going to give it a velocity.
+	//(note that if we had used CreateBody then we could have set the
+	//velocity straight on the body before adding it to the physics system)
+//	body_interface.SetLinearVelocity(sphere_id, Vec3(0.0f, -5.0f, 0.0f));
+
+	return	sphere_id.GetIndexAndSequenceNumber();
+}
+
+
+void	Phys_RemoveAndDestroyBody(PhysicsStuff *pPS, uint32_t bodyID)
+{
+	BodyID	bid(bodyID);
+
+	BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+	body_interface.RemoveBody(bid);
+	body_interface.DestroyBody(bid);
+}
+
+
+void	Phys_GetBodyPos(const PhysicsStuff *pPS, uint32_t bodyID, vec3 pos)
+{
+	BodyID	bid(bodyID);
+
+	const BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+	RVec3	rpos	=body_interface.GetPosition(bid);
+
+	pos[0]	=rpos.GetX();
+	pos[1]	=rpos.GetY();
+	pos[2]	=rpos.GetZ();
+}
+
+
+void	Phys_SetRestitution(PhysicsStuff *pPS, uint32_t bodyID, float resti)
+{
+	BodyID	bid(bodyID);
+
+	BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+	body_interface.SetRestitution(bid, resti);
 }

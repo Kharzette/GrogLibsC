@@ -35,28 +35,28 @@
 #include	"PhysicsLib/PhysicsStuff.h"
 
 
-#define	RESX			1280
-#define	RESY			720
-#define	ROT_RATE		10.0f
-#define	UVSCALE_RATE	1.0f
-#define	KEYTURN_RATE	0.01f
-#define	MOVE_RATE		0.1f
-#define	HEIGHT_SCALAR	0.15f
-#define	RAY_LEN			100.0f
-#define	RAY_WIDTH		0.05f
-#define	IMPACT_WIDTH	0.2f
-#define	NUM_RAYS		1000
-#define	MOUSE_TO_ANG	0.001f
-#define	MAX_ST_CHARS	256
-#define	START_CAM_DIST	5.0f
-#define	MAX_CAM_DIST	25.0f
-#define	MIN_CAM_DIST	0.25f
-#define	SPHERE_SIZE		(1.0f)
-#define	MAX_SPHERES		50
-#define	BOUNCINESS		(0.8f)
+#define	RESX				1280
+#define	RESY				720
+#define	ROT_RATE			10.0f
+#define	UVSCALE_RATE		1.0f
+#define	KEYTURN_RATE		0.01f
+#define	MOVE_RATE			0.1f
+#define	HEIGHT_SCALAR		0.15f
+#define	TER_SMOOTH_STEPS	4
+#define	RAY_LEN				100.0f
+#define	RAY_WIDTH			0.05f
+#define	IMPACT_WIDTH		0.2f
+#define	NUM_RAYS			1000
+#define	MOUSE_TO_ANG		0.001f
+#define	START_CAM_DIST		5.0f
+#define	MAX_CAM_DIST		25.0f
+#define	MIN_CAM_DIST		0.25f
+#define	SPHERE_SIZE			(1.0f)
+#define	MAX_SPHERES			50
+#define	BOUNCINESS			(0.8f)
 
 //should match CommonFunctions.hlsli
-#define	MAX_BONES		55
+#define	MAX_BONES	55
 
 
 //input context, stuff input handlers will need
@@ -185,7 +185,9 @@ int main(void)
 	}
 
 	//a terrain chunk
-	pTS->mpTer	=Terrain_Create(pTS->mpGD, pPhys, "Blort", "Textures/Terrain/HeightMaps/HeightMap.png", 10, HEIGHT_SCALAR);
+	pTS->mpTer	=Terrain_Create(pTS->mpGD, pPhys, "Blort",
+		"Textures/Terrain/HeightMaps/HeightMap.png",
+		TER_SMOOTH_STEPS, HEIGHT_SCALAR);
 
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
@@ -433,8 +435,33 @@ __attribute_maybe_unused__
 		{
 			__attribute((aligned(32)))	mat4	wPos;
 
+			vec4	friend		={	0.5f, 1.0f, 0.5f, 1.0f	};
+			vec4	friend_proj	={	1.0f, 1.0f, 0.5f, 1.0f	};
+			vec4	enemy		={	1.0f, 0.5f, 0.5f, 1.0f	};
+			vec4	enemy_proj	={	1.0f, 0.5f, 1.0f, 1.0f	};
+
 			vec3	pos;
 			Phys_GetBodyPos(pPhys, pTS->mSphereIDs[i], pos);
+
+			uint16_t	layer;
+			Phys_GetBodyLayer(pPhys, pTS->mSphereIDs[i], &layer);
+
+			if(layer == LAY_MOVING_FRIENDLY)
+			{
+				MAT_SetSolidColour(pSphereMat, friend);
+			}
+			else if(layer == LAY_MOVING_ENEMY)
+			{
+				MAT_SetSolidColour(pSphereMat, enemy);
+			}
+			else if(layer == LAY_MOVING_FRIENDLY_PROJECTILE)
+			{
+				MAT_SetSolidColour(pSphereMat, friend_proj);
+			}
+			else if(layer == LAY_MOVING_ENEMY_PROJECTILE)
+			{
+				MAT_SetSolidColour(pSphereMat, enemy_proj);
+			}
 
 			glm_translate_make(wPos, pos);
 			MAT_SetWorld(pSphereMat, wPos);
@@ -919,18 +946,25 @@ static void sMakeSphere(TestStuff *pTS)
 	{
 		return; //no moar!
 	}
-//	JPH_SphereShape *pSShape        =JPH_SphereShape_Create(SPHERE_SIZE);
 	
 	vec3	mins	={	200, 20, 200	};
 	vec3	maxs	={	300, 30, 300	};
 	vec3	randPoint;
+
+	//randomize layer
+	int	layer	=rand();
+
+	//make 2 to 5
+	layer	&=0x3;
+	layer++;
 	
 	Misc_RandomPointInBound(mins, maxs, randPoint);
 	
-	pTS->mSphereIDs[pTS->mNumSpheres]	=Phys_CreateAndAddSphere(pTS->mpPhys, SPHERE_SIZE, randPoint);
+	pTS->mSphereIDs[pTS->mNumSpheres]
+		=Phys_CreateAndAddSphere(pTS->mpPhys, SPHERE_SIZE, randPoint,
+		layer);
 
 	Phys_SetRestitution(pTS->mpPhys, pTS->mSphereIDs[pTS->mNumSpheres], BOUNCINESS);
 	
 	pTS->mNumSpheres++;
-//	JPH_BodyCreationSettings_Destroy(pSS);
 }

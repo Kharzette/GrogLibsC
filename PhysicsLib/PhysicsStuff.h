@@ -12,12 +12,29 @@ extern "C"	{
 #define	LAY_MOVING_FRIENDLY_PROJECTILE	3
 #define	LAY_MOVING_ENEMY_PROJECTILE		4
 
+//movement modes
+#define	MOVE_WALK	1
+#define	MOVE_RUN	2
+#define	MOVE_FLY	4
+#define	MOVE_SWIM	8
+
 typedef struct	PhysicsStuff_t	PhysicsStuff;
+typedef struct	PhysCharacter_t	PhysCharacter;
 
 
 //creation
 PhysicsStuff	*Phys_Create(void);
 void			Phys_Destroy(PhysicsStuff **ppPS);
+
+//character stuff
+PhysCharacter	*Phys_CreateCharacter(PhysicsStuff *pPS,
+	float radius, float height,
+	const vec3 org, uint16_t layer);
+void	Phys_CharacterDestroy(PhysicsStuff *pPS, PhysCharacter *pChar);
+void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
+			const vec3 move, bool bJump, bool bStanceSwitch, float secDelta);
+void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos);
+bool	Phys_CharacterIsSupported(const PhysCharacter *pChar);
 
 //update
 void	Phys_Update(PhysicsStuff *pPS, float secDelta);

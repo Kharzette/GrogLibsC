@@ -4,25 +4,27 @@
 
 // The Jolt headers don't include Jolt.h. Always include Jolt.h before including any other Jolt header.
 // You can use Jolt.h in your precompiled header to speed up compilation.
-#include <Jolt/Jolt.h>
+#include	<Jolt/Jolt.h>
 
 // Jolt includes
-#include <Jolt/RegisterTypes.h>
-#include <Jolt/Core/Factory.h>
-#include <Jolt/Core/TempAllocator.h>
-#include <Jolt/Core/JobSystemThreadPool.h>
-#include <Jolt/Physics/PhysicsSettings.h>
-#include <Jolt/Physics/PhysicsSystem.h>
-#include <Jolt/Physics/Collision/Shape/BoxShape.h>
-#include <Jolt/Physics/Collision/Shape/SphereShape.h>
-#include <Jolt/Physics/Collision/Shape/HeightFieldShape.h>
-#include <Jolt/Physics/Body/BodyCreationSettings.h>
-#include <Jolt/Physics/Body/BodyActivationListener.h>
+#include	<Jolt/RegisterTypes.h>
+#include	<Jolt/Core/Factory.h>
+#include	<Jolt/Core/TempAllocator.h>
+#include	<Jolt/Core/JobSystemThreadPool.h>
+#include	<Jolt/Physics/PhysicsSettings.h>
+#include	<Jolt/Physics/PhysicsSystem.h>
+#include	<Jolt/Physics/Collision/Shape/BoxShape.h>
+#include	<Jolt/Physics/Collision/Shape/SphereShape.h>
+#include	<Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include	<Jolt/Physics/Collision/Shape/HeightFieldShape.h>
+#include	<Jolt/Physics/Body/BodyCreationSettings.h>
+#include	<Jolt/Physics/Body/BodyActivationListener.h>
+#include	<Jolt/Physics/Character/Character.h>
 
 // STL includes
 #include <iostream>
 #include <cstdarg>
-#include <thread>
+//#include <thread>
 
 //include the h file to make sure things are extern c'd
 #include	"PhysicsStuff.h"
@@ -274,6 +276,24 @@ typedef struct	PhysicsStuff_t
 	MyContactListener			mContact;
 }	PhysicsStuff;
 
+typedef struct	PhysCharacter_t
+{
+	Character	*mpChar;
+
+	Shape		*mpStandingShape;
+	Shape		*mpCrouchingShape;
+
+	uint32_t	mMoveMode;
+
+	float	mRunSpeed;
+	float	mWalkSpeed;
+	float	mSwimSpeed;
+	float	mAirSpeed;	//for midair movement
+	float	mFlySpeed;	//for flying mode
+	float	mJumpSpeed;
+
+}	PhysCharacter;
+
 PhysicsStuff	*Phys_Create(void)
 {
 	//should use new I think here?
@@ -440,9 +460,177 @@ uint32_t	Phys_CreateAndAddHeightField(PhysicsStuff *pPS,
 	return	pHFB->GetID().GetIndexAndSequenceNumber();
 }
 
+
+PhysCharacter	*Phys_CreateCharacter(PhysicsStuff *pPS,
+	float radius, float height,
+	const vec3 org, uint16_t layer)
+{
+	PhysCharacter	*pRet	=(PhysCharacter *)malloc(sizeof(PhysCharacter));
+
+	memset(pRet, 0, sizeof(PhysCharacter));
+
+	//set defaults TODO: let user set these
+	pRet->mRunSpeed		=10.0f;
+	pRet->mWalkSpeed	=4.0f;
+	pRet->mAirSpeed		=4.0f;
+	pRet->mFlySpeed		=30.0f;
+	pRet->mSwimSpeed	=6.0f;
+	pRet->mJumpSpeed	=5.0f;
+
+	pRet->mMoveMode	=MOVE_RUN;
+
+	pRet->mpStandingShape	=new CapsuleShape(height * 0.5f, radius);
+	pRet->mpStandingShape	=new CapsuleShape(height * 0.25f, radius);
+
+	Vec3Arg	VOrg(org[0], org[1], org[2]);
+
+	Ref<CharacterSettings>	cs	=new CharacterSettings();
+
+	cs->mLayer				=layer;
+	cs->mShape				=pRet->mpStandingShape;
+	cs->mSupportingVolume	=Plane(Vec3::sAxisY(), -(height * 0.5f));
+
+	pRet->mpChar	=new Character(cs, VOrg, Quat::sIdentity(), 0, pPS->mpPhys);
+
+	pRet->mpChar->AddToPhysicsSystem();
+
+	return	pRet;
+}
+
+void	Phys_CharacterDestroy(PhysCharacter **ppChar)
+{
+	PhysCharacter	*pChar	=*ppChar;
+
+	pChar->mpChar->RemoveFromPhysicsSystem();
+
+	delete	pChar->mpChar;
+	delete	pChar->mpCrouchingShape;
+	delete	pChar->mpStandingShape;
+
+	free(pChar);
+
+	*ppChar	=NULL;
+}
+
+//move should be a unit vector
+void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
+			const vec3 move, bool bJump, bool bStanceSwitch, float secDelta)
+{
+	//Cancel movement in opposite direction of normal when touching
+	//something we can't walk up
+	Vec3	movDir	={	move[0], move[1], move[2]	};
+
+	Character::EGroundState	gstate	=pChar->mpChar->GetGroundState();
+	if(gstate == Character::EGroundState::OnSteepGround
+		|| gstate == Character::EGroundState::NotSupported)
+	{
+		Vec3	normal	=pChar->mpChar->GetGroundNormal();
+		normal.SetY(0.0f);
+		float	dot	=normal.Dot(movDir);
+		if(dot < 0.0f)
+		{
+			movDir	-=(dot * normal) / normal.LengthSq();
+		}
+	}
+
+	//Stance switch
+	if(bStanceSwitch)
+	{
+		float	slop	=1.5f * pPS->mpPhys->GetPhysicsSettings().mPenetrationSlop;
+		if(pChar->mpChar->GetShape() == pChar->mpStandingShape)
+		{
+			pChar->mpChar->SetShape(pChar->mpCrouchingShape, slop);
+		}
+		else
+		{
+			pChar->mpChar->SetShape(pChar->mpStandingShape, slop);
+		}
+	}
+
+	if(pChar->mpChar->IsSupported())
+	{
+		float	curSpeed	=0.0f;
+
+		switch(pChar->mMoveMode)
+		{
+			case	MOVE_WALK:
+				curSpeed	=pChar->mWalkSpeed;
+				break;
+			case	MOVE_RUN:
+				curSpeed	=pChar->mRunSpeed;
+				break;
+			case	MOVE_FLY:
+				curSpeed	=pChar->mFlySpeed;
+				break;
+			case	MOVE_SWIM:
+				curSpeed	=pChar->mSwimSpeed;
+				break;
+			default:
+				//TODO: warn
+				curSpeed	=pChar->mWalkSpeed;
+		}
+
+		//Update velocity
+		Vec3	curVelocity		=pChar->mpChar->GetLinearVelocity();
+		Vec3	desiredVelocity	=curSpeed * movDir;
+
+		if(!desiredVelocity.IsNearZero() || curVelocity.GetY() < 0.0f)
+		{
+			desiredVelocity.SetY(curVelocity.GetY());
+		}
+
+		Vec3	newVelocity	=0.75f * curVelocity + 0.25f * desiredVelocity;
+
+		//Jump
+		if(bJump && gstate == Character::EGroundState::OnGround)
+		{
+			newVelocity	+=Vec3(0, pChar->mJumpSpeed, 0);
+		}
+
+		//Update the velocity
+		pChar->mpChar->SetLinearVelocity(newVelocity);
+	}
+	else	//midair?
+	{
+		float	curSpeed	=pChar->mAirSpeed;
+
+		//Update velocity
+		Vec3	curVelocity		=pChar->mpChar->GetLinearVelocity();
+		Vec3	desiredVelocity	=curSpeed * movDir;
+
+		desiredVelocity.SetY(curVelocity.GetY());
+
+		Vec3	newVelocity	=0.75f * curVelocity + 0.25f * desiredVelocity;
+
+		//Jump
+		if(bJump && gstate == Character::EGroundState::OnGround)
+		{
+			newVelocity	+=Vec3(0, pChar->mJumpSpeed, 0);
+		}
+
+		//Update the velocity
+		pChar->mpChar->SetLinearVelocity(newVelocity);
+	}
+}
+
+void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos)
+{
+	RVec3	rpos	=pChar->mpChar->GetPosition();
+
+	pos[0]	=rpos.GetX();
+	pos[1]	=rpos.GetY();
+	pos[2]	=rpos.GetZ();
+}
+
+bool	Phys_CharacterIsSupported(const PhysCharacter *pChar)
+{
+	return	pChar->mpChar->IsSupported();
+}
+
+
 //returns the ID
 uint32_t	Phys_CreateAndAddSphere(PhysicsStuff *pPS, float radius,
-				const vec3 org, uint16_t layer)
+	const vec3 org, uint16_t layer)
 {
 	BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
 

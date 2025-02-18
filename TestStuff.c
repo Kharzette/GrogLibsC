@@ -25,13 +25,13 @@
 #include	"UtilityLib/DictionaryStuff.h"
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
+#include	"UtilityLib/BipedMover.h"
 #include	"TerrainLib/Terrain.h"
 #include	"MeshLib/Mesh.h"
 #include	"MeshLib/AnimLib.h"
 #include	"MeshLib/Character.h"
 #include	"MeshLib/CommonPrims.h"
 #include	"InputLib/Input.h"
-//#include	"PhysicsLib/BipedMover.h"
 #include	"PhysicsLib/PhysicsStuff.h"
 
 
@@ -54,6 +54,8 @@
 #define	SPHERE_SIZE			(1.0f)
 #define	MAX_SPHERES			50
 #define	BOUNCINESS			(0.8f)
+#define	PLAYER_RADIUS		(0.25f)
+#define	PLAYER_HEIGHT		(1.75f)
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES	55
@@ -69,7 +71,8 @@ typedef struct	TestStuff_t
 	PrimObject		*mpManyImpacts;
 	UIStuff			*mpUI;
 	PhysicsStuff	*mpPhys;
-//	BipedMover		*mpBPM;
+	PhysCharacter	*mpPhysChar;
+	BipedMover		*mpBPM;
 
 	//toggles
 	bool	mbDrawTerNodes;
@@ -99,7 +102,6 @@ typedef struct	TestStuff_t
 //static forward decs
 static void		sSetupKeyBinds(Input *pInp);
 static void		sSetupRastVP(GraphicsDevice *pGD);
-static void		sMoveCharacter(TestStuff *pTS, const vec3 moveVec);
 static void		sMakeSphere(TestStuff *pTS);
 static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
 static void		sFreeCharacterMeshParts(DictSZ **ppMeshes);
@@ -152,7 +154,7 @@ int main(void)
 	memset(pTS, 0, sizeof(TestStuff));
 
 	//start in fly mode?
-	pTS->mbFlyMode	=true;
+	pTS->mbFlyMode	=false;
 	pTS->mCamDist	=START_CAM_DIST;
 	pTS->mpPhys		=pPhys;
 	
@@ -230,9 +232,14 @@ __attribute_maybe_unused__
 	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
 
 	//biped mover
-//	pTS->mpBPM	=BPM_Create(pTS->mpCam);
+	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
-//	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
+	//physics character
+	pTS->mpPhysChar	=Phys_CreateCharacter(pPhys,
+		PLAYER_RADIUS, PLAYER_HEIGHT,
+		pTS->mPlayerPos, LAY_MOVING_FRIENDLY);
+
+	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? BPM_MOVE_FLY : BPM_MOVE_GROUND);
 
 	SoundEffectPlay("synth", pTS->mPlayerPos);
 
@@ -291,15 +298,17 @@ __attribute_maybe_unused__
 			INP_Update(pInp, pTS);
 
 			{
-//				bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
-//				if(bJumped)
-//				{
-//					SoundEffectPlay("jump", pTS->mPlayerPos);
-//				}
+				bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+				if(bJumped)
+				{
+					SoundEffectPlay("jump", pTS->mPlayerPos);
+				}
+				Phys_CharacterMove(pPhys, pTS->mpPhysChar, pTS->mCharMoveVec,
+					bJumped, false, secDelta);
 			}
 			Phys_Update(pPhys, secDelta);
 
-			sMoveCharacter(pTS, pTS->mCharMoveVec);
+			Phys_CharacterGetPos(pTS->mpPhysChar, pTS->mPlayerPos);
 
 			UpdateTimer_UpdateDone(pUT);
 		}
@@ -320,14 +329,14 @@ __attribute_maybe_unused__
 
 		if(moving > 0.0f)
 		{
-//			if(BPM_IsGoodFooting(pTS->mpBPM))
+			if(Phys_CharacterIsSupported(pTS->mpPhysChar))
 			{
 				animTime	+=dt * moving * 200.0f;
 			}
-//			else
-//			{
-//				animTime	+=dt * moving * 10.0f;
-//			}
+			else
+			{
+				animTime	+=dt * moving * 10.0f;
+			}
 			AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
 		}
 		else
@@ -551,7 +560,7 @@ static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt)
 
 	pTS->mbFlyMode	=!pTS->mbFlyMode;
 
-//	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
+	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? BPM_MOVE_FLY : BPM_MOVE_GROUND);
 }
 
 static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt)
@@ -618,7 +627,7 @@ static void	sKeyMoveForwardEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	BPM_InputForward(pTS->mpBPM);
+	BPM_InputForward(pTS->mpBPM);
 }
 
 static void	sKeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
@@ -627,7 +636,7 @@ static void	sKeyMoveBackEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	BPM_InputBack(pTS->mpBPM);
+	BPM_InputBack(pTS->mpBPM);
 }
 
 static void	sKeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
@@ -636,7 +645,7 @@ static void	sKeyMoveLeftEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	BPM_InputLeft(pTS->mpBPM);
+	BPM_InputLeft(pTS->mpBPM);
 }
 
 static void	sKeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
@@ -645,7 +654,7 @@ static void	sKeyMoveRightEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	BPM_InputRight(pTS->mpBPM);
+	BPM_InputRight(pTS->mpBPM);
 }
 
 static void	sKeyMoveUpEH(void *pContext, const SDL_Event *pEvt)
@@ -654,7 +663,7 @@ static void	sKeyMoveUpEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	BPM_InputUp(pTS->mpBPM);
+	BPM_InputUp(pTS->mpBPM);
 }
 
 static void	sKeyMoveDownEH(void *pContext, const SDL_Event *pEvt)
@@ -663,7 +672,7 @@ static void	sKeyMoveDownEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	BPM_InputDown(pTS->mpBPM);
+	BPM_InputDown(pTS->mpBPM);
 }
 
 static void	sKeyMoveJumpEH(void *pContext, const SDL_Event *pEvt)
@@ -672,7 +681,7 @@ static void	sKeyMoveJumpEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	BPM_InputJump(pTS->mpBPM);
+	BPM_InputJump(pTS->mpBPM);
 }
 
 static void	sKeySprintEH(void *pContext, const SDL_Event *pEvt)
@@ -865,34 +874,6 @@ static void	sSetupRastVP(GraphicsDevice *pGD)
 	GD_RSSetViewPort(pGD, &vp);
 	GD_RSSetState(pGD, pRast);
 	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-}
-
-static void	sMoveCharacter(TestStuff *pTS, const vec3 moveVec)
-{
-	if(pTS->mbFlyMode)
-	{
-		glm_vec3_add(pTS->mEyePos, moveVec, pTS->mEyePos);
-	}
-	else
-	{
-		vec3	end, newPos;
-		glm_vec3_add(pTS->mPlayerPos, moveVec, end);
-
-//		int	footing	=Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos);
-		
-//		BPM_SetFooting(pTS->mpBPM, footing);
-
-		//watch for a glitchy move
-		float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);
-		if(dist > 10.0f)
-		{
-			printf("Glitchy Move: %f %f %f to %f %f %f\n",
-				pTS->mPlayerPos[0], pTS->mPlayerPos[1], pTS->mPlayerPos[2], 
-				end[0], end[1], end[2]);
-		}
-
-		glm_vec3_copy(newPos, pTS->mPlayerPos);
-	}
 }
 
 static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar)

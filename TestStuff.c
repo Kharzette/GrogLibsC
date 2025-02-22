@@ -71,7 +71,7 @@ typedef struct	TestStuff_t
 	PrimObject		*mpManyImpacts;
 	UIStuff			*mpUI;
 	PhysicsStuff	*mpPhys;
-	PhysCharacter	*mpPhysChar;
+	PhysVCharacter	*mpPhysChar;
 	BipedMover		*mpBPM;
 
 	//toggles
@@ -146,7 +146,7 @@ int main(void)
 
 	PhysicsStuff	*pPhys	=Phys_Create();
 
-	Audio	*pAud	=Audio_Create(2);
+	Audio	*pAud	=Audio_Create(0);
 
 	//store a bunch of vars in a struct
 	//for ref/modifying by input handlers
@@ -235,9 +235,9 @@ __attribute_maybe_unused__
 	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
 	//physics character
-	pTS->mpPhysChar	=Phys_CreateCharacter(pPhys,
+	pTS->mpPhysChar	=Phys_CreateVCharacter(pPhys,
 		PLAYER_RADIUS, PLAYER_HEIGHT,
-		pTS->mPlayerPos, LAY_MOVING_FRIENDLY);
+		pTS->mPlayerPos);
 
 	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? BPM_MOVE_FLY : BPM_MOVE_GROUND);
 
@@ -303,12 +303,13 @@ __attribute_maybe_unused__
 				{
 					SoundEffectPlay("jump", pTS->mPlayerPos);
 				}
-				Phys_CharacterMove(pPhys, pTS->mpPhysChar, pTS->mCharMoveVec,
+				Phys_VCharacterMove(pPhys, pTS->mpPhysChar, pTS->mCharMoveVec,
 					bJumped, false, secDelta);
 			}
-			Phys_Update(pPhys, secDelta);
 
-			Phys_CharacterGetPos(pTS->mpPhysChar, pTS->mPlayerPos);
+			Phys_VCharacterGetPos(pTS->mpPhysChar, pTS->mPlayerPos);
+
+			Phys_Update(pPhys, secDelta);
 
 			UpdateTimer_UpdateDone(pUT);
 		}
@@ -329,7 +330,7 @@ __attribute_maybe_unused__
 
 		if(moving > 0.0f)
 		{
-			if(Phys_CharacterIsSupported(pTS->mpPhysChar))
+			if(Phys_VCharacterIsSupported(pTS->mpPhysChar))
 			{
 				animTime	+=dt * moving * 200.0f;
 			}
@@ -427,7 +428,7 @@ __attribute_maybe_unused__
 			GameCam_GetFlatLookMatrix(pTS->mpCam, charMat);
 
 			//drop mesh to ground
-			vec3	feetToCenter	={	0.0f, -0.25f, 0.0f	};
+			vec3	feetToCenter	={	0.0f, -(PLAYER_HEIGHT * 0.5f), 0.0f	};
 
 			glm_translate(charMat, feetToCenter);
 

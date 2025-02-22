@@ -18,8 +18,9 @@ extern "C"	{
 #define	MOVE_FLY	4
 #define	MOVE_SWIM	8
 
-typedef struct	PhysicsStuff_t	PhysicsStuff;
-typedef struct	PhysCharacter_t	PhysCharacter;
+typedef struct	PhysicsStuff_t		PhysicsStuff;
+typedef struct	PhysCharacter_t		PhysCharacter;
+typedef struct	PhysVCharacter_t	PhysVCharacter;
 
 
 //creation
@@ -30,11 +31,19 @@ void			Phys_Destroy(PhysicsStuff **ppPS);
 PhysCharacter	*Phys_CreateCharacter(PhysicsStuff *pPS,
 	float radius, float height,
 	const vec3 org, uint16_t layer);
+PhysVCharacter	*Phys_CreateVCharacter(PhysicsStuff *pPS,
+		float radius, float height,
+		const vec3 org);
 void	Phys_CharacterDestroy(PhysicsStuff *pPS, PhysCharacter *pChar);
+void	Phys_VCharacterDestroy(PhysicsStuff *pPS, PhysVCharacter *pChar);
 void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
 			const vec3 move, bool bJump, bool bStanceSwitch, float secDelta);
+void	Phys_VCharacterMove(PhysicsStuff *pPS, PhysVCharacter *pChar,
+			const vec3 move, bool bJump, bool bStanceSwitch, float secDelta);
 void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos);
+void	Phys_VCharacterGetPos(const PhysVCharacter *pChar, vec3 pos);
 bool	Phys_CharacterIsSupported(const PhysCharacter *pChar);
+bool	Phys_VCharacterIsSupported(const PhysVCharacter *pChar);
 
 //update
 void	Phys_Update(PhysicsStuff *pPS, float secDelta);

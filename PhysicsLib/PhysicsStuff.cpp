@@ -20,6 +20,7 @@
 #include	<Jolt/Physics/Body/BodyCreationSettings.h>
 #include	<Jolt/Physics/Body/BodyActivationListener.h>
 #include	<Jolt/Physics/Character/Character.h>
+#include	<Jolt/Physics/Character/CharacterVirtual.h>
 
 // STL includes
 #include <iostream>
@@ -276,6 +277,24 @@ typedef struct	PhysicsStuff_t
 	MyContactListener			mContact;
 }	PhysicsStuff;
 
+typedef struct	PhysVCharacter_t
+{
+	CharacterVirtual	*mpChar;
+
+	Shape		*mpStandingShape;
+	Shape		*mpCrouchingShape;
+
+	uint32_t	mMoveMode;
+
+	float	mRunSpeed;
+	float	mWalkSpeed;
+	float	mSwimSpeed;
+	float	mAirSpeed;	//for midair movement
+	float	mFlySpeed;	//for flying mode
+	float	mJumpSpeed;
+
+}	PhysVCharacter;
+
 typedef struct	PhysCharacter_t
 {
 	Character	*mpChar;
@@ -480,19 +499,54 @@ PhysCharacter	*Phys_CreateCharacter(PhysicsStuff *pPS,
 	pRet->mMoveMode	=MOVE_RUN;
 
 	pRet->mpStandingShape	=new CapsuleShape(height * 0.5f, radius);
-	pRet->mpStandingShape	=new CapsuleShape(height * 0.25f, radius);
+	pRet->mpCrouchingShape	=new CapsuleShape(height * 0.25f, radius);
 
 	Vec3Arg	VOrg(org[0], org[1], org[2]);
 
 	Ref<CharacterSettings>	cs	=new CharacterSettings();
 
 	cs->mLayer				=layer;
+	cs->mMaxSlopeAngle		=DegreesToRadians(50.0f);
 	cs->mShape				=pRet->mpStandingShape;
-	cs->mSupportingVolume	=Plane(Vec3::sAxisY(), -(height * 0.5f));
+	cs->mSupportingVolume	=Plane(Vec3::sAxisY(), -(height - radius));
 
 	pRet->mpChar	=new Character(cs, VOrg, Quat::sIdentity(), 0, pPS->mpPhys);
 
 	pRet->mpChar->AddToPhysicsSystem();
+
+	return	pRet;
+}
+
+PhysVCharacter	*Phys_CreateVCharacter(PhysicsStuff *pPS,
+	float radius, float height,
+	const vec3 org)
+{
+	PhysVCharacter	*pRet	=(PhysVCharacter *)malloc(sizeof(PhysVCharacter));
+
+	memset(pRet, 0, sizeof(PhysVCharacter));
+
+	//set defaults TODO: let user set these
+	pRet->mRunSpeed		=10.0f;
+	pRet->mWalkSpeed	=4.0f;
+	pRet->mAirSpeed		=4.0f;
+	pRet->mFlySpeed		=30.0f;
+	pRet->mSwimSpeed	=6.0f;
+	pRet->mJumpSpeed	=5.0f;
+
+	pRet->mMoveMode	=MOVE_RUN;
+
+	pRet->mpStandingShape	=new CapsuleShape(height * 0.5f, radius);
+	pRet->mpCrouchingShape	=new CapsuleShape(height * 0.25f, radius);
+
+	Vec3Arg	VOrg(org[0], org[1], org[2]);
+
+	Ref<CharacterVirtualSettings>	cs	=new CharacterVirtualSettings();
+
+	cs->mMaxSlopeAngle		=DegreesToRadians(50.0f);
+	cs->mShape				=pRet->mpStandingShape;
+	cs->mSupportingVolume	=Plane(Vec3::sAxisY(), -(height - radius));
+
+	pRet->mpChar	=new CharacterVirtual(cs, VOrg, Quat::sIdentity(), pPS->mpPhys);
 
 	return	pRet;
 }
@@ -512,14 +566,27 @@ void	Phys_CharacterDestroy(PhysCharacter **ppChar)
 	*ppChar	=NULL;
 }
 
+void	Phys_VCharacterDestroy(PhysVCharacter **ppChar)
+{
+	PhysVCharacter	*pChar	=*ppChar;
+
+	delete	pChar->mpChar;
+	delete	pChar->mpCrouchingShape;
+	delete	pChar->mpStandingShape;
+
+	free(pChar);
+
+	*ppChar	=NULL;
+}
+
 //move should be a unit vector
 void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
-			const vec3 move, bool bJump, bool bStanceSwitch, float secDelta)
+	const vec3 move, bool bJump, bool bStanceSwitch, float secDelta)
 {
 	//Cancel movement in opposite direction of normal when touching
 	//something we can't walk up
 	Vec3	movDir	={	move[0], move[1], move[2]	};
-
+	
 	Character::EGroundState	gstate	=pChar->mpChar->GetGroundState();
 	if(gstate == Character::EGroundState::OnSteepGround
 		|| gstate == Character::EGroundState::NotSupported)
@@ -532,7 +599,7 @@ void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
 			movDir	-=(dot * normal) / normal.LengthSq();
 		}
 	}
-
+	
 	//Stance switch
 	if(bStanceSwitch)
 	{
@@ -546,11 +613,11 @@ void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
 			pChar->mpChar->SetShape(pChar->mpStandingShape, slop);
 		}
 	}
-
+	
 	if(pChar->mpChar->IsSupported())
 	{
 		float	curSpeed	=0.0f;
-
+		
 		switch(pChar->mMoveMode)
 		{
 			case	MOVE_WALK:
@@ -569,48 +636,133 @@ void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
 				//TODO: warn
 				curSpeed	=pChar->mWalkSpeed;
 		}
-
+		
 		//Update velocity
 		Vec3	curVelocity		=pChar->mpChar->GetLinearVelocity();
 		Vec3	desiredVelocity	=curSpeed * movDir;
-
+		
 		if(!desiredVelocity.IsNearZero() || curVelocity.GetY() < 0.0f)
 		{
 			desiredVelocity.SetY(curVelocity.GetY());
 		}
-
+		
 		Vec3	newVelocity	=0.75f * curVelocity + 0.25f * desiredVelocity;
-
+		
 		//Jump
 		if(bJump && gstate == Character::EGroundState::OnGround)
 		{
 			newVelocity	+=Vec3(0, pChar->mJumpSpeed, 0);
 		}
-
+		
 		//Update the velocity
 		pChar->mpChar->SetLinearVelocity(newVelocity);
 	}
 	else	//midair?
 	{
 		float	curSpeed	=pChar->mAirSpeed;
-
+		
 		//Update velocity
 		Vec3	curVelocity		=pChar->mpChar->GetLinearVelocity();
 		Vec3	desiredVelocity	=curSpeed * movDir;
-
+		
 		desiredVelocity.SetY(curVelocity.GetY());
-
+		
 		Vec3	newVelocity	=0.75f * curVelocity + 0.25f * desiredVelocity;
+		
+		//Jump
+		if(bJump && gstate == Character::EGroundState::OnGround)
+		{
+			newVelocity	+=Vec3(0, pChar->mJumpSpeed, 0);
+		}
+		
+		//Update the velocity
+		pChar->mpChar->SetLinearVelocity(newVelocity);
+	}
+}
 
+//move should be a unit vector
+void	Phys_VCharacterMove(PhysicsStuff *pPS, PhysVCharacter *pChar,
+	const vec3 move, bool bJump, bool bStanceSwitch, float secDelta)
+{
+	CharacterVirtual::ExtendedUpdateSettings	eus;
+
+	Character::EGroundState	gstate	=pChar->mpChar->GetGroundState();
+
+	Vec3	grav	=pPS->mpPhys->GetGravity();
+	Vec3	movDir	={	move[0], move[1], move[2]	};	
+
+	if(pChar->mpChar->IsSupported())
+	{
+		float	curSpeed	=0.0f;
+		
+		switch(pChar->mMoveMode)
+		{
+			case	MOVE_WALK:
+				curSpeed	=pChar->mWalkSpeed;
+				break;
+			case	MOVE_RUN:
+				curSpeed	=pChar->mRunSpeed;
+				break;
+			case	MOVE_FLY:
+				curSpeed	=pChar->mFlySpeed;
+				break;
+			case	MOVE_SWIM:
+				curSpeed	=pChar->mSwimSpeed;
+				break;
+			default:
+				//TODO: warn
+				curSpeed	=pChar->mWalkSpeed;
+		}
+		
+		//Update velocity
+		Vec3	curVelocity		=pChar->mpChar->GetLinearVelocity();
+		Vec3	desiredVelocity	=curSpeed * movDir;
+		
+		if(!desiredVelocity.IsNearZero() || curVelocity.GetY() < 0.0f)
+		{
+			desiredVelocity.SetY(curVelocity.GetY());
+		}
+		
+		Vec3	newVelocity	=0.75f * curVelocity + 0.25f * desiredVelocity;
+		
+		//Jump
+		if(bJump && gstate == Character::EGroundState::OnGround)
+		{
+			newVelocity	+=Vec3(0, pChar->mJumpSpeed, 0);
+		}
+		
+		//Update the velocity
+		pChar->mpChar->SetLinearVelocity(newVelocity);
+	}
+	else	//midair?
+	{
+		float	curSpeed	=pChar->mAirSpeed;
+		
+		//Update velocity
+		Vec3	curVelocity		=pChar->mpChar->GetLinearVelocity();
+		Vec3	desiredVelocity	=curSpeed * movDir;
+		
+		desiredVelocity.SetY(curVelocity.GetY());
+		
+		Vec3	newVelocity	=0.75f * curVelocity + 0.25f * desiredVelocity;
+		
 		//Jump
 		if(bJump && gstate == Character::EGroundState::OnGround)
 		{
 			newVelocity	+=Vec3(0, pChar->mJumpSpeed, 0);
 		}
 
+		//gravity
+		newVelocity	+=(grav * secDelta);
+		
 		//Update the velocity
 		pChar->mpChar->SetLinearVelocity(newVelocity);
 	}
+
+	pChar->mpChar->ExtendedUpdate(secDelta, grav, eus,
+		pPS->mpPhys->GetDefaultBroadPhaseLayerFilter(Layers::MOVING_FRIENDLY),
+		pPS->mpPhys->GetDefaultLayerFilter(Layers::MOVING_FRIENDLY),
+		{}, {}, *pPS->mpTAlloc);
 }
 
 void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos)
@@ -622,7 +774,21 @@ void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos)
 	pos[2]	=rpos.GetZ();
 }
 
+void	Phys_VCharacterGetPos(const PhysVCharacter *pChar, vec3 pos)
+{
+	RVec3	rpos	=pChar->mpChar->GetPosition();
+
+	pos[0]	=rpos.GetX();
+	pos[1]	=rpos.GetY();
+	pos[2]	=rpos.GetZ();
+}
+
 bool	Phys_CharacterIsSupported(const PhysCharacter *pChar)
+{
+	return	pChar->mpChar->IsSupported();
+}
+
+bool	Phys_VCharacterIsSupported(const PhysVCharacter *pChar)
 {
 	return	pChar->mpChar->IsSupported();
 }

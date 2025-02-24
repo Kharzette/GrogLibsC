@@ -19,7 +19,7 @@ void	BPM_SetVerticalVelocity(BipedMover *pBM, const vec3 vel);
 void	BPM_GetVelocity(const BipedMover *pBPM, vec3 vel);
 
 //update, return true if jumped
-bool	BPM_Update(BipedMover *pBPM, bool bSupported,
+bool	BPM_Update(BipedMover *pBPM, bool bSupported, bool bFooting,
 					float secDelta, vec3 moveVec);
 
 //inputs, these are for a single frame

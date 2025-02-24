@@ -18,6 +18,7 @@
 #define	GRAVITY_FORCE		9.8f	//Gravitons
 #define	BUOYANCY_FORCE		13.125f	//Gravitons
 #define	GROUND_FRICTION		3.0f	//Frictols
+#define	STUMBLE_FRICTION	1.0f	//Frictols
 #define	AIR_FRICTION		0.1f	//Frictols
 #define	FLY_FRICTION		2.0f	//Frictols
 #define	SWIM_FRICTION		10.0f	//Frictols
@@ -224,7 +225,7 @@ static void	UpdateFlying(BipedMover *pBPM, float secDelta, vec3 move)
 }
 
 //return a bool indicating jumped
-static bool	UpdateWalking(BipedMover *pBPM, bool bOnGround, float secDelta, vec3 move)
+static bool	UpdateWalking(BipedMover *pBPM, bool bOnGround, bool bFooting, float secDelta, vec3 move)
 {
 	bool	bGravity	=false;
 	float	friction	=GROUND_FRICTION;
@@ -232,7 +233,15 @@ static bool	UpdateWalking(BipedMover *pBPM, bool bOnGround, float secDelta, vec3
 
 	if(bOnGround)
 	{
-		friction	=GROUND_FRICTION;
+		if(bFooting)
+		{
+			friction	=GROUND_FRICTION;
+		}
+		else
+		{
+			friction	=STUMBLE_FRICTION;
+			bGravity	=true;
+		}
 	}
 	else
 	{
@@ -240,10 +249,10 @@ static bool	UpdateWalking(BipedMover *pBPM, bool bOnGround, float secDelta, vec3
 		friction	=AIR_FRICTION;
 	}
 
-	if(pBPM->mbJump && bOnGround)
+	if(pBPM->mbJump && bOnGround && bFooting)
 	{
-		bJumped				=true;
-		friction			=AIR_FRICTION;
+		bJumped		=true;
+		friction	=AIR_FRICTION;
 	}
 
 	vec3	forward, right, up, moveVec;
@@ -255,13 +264,20 @@ static bool	UpdateWalking(BipedMover *pBPM, bool bOnGround, float secDelta, vec3
 
 	if(bOnGround && !bJumped)
 	{
-		if(pBPM->mbSprint)
+		if(bFooting)
 		{
-			glm_vec3_scale(moveVec, JOG_MOVE_FORCE * 2.0f * secDelta, moveVec);
+			if(pBPM->mbSprint)
+			{
+				glm_vec3_scale(moveVec, JOG_MOVE_FORCE * 2.0f * secDelta, moveVec);
+			}
+			else
+			{
+				glm_vec3_scale(moveVec, JOG_MOVE_FORCE * secDelta, moveVec);
+			}
 		}
 		else
-		{
-			glm_vec3_scale(moveVec, JOG_MOVE_FORCE * secDelta, moveVec);
+		{			
+			glm_vec3_scale(moveVec, STUMBLE_MOVE_FORCE * secDelta, moveVec);
 		}
 	}
 	else
@@ -307,7 +323,8 @@ static bool	UpdateWalking(BipedMover *pBPM, bool bOnGround, float secDelta, vec3
 }
 
 
-bool	BPM_Update(BipedMover *pBPM, bool bOnGround, float secDelta, vec3 moveVec)
+bool	BPM_Update(BipedMover *pBPM, bool bOnGround, bool bFooting,
+					float secDelta, vec3 moveVec)
 {
 	pBPM->mbMovedThisFrame	=false;
 
@@ -321,7 +338,7 @@ bool	BPM_Update(BipedMover *pBPM, bool bOnGround, float secDelta, vec3 moveVec)
 	}
 	else if(pBPM->mMoveMethod == BPM_MOVE_GROUND)
 	{
-		bJumped	=UpdateWalking(pBPM, bOnGround, secDelta, moveVec);
+		bJumped	=UpdateWalking(pBPM, bOnGround, bFooting, secDelta, moveVec);
 	}
 	else if(pBPM->mMoveMethod == BPM_MOVE_SWIM)
 	{

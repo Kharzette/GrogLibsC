@@ -317,15 +317,26 @@ __attribute_maybe_unused__
 
 			{
 				vec3	moveVec;
-				bool	bSup	=Phys_VCharacterIsSupported(pTS->mpPhysChar);
-				bool	bJumped	=BPM_Update(pTS->mpBPM, bSup, secDelta, moveVec);
+
+				//check on ground and footing
+				bool	bSup		=Phys_VCharacterIsSupported(pTS->mpPhysChar);
+				bool	bFooting	=false;
+				if(bSup)
+				{
+					vec3	norm;
+					Phys_VCharacterGetGroundNormal(pTS->mpPhysChar, norm);	
+					float	dotY	=glm_vec3_dot(norm, (vec3){0,1,0});
+					bFooting		=(dotY > RAMP_ANGLE);
+				}
+
+				bool	bJumped	=BPM_Update(pTS->mpBPM, bSup, bFooting, secDelta, moveVec);
 				if(bJumped)
 				{
 					SoundEffectPlay("jump", pTS->mPlayerPos);
 				}
 
 				//moveVec is an amount to move this frame
-				//convert to meters per second
+				//convert to meters per second for phys
 				vec3	mpsMove;
 				glm_vec3_scale(moveVec, 60, mpsMove);
 

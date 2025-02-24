@@ -67,7 +67,6 @@
 		}
 	},
 	"cmake.configureOnOpen": false,
-	"cmake.sourceDirectory": "${workspaceFolder}/SDL",
 	"dotnet.defaultSolution": "GrogLibsC.sln",
 	"C_Cpp.default.compilerPath": "/usr/bin/gcc"
 }

@@ -39,7 +39,7 @@ void	Phys_VCharacterDestroy(PhysicsStuff *pPS, PhysVCharacter *pChar);
 void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
 			const vec3 move, bool bJump, bool bStanceSwitch, float secDelta);
 void	Phys_VCharacterMove(PhysicsStuff *pPS, PhysVCharacter *pChar,
-			const vec3 move, bool bJump, bool bStanceSwitch, float secDelta);
+			const vec3 move, float secDelta, vec3 resultVelocity);
 void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos);
 void	Phys_VCharacterGetPos(const PhysVCharacter *pChar, vec3 pos);
 bool	Phys_CharacterIsSupported(const PhysCharacter *pChar);

@@ -87,9 +87,6 @@ typedef struct	TestStuff_t
 	//prims
 	PrimObject      *mpSphere;
 	
-	//character movement
-	vec3	mCharMoveVec;
-
 	//misc data
 	vec3	mDanglyForce;
 	vec3	mLightDir;
@@ -159,7 +156,7 @@ int main(void)
 	pTS->mpPhys		=pPhys;
 	
 	//set player on corner near origin
-	glm_vec3_scale(GLM_VEC3_ONE, 13.0f, pTS->mPlayerPos);
+	glm_vec3_scale(GLM_VEC3_ONE, 113.0f, pTS->mPlayerPos);
 
 	//input and key / mouse bindings
 	Input	*pInp	=INP_CreateInput();
@@ -262,7 +259,8 @@ __attribute_maybe_unused__
 	glm_mat4_identity(charMat);
 
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
-	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
+//	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
+	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 16.66666f);	//60hz
 
 	//materials
 	Material	*pTerMat	=sMakeTerrainMat(pTS, pSK);
@@ -290,21 +288,30 @@ __attribute_maybe_unused__
 			secDelta > 0.0f;
 			secDelta =UpdateTimer_GetUpdateDeltaSeconds(pUT))
 		{
-			//zero out charmove
-			glm_vec3_zero(pTS->mCharMoveVec);
-
 			//do input here
 			//move turn etc
 			INP_Update(pInp, pTS);
 
 			{
-				bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+				vec3	moveVec;
+				bool	bSup	=Phys_VCharacterIsSupported(pTS->mpPhysChar);
+				bool	bJumped	=BPM_Update(pTS->mpBPM, bSup, secDelta, moveVec);
 				if(bJumped)
 				{
 					SoundEffectPlay("jump", pTS->mPlayerPos);
 				}
-				Phys_VCharacterMove(pPhys, pTS->mpPhysChar, pTS->mCharMoveVec,
-					bJumped, false, secDelta);
+
+				//moveVec is an amount to move this frame
+				//convert to meters per second
+				vec3	mpsMove;
+				glm_vec3_scale(moveVec, 60, mpsMove);
+
+				vec3	resultVelocity;
+				Phys_VCharacterMove(pPhys, pTS->mpPhysChar, mpsMove,
+					secDelta, resultVelocity);
+
+				//probably should accum here
+//				BPM_SetVelocity(pTS->mpBPM, resultVelocity);
 			}
 
 			Phys_VCharacterGetPos(pTS->mpPhysChar, pTS->mPlayerPos);
@@ -322,21 +329,24 @@ __attribute_maybe_unused__
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
+		vec3	velocity;
+		BPM_GetVelocity(pTS->mpBPM, velocity);
+
 		//update audio
-		Audio_Update(pAud, pTS->mPlayerPos, pTS->mCharMoveVec);
+		Audio_Update(pAud, pTS->mPlayerPos, velocity);
 
 		//player moving?
-		float	moving	=glm_vec3_norm(pTS->mCharMoveVec);
+		float	moving	=glm_vec3_norm(velocity);
 
 		if(moving > 0.0f)
 		{
 			if(Phys_VCharacterIsSupported(pTS->mpPhysChar))
 			{
-				animTime	+=dt * moving * 200.0f;
+				animTime	+=dt * moving * 3.0f;
 			}
 			else
 			{
-				animTime	+=dt * moving * 10.0f;
+				animTime	+=dt * moving * 0.1f;
 			}
 			AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
 		}

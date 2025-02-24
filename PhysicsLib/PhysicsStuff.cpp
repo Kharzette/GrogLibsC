@@ -240,6 +240,21 @@ public:
 	}
 };
 
+static void	sCopyVec(const Vec3 src, vec3 dst)
+{
+	dst[0]	=src.GetX();
+	dst[1]	=src.GetY();
+	dst[2]	=src.GetZ();
+}
+
+__attribute_maybe_unused__
+static void	sCopyvec(const vec3 src, Vec3 dst)
+{
+	dst.SetX(src[0]);
+	dst.SetY(src[1]);
+	dst.SetZ(src[2]);
+}
+
 typedef struct	PhysicsStuff_t
 {
 	//this is some kind of wierd static thing
@@ -680,89 +695,37 @@ void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
 	}
 }
 
-//move should be a unit vector
+//Move should be a scaled vector coming from BipedMover.
+//BipedMover holds and controls the frame to frame velocity
+//and this function does the move, bouncing off collidable
+//stuff to end up at a position.  This decides the final
+//position of the character, and influences the velocity for
+//the next frame as well.
 void	Phys_VCharacterMove(PhysicsStuff *pPS, PhysVCharacter *pChar,
-	const vec3 move, bool bJump, bool bStanceSwitch, float secDelta)
+	const vec3 move, float secDelta, vec3 resultVelocity)
 {
 	CharacterVirtual::ExtendedUpdateSettings	eus;
 
-	Character::EGroundState	gstate	=pChar->mpChar->GetGroundState();
-
 	Vec3	grav	=pPS->mpPhys->GetGravity();
-	Vec3	movDir	={	move[0], move[1], move[2]	};	
+	Vec3	movDir	={	move[0], move[1], move[2]	};
 
-	if(pChar->mpChar->IsSupported())
-	{
-		float	curSpeed	=0.0f;
-		
-		switch(pChar->mMoveMode)
-		{
-			case	MOVE_WALK:
-				curSpeed	=pChar->mWalkSpeed;
-				break;
-			case	MOVE_RUN:
-				curSpeed	=pChar->mRunSpeed;
-				break;
-			case	MOVE_FLY:
-				curSpeed	=pChar->mFlySpeed;
-				break;
-			case	MOVE_SWIM:
-				curSpeed	=pChar->mSwimSpeed;
-				break;
-			default:
-				//TODO: warn
-				curSpeed	=pChar->mWalkSpeed;
-		}
-		
-		//Update velocity
-		Vec3	curVelocity		=pChar->mpChar->GetLinearVelocity();
-		Vec3	desiredVelocity	=curSpeed * movDir;
-		
-		if(!desiredVelocity.IsNearZero() || curVelocity.GetY() < 0.0f)
-		{
-			desiredVelocity.SetY(curVelocity.GetY());
-		}
-		
-		Vec3	newVelocity	=0.75f * curVelocity + 0.25f * desiredVelocity;
-		
-		//Jump
-		if(bJump && gstate == Character::EGroundState::OnGround)
-		{
-			newVelocity	+=Vec3(0, pChar->mJumpSpeed, 0);
-		}
-		
-		//Update the velocity
-		pChar->mpChar->SetLinearVelocity(newVelocity);
-	}
-	else	//midair?
-	{
-		float	curSpeed	=pChar->mAirSpeed;
-		
-		//Update velocity
-		Vec3	curVelocity		=pChar->mpChar->GetLinearVelocity();
-		Vec3	desiredVelocity	=curSpeed * movDir;
-		
-		desiredVelocity.SetY(curVelocity.GetY());
-		
-		Vec3	newVelocity	=0.75f * curVelocity + 0.25f * desiredVelocity;
-		
-		//Jump
-		if(bJump && gstate == Character::EGroundState::OnGround)
-		{
-			newVelocity	+=Vec3(0, pChar->mJumpSpeed, 0);
-		}
+	Vec3	oldPos	=pChar->mpChar->GetPosition();
 
-		//gravity
-		newVelocity	+=(grav * secDelta);
-		
-		//Update the velocity
-		pChar->mpChar->SetLinearVelocity(newVelocity);
-	}
+	pChar->mpChar-> SetLinearVelocity(movDir);
 
 	pChar->mpChar->ExtendedUpdate(secDelta, grav, eus,
 		pPS->mpPhys->GetDefaultBroadPhaseLayerFilter(Layers::MOVING_FRIENDLY),
 		pPS->mpPhys->GetDefaultLayerFilter(Layers::MOVING_FRIENDLY),
 		{}, {}, *pPS->mpTAlloc);
+	
+	//calc new effective velocity
+	RVec3	newPos	=pChar->mpChar->GetPosition();
+
+	//this is movement over a frame, not meters per second
+	Vec3	res	=Vec3(newPos - oldPos);
+
+	//pass back the result
+	sCopyVec(res, resultVelocity);
 }
 
 void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos)

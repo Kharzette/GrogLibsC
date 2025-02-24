@@ -40,7 +40,7 @@
 #define	ROT_RATE			10.0f
 #define	UVSCALE_RATE		1.0f
 #define	KEYTURN_RATE		0.01f
-#define	MOVE_RATE			0.1f
+#define	MOVE_THRESHOLD		0.1f
 #define	HEIGHT_SCALAR		0.15f
 #define	TER_SMOOTH_STEPS	4
 #define	RAY_LEN				100.0f
@@ -56,6 +56,8 @@
 #define	BOUNCINESS			(0.8f)
 #define	PLAYER_RADIUS		(0.25f)
 #define	PLAYER_HEIGHT		(1.75f)
+#define	MAX_UI_VERTS		(8192)
+#define	RAMP_ANGLE			0.7f	//steepness can traverse on foot
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES	55
@@ -77,9 +79,14 @@ typedef struct	TestStuff_t
 	//toggles
 	bool	mbDrawTerNodes;
 	bool	mbMouseLooking;
+	bool	mbLeftMouseDown;
 	bool	mbRunning;
 	bool	mbFlyMode;
 	
+	//clay pointer stuff
+	Clay_Vector2	mScrollDelta;
+	Clay_Vector2	mMousePos;
+
 	//jolt stuff
 	uint32_t	mSphereIDs[MAX_SPHERES];
 	int			mNumSpheres;
@@ -102,6 +109,10 @@ static void		sSetupRastVP(GraphicsDevice *pGD);
 static void		sMakeSphere(TestStuff *pTS);
 static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
 static void		sFreeCharacterMeshParts(DictSZ **ppMeshes);
+
+//clay stuff
+static const Clay_RenderCommandArray sCreateLayout(vec3 velocity);
+static void sHandleClayErrors(Clay_ErrorData errorData);
 
 //material setups
 static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
@@ -250,6 +261,18 @@ __attribute_maybe_unused__
 	//set constant buffers to shaders, think I just have to do this once
 	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
+	pTS->mpUI	=UI_Create(pTS->mpGD, pSK, MAX_UI_VERTS);
+
+	UI_AddFont(pTS->mpUI, "MeiryoUI26", 0);
+
+	//clay init
+    uint64_t totalMemorySize = Clay_MinMemorySize();
+    Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(totalMemorySize, malloc(totalMemorySize));
+    Clay_Initialize(clayMemory, (Clay_Dimensions) { (float)RESX, (float)RESY }, (Clay_ErrorHandler) { sHandleClayErrors });
+    Clay_SetMeasureTextFunction(UI_MeasureText, pTS->mpUI);
+
+	Clay_SetDebugModeEnabled(false);
+
 	pTS->mLightDir[0]		=0.3f;
 	pTS->mLightDir[1]		=-0.7f;
 	pTS->mLightDir[2]		=-0.5f;
@@ -309,9 +332,23 @@ __attribute_maybe_unused__
 				vec3	resultVelocity;
 				Phys_VCharacterMove(pPhys, pTS->mpPhysChar, mpsMove,
 					secDelta, resultVelocity);
+				
+				bSup	=Phys_VCharacterIsSupported(pTS->mpPhysChar);
+				if(bSup)
+				{
+					//here I think maybe the plane the player is on
+					//should be checked for a bad footing situation
+					//in which case velocity shouldn't be cleared
+					vec3	norm;
+					Phys_VCharacterGetGroundNormal(pTS->mpPhysChar, norm);
 
-				//probably should accum here
-//				BPM_SetVelocity(pTS->mpBPM, resultVelocity);
+					float	dotY	=glm_vec3_dot(norm, (vec3){0,1,0});
+					if(dotY > RAMP_ANGLE)
+					{
+						//if still on the ground, cancel out vertical velocity
+						BPM_SetVerticalVelocity(pTS->mpBPM, resultVelocity);
+					}
+				}
 			}
 
 			Phys_VCharacterGetPos(pTS->mpPhysChar, pTS->mPlayerPos);
@@ -338,7 +375,7 @@ __attribute_maybe_unused__
 		//player moving?
 		float	moving	=glm_vec3_norm(velocity);
 
-		if(moving > 0.0f)
+		if(moving > MOVE_THRESHOLD)
 		{
 			if(Phys_VCharacterIsSupported(pTS->mpPhysChar))
 			{
@@ -378,7 +415,7 @@ __attribute_maybe_unused__
 			glm_vec3_copy(pTS->mPlayerPos, pTS->mEyePos);
 			GameCam_UpdateRotationSecondary(pTS->mpCam, pTS->mPlayerPos, dt,
 											pTS->mDeltaPitch, pTS->mDeltaYaw, 0.0f,
-											(moving > 0)? true : false);
+											(moving > MOVE_THRESHOLD)? true : false);
 		}
 
 		//set CB view
@@ -497,6 +534,18 @@ __attribute_maybe_unused__
 		CBK_SetProjection(pCBK, textProj);
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
+		Clay_UpdateScrollContainers(true, pTS->mScrollDelta, dt);
+
+		pTS->mScrollDelta.x	=pTS->mScrollDelta.y	=0.0f;
+	
+		Clay_RenderCommandArray renderCommands = sCreateLayout(velocity);
+	
+		UI_BeginDraw(pTS->mpUI);
+	
+		UI_ClayRender(pTS->mpUI, renderCommands);
+	
+		UI_EndDraw(pTS->mpUI);
+	
 		//change back to 3D
 		CBK_SetProjection(pCBK, camProj);
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
@@ -588,6 +637,13 @@ static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt)
 	TestStuff	*pTS	=(TestStuff *)pContext;
 
 	assert(pTS);
+
+	pTS->mbLeftMouseDown	=true;
+
+	if(!pTS->mbMouseLooking)
+	{
+		Clay_SetPointerState(pTS->mMousePos, true);
+	}
 }
 
 static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt)
@@ -595,6 +651,13 @@ static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt)
 	TestStuff	*pTS	=(TestStuff *)pContext;
 
 	assert(pTS);
+
+	pTS->mbLeftMouseDown	=false;
+
+	if(!pTS->mbMouseLooking)
+	{
+		Clay_SetPointerState(pTS->mMousePos, false);
+	}
 }
 
 static void	sRightMouseDownEH(void *pContext, const SDL_Event *pEvt)
@@ -629,6 +692,13 @@ static void	sMouseMoveEH(void *pContext, const SDL_Event *pEvt)
 	{
 		pTS->mDeltaYaw		+=(pEvt->motion.xrel * MOUSE_TO_ANG);
 		pTS->mDeltaPitch	+=(pEvt->motion.yrel * MOUSE_TO_ANG);
+	}
+	else
+	{
+		pTS->mMousePos.x	=pEvt->motion.x;
+		pTS->mMousePos.y	=pEvt->motion.y;
+
+		Clay_SetPointerState(pTS->mMousePos, pTS->mbLeftMouseDown);
 	}
 }
 
@@ -701,7 +771,7 @@ static void	sKeySprintEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-//	BPM_InputSprint(pTS->mpBPM, true);
+	BPM_InputSprint(pTS->mpBPM, true);
 }
 
 static void	sKeyTurnLeftEH(void *pContext, const SDL_Event *pEvt)
@@ -959,4 +1029,38 @@ static void sMakeSphere(TestStuff *pTS)
 	Phys_SetRestitution(pTS->mpPhys, pTS->mSphereIDs[pTS->mNumSpheres], BOUNCINESS);
 	
 	pTS->mNumSpheres++;
+}
+
+static char	sVelString[64];
+
+static Clay_RenderCommandArray	sCreateLayout(vec3 velocity)
+{
+	Clay_BeginLayout();
+
+	sprintf(sVelString, "Velocity: %f, %f, %f", velocity[0], velocity[1], velocity[2]);
+
+	Clay_String	velInfo;
+
+	velInfo.chars	=sVelString;
+	velInfo.length	=strlen(sVelString);
+
+	CLAY({.id=CLAY_ID("OuterContainer"), .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) }, .padding = { 16, 16, 16, 16 }, .childGap = 16 }})
+	{
+		CLAY_TEXT(velInfo, CLAY_TEXT_CONFIG({ .fontSize = 26, .textColor = {0, 70, 70, 155} }));
+	}
+
+	return	Clay_EndLayout();
+}
+
+static bool reinitializeClay = false;
+
+static void sHandleClayErrors(Clay_ErrorData errorData) {
+    printf("%s", errorData.errorText.chars);
+    if (errorData.errorType == CLAY_ERROR_TYPE_ELEMENTS_CAPACITY_EXCEEDED) {
+        reinitializeClay = true;
+        Clay_SetMaxElementCount(Clay_GetMaxElementCount() * 2);
+    } else if (errorData.errorType == CLAY_ERROR_TYPE_TEXT_MEASUREMENT_CAPACITY_EXCEEDED) {
+        reinitializeClay = true;
+        Clay_SetMaxMeasureTextCacheWordCount(Clay_GetMaxMeasureTextCacheWordCount() * 2);
+    }
 }

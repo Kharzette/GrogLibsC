@@ -751,6 +751,13 @@ bool	Phys_CharacterIsSupported(const PhysCharacter *pChar)
 	return	pChar->mpChar->IsSupported();
 }
 
+void	Phys_VCharacterGetGroundNormal(const PhysVCharacter *pChar, vec3 normal)
+{
+	Vec3	norm	=pChar->mpChar->GetGroundNormal();
+
+	sCopyVec(norm, normal);
+}
+
 bool	Phys_VCharacterIsSupported(const PhysVCharacter *pChar)
 {
 	return	pChar->mpChar->IsSupported();

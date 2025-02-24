@@ -17,8 +17,7 @@
 #define	JUMP_FORCE			375		//leapometers
 #define	GRAVITY_FORCE		9.8f	//Gravitons
 #define	BUOYANCY_FORCE		13.125f	//Gravitons
-#define	GROUND_FRICTION		10.0f	//Frictols
-#define	STUMBLE_FRICTION	6.0f	//Frictols
+#define	GROUND_FRICTION		3.0f	//Frictols
 #define	AIR_FRICTION		0.1f	//Frictols
 #define	FLY_FRICTION		2.0f	//Frictols
 #define	SWIM_FRICTION		10.0f	//Frictols
@@ -77,16 +76,18 @@ void	BPM_SetMoveMethod(BipedMover *pBM, int method)
 	pBM->mMoveMethod	=method;
 }
 
-void	BPM_SetVelocity(BipedMover *pBM, const vec3 vel)
-{
-	glm_vec3_copy(vel, pBM->mCamVelocity);
-}
-
 
 static void AccumulateVelocity(BipedMover *pBPM, vec3 moveVec)
 {
 	glm_vec3_muladds(moveVec, 0.5f, pBPM->mCamVelocity);
 }
+
+
+void	BPM_SetVerticalVelocity(BipedMover *pBM, const vec3 vel)
+{
+	pBM->mCamVelocity[1]	=vel[1];
+}
+
 
 static void	ApplyFriction(BipedMover *pBPM, float secDelta, float friction)
 {
@@ -347,6 +348,7 @@ bool	BPM_Update(BipedMover *pBPM, bool bOnGround, float secDelta, vec3 moveVec)
 	pBPM->mbUp		=false;
 	pBPM->mbDown	=false;
 	pBPM->mbJump	=false;
+	pBPM->mbSprint	=false;
 
 	pBPM->mbMovedThisFrame	=false;
 

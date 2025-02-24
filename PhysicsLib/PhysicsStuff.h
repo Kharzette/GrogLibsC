@@ -41,6 +41,7 @@ void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
 void	Phys_VCharacterMove(PhysicsStuff *pPS, PhysVCharacter *pChar,
 			const vec3 move, float secDelta, vec3 resultVelocity);
 void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos);
+void	Phys_VCharacterGetGroundNormal(const PhysVCharacter *pChar, vec3 normal);
 void	Phys_VCharacterGetPos(const PhysVCharacter *pChar, vec3 pos);
 bool	Phys_CharacterIsSupported(const PhysCharacter *pChar);
 bool	Phys_VCharacterIsSupported(const PhysVCharacter *pChar);

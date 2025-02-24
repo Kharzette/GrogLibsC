@@ -15,7 +15,7 @@ BipedMover	*BPM_Create(GameCamera *pGC);
 
 //move method
 void	BPM_SetMoveMethod(BipedMover *pBM, int method);
-void	BPM_SetVelocity(BipedMover *pBM, const vec3 vel);
+void	BPM_SetVerticalVelocity(BipedMover *pBM, const vec3 vel);
 void	BPM_GetVelocity(const BipedMover *pBPM, vec3 vel);
 
 //update, return true if jumped

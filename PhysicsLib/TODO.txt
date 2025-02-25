@@ -1,0 +1,16 @@
+	More research on collisions affecting momentum
+		reusing result movement as velocity should work
+			but it doesn't
+	Moving platform test
+	Crouch collision tests
+	Crouch sliding
+		Remove steep slope check during slide?
+	Line of sight checks
+	Triggers
+	Character bone physics
+		Conversion from existing shapes
+		Raycasts
+		Physics for ragdolls
+		Physics for IK
+	Static mesh physics
+		like character above integrate into collada tool

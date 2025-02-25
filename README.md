@@ -14,7 +14,7 @@ Game libraries using C language, often ported from my C# libraries of the same n
 
 # TODO
 - BSP Maps
-- Integration of a physics library of some sort
+- Integration of a physics library of some sort (Jolt in progress)
 - Better collision / physics on characters
 - Static meshes with various collision shapes
 - Windows

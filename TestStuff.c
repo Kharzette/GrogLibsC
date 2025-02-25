@@ -26,6 +26,7 @@
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
 #include	"UtilityLib/BipedMover.h"
+#include	"UtilityLib/PlaneMath.h"
 #include	"TerrainLib/Terrain.h"
 #include	"MeshLib/Mesh.h"
 #include	"MeshLib/AnimLib.h"
@@ -324,9 +325,8 @@ __attribute_maybe_unused__
 				if(bSup)
 				{
 					vec3	norm;
-					Phys_VCharacterGetGroundNormal(pTS->mpPhysChar, norm);	
-					float	dotY	=glm_vec3_dot(norm, (vec3){0,1,0});
-					bFooting		=(dotY > RAMP_ANGLE);
+					Phys_VCharacterGetGroundNormal(pTS->mpPhysChar, norm);
+					bFooting	=PM_IsGroundNormalAng(norm, RAMP_ANGLE);
 				}
 
 				bool	bJumped	=BPM_Update(pTS->mpBPM, bSup, bFooting, secDelta, moveVec);
@@ -352,9 +352,7 @@ __attribute_maybe_unused__
 					//in which case velocity shouldn't be cleared
 					vec3	norm;
 					Phys_VCharacterGetGroundNormal(pTS->mpPhysChar, norm);
-
-					float	dotY	=glm_vec3_dot(norm, (vec3){0,1,0});
-					if(dotY > RAMP_ANGLE)
+					if(PM_IsGroundNormalAng(norm, RAMP_ANGLE))
 					{
 						//if still on the ground, cancel out vertical velocity
 						BPM_SetVerticalVelocity(pTS->mpBPM, resultVelocity);
@@ -390,7 +388,7 @@ __attribute_maybe_unused__
 		{
 			if(Phys_VCharacterIsSupported(pTS->mpPhysChar))
 			{
-				animTime	+=dt * moving * 3.0f;
+				animTime	+=dt * moving * 1.0f;
 			}
 			else
 			{

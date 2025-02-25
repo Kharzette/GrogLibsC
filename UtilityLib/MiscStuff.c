@@ -5,7 +5,6 @@
 #include	<cglm/box.h>
 #include	<assert.h>
 #include	"MiscStuff.h"
-#include	"ConvexVolume.h"
 
 
 #define		MIN_MAX_BOUNDS	15192.0f

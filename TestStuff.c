@@ -840,9 +840,12 @@ static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetVShader(pRet, "WNormWPosTexFactVS", pSK);
 	MAT_SetPShader(pRet, "TriTexFact8PS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSRV0(pRet, "Terrain/TerAtlas", pSK);
 	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 3.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+	if(!MAT_SetSRV0(pRet, "Terrain/TerAtlas", pSK))
+	{
+		printf("Atlas texture not found!\n");
+	}
 
 	//srv is set in the material, but need input layout set
 	Terrain_SetSRVAndLayout(pTS->mpTer, NULL, pSK);

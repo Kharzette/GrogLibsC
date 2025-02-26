@@ -5,7 +5,7 @@
 	Crouch collision tests
 	Crouch sliding
 		Remove steep slope check during slide?
-	Line of sight checks
+x	Line of sight checks
 	Triggers
 	Character bone physics
 		Conversion from existing shapes

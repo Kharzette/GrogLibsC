@@ -1,3 +1,5 @@
+//This started out as jolt's helloworld.cpp
+//
 // Jolt Physics Library (https://github.com/jrouwe/JoltPhysics)
 // SPDX-FileCopyrightText: 2021 Jorrit Rouwe
 // SPDX-License-Identifier: MIT
@@ -21,6 +23,10 @@
 #include	<Jolt/Physics/Body/BodyActivationListener.h>
 #include	<Jolt/Physics/Character/Character.h>
 #include	<Jolt/Physics/Character/CharacterVirtual.h>
+#include	<Jolt/Physics/Collision/CollisionCollector.h>
+#include	<Jolt/Physics/Collision/CollisionCollectorImpl.h>
+#include	<Jolt/Physics/Collision/RayCast.h>
+#include	<Jolt/Physics/Collision/CastResult.h>
 
 // STL includes
 #include <iostream>
@@ -203,7 +209,7 @@ public:
 	// See: ContactListener
 	virtual ValidateResult	OnContactValidate(const Body &inBody1, const Body &inBody2, RVec3Arg inBaseOffset, const CollideShapeResult &inCollisionResult) override
 	{
-		cout << "Contact validate callback" << endl;
+//		cout << "Contact validate callback" << endl;
 
 		// Allows you to ignore a contact before it is created (using layers to not make objects collide is cheaper!)
 		return ValidateResult::AcceptAllContactsForThisBodyPair;
@@ -211,17 +217,17 @@ public:
 
 	virtual void			OnContactAdded(const Body &inBody1, const Body &inBody2, const ContactManifold &inManifold, ContactSettings &ioSettings) override
 	{
-		cout << "A contact was added" << endl;
+//		cout << "A contact was added" << endl;
 	}
 
 	virtual void			OnContactPersisted(const Body &inBody1, const Body &inBody2, const ContactManifold &inManifold, ContactSettings &ioSettings) override
 	{
-		cout << "A contact was persisted" << endl;
+//		cout << "A contact was persisted" << endl;
 	}
 
 	virtual void			OnContactRemoved(const SubShapeIDPair &inSubShapePair) override
 	{
-		cout << "A contact was removed" << endl;
+//		cout << "A contact was removed" << endl;
 	}
 };
 
@@ -240,21 +246,22 @@ public:
 	}
 };
 
-static void	sCopyVec(const Vec3 src, vec3 dst)
+static void	sCopyVec(const Vec3 *pSrc, vec3 dst)
 {
-	dst[0]	=src.GetX();
-	dst[1]	=src.GetY();
-	dst[2]	=src.GetZ();
+	dst[0]	=pSrc->GetX();
+	dst[1]	=pSrc->GetY();
+	dst[2]	=pSrc->GetZ();
 }
 
 __attribute_maybe_unused__
-static void	sCopyvec(const vec3 src, Vec3 dst)
+static void	sCopyvec(const vec3 src, Vec3 *pDst)
 {
-	dst.SetX(src[0]);
-	dst.SetY(src[1]);
-	dst.SetZ(src[2]);
+	pDst->SetX(src[0]);
+	pDst->SetY(src[1]);
+	pDst->SetZ(src[2]);
 }
 
+//the C object for the rest of GrogLibs
 typedef struct	PhysicsStuff_t
 {
 	//this is some kind of wierd static thing
@@ -298,15 +305,6 @@ typedef struct	PhysVCharacter_t
 
 	Shape		*mpStandingShape;
 	Shape		*mpCrouchingShape;
-
-	uint32_t	mMoveMode;
-
-	float	mRunSpeed;
-	float	mWalkSpeed;
-	float	mSwimSpeed;
-	float	mAirSpeed;	//for midair movement
-	float	mFlySpeed;	//for flying mode
-	float	mJumpSpeed;
 
 }	PhysVCharacter;
 
@@ -540,16 +538,6 @@ PhysVCharacter	*Phys_CreateVCharacter(PhysicsStuff *pPS,
 
 	memset(pRet, 0, sizeof(PhysVCharacter));
 
-	//set defaults TODO: let user set these
-	pRet->mRunSpeed		=10.0f;
-	pRet->mWalkSpeed	=4.0f;
-	pRet->mAirSpeed		=4.0f;
-	pRet->mFlySpeed		=30.0f;
-	pRet->mSwimSpeed	=6.0f;
-	pRet->mJumpSpeed	=5.0f;
-
-	pRet->mMoveMode	=MOVE_RUN;
-
 	pRet->mpStandingShape	=new CapsuleShape(height * 0.5f, radius);
 	pRet->mpCrouchingShape	=new CapsuleShape(height * 0.25f, radius);
 
@@ -725,7 +713,7 @@ void	Phys_VCharacterMove(PhysicsStuff *pPS, PhysVCharacter *pChar,
 	Vec3	res	=Vec3(newPos - oldPos);
 
 	//pass back the result
-	sCopyVec(res, resultVelocity);
+	sCopyVec(&res, resultVelocity);
 }
 
 void	Phys_CharacterGetPos(const PhysCharacter *pChar, vec3 pos)
@@ -755,7 +743,7 @@ void	Phys_VCharacterGetGroundNormal(const PhysVCharacter *pChar, vec3 normal)
 {
 	Vec3	norm	=pChar->mpChar->GetGroundNormal();
 
-	sCopyVec(norm, normal);
+	sCopyVec(&norm, normal);
 }
 
 bool	Phys_VCharacterIsSupported(const PhysVCharacter *pChar)
@@ -827,4 +815,80 @@ void	Phys_SetRestitution(PhysicsStuff *pPS, uint32_t bodyID, float resti)
 	BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
 
 	body_interface.SetRestitution(bid, resti);
+}
+
+
+bool	Phys_CastRayAtBodyBroad(const PhysicsStuff *pPS, vec3 org, uint32_t bodyID)
+{
+	const BroadPhaseQuery	&bpq	=pPS->mpPhys->GetBroadPhaseQuery();
+
+	BodyID	bid(bodyID);
+
+	const BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+	RVec3	rpos	=body_interface.GetPosition(bid);
+
+	RayCast	rc;
+
+	sCopyvec(org, &rc.mOrigin);
+
+	//make direction vector
+	rc.mDirection	=rpos - rc.mOrigin;
+
+//	AllHitCollisionCollector<RayCastBodyCollector>		ahcc;
+	ClosestHitCollisionCollector<RayCastBodyCollector>	chcc;
+
+	bpq.CastRay(rc, chcc,
+		pPS->mpPhys->GetDefaultBroadPhaseLayerFilter(Layers::MOVING_FRIENDLY),
+		pPS->mpPhys->GetDefaultLayerFilter(Layers::MOVING_FRIENDLY));
+
+//	ahcc.Sort();
+
+	//bool	bHits	=!ahcc.mHits.empty();
+	if(!chcc.HadHit())
+	{
+		return	false;
+	}
+	return	(chcc.mHit.mBodyID == bid);
+/*
+	for(BroadPhaseCastResult hit : ahcc.mHits)
+	{
+		if(hit.mBodyID == bid)
+		{
+			return	true;
+		}
+	}
+	return	false;*/
+}
+
+bool	Phys_CastRayAtBodyNarrow(const PhysicsStuff *pPS, vec3 org, uint32_t bodyID)
+{
+	const NarrowPhaseQuery	&npq	=pPS->mpPhys->GetNarrowPhaseQuery();
+
+	BodyID	bid(bodyID);
+
+	const BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+	RVec3	rpos	=body_interface.GetPosition(bid);
+	Vec3	rayOrg;
+
+	sCopyvec(org, &rayOrg);
+
+	//make direction vector
+	Vec3	rayDir	=rpos - rayOrg;
+
+	RRayCast	rc	={	rayOrg, rayDir	};
+
+	RayCastResult	hit;
+
+	bool	bHit	=npq.CastRay(rc, hit,
+		pPS->mpPhys->GetDefaultBroadPhaseLayerFilter(Layers::MOVING_FRIENDLY),
+		pPS->mpPhys->GetDefaultLayerFilter(Layers::MOVING_FRIENDLY));
+
+	if(!bHit)
+	{
+		return	false;
+	}
+
+	return	(hit.mBodyID == bid);
 }

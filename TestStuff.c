@@ -57,6 +57,7 @@
 #define	BOUNCINESS			(0.8f)
 #define	PLAYER_RADIUS		(0.25f)
 #define	PLAYER_HEIGHT		(1.75f)
+#define	PLAYER_EYE_OFFSET	(0.8)
 #define	MAX_UI_VERTS		(8192)
 #define	RAMP_ANGLE			0.7f	//steepness can traverse on foot
 
@@ -110,9 +111,11 @@ static void		sSetupRastVP(GraphicsDevice *pGD);
 static void		sMakeSphere(TestStuff *pTS);
 static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
 static void		sFreeCharacterMeshParts(DictSZ **ppMeshes);
+static void 	sCheckLOS(const TestStuff *pTS);
+static void		sGetSphereColour(const TestStuff *pTS, int spIdx, vec4 colour);
 
 //clay stuff
-static const Clay_RenderCommandArray sCreateLayout(vec3 velocity);
+static const Clay_RenderCommandArray sCreateLayout(const TestStuff *pTS, vec3 velocity);
 static void sHandleClayErrors(Clay_ErrorData errorData);
 
 //material setups
@@ -501,33 +504,13 @@ __attribute_maybe_unused__
 		{
 			__attribute((aligned(32)))	mat4	wPos;
 
-			vec4	friend		={	0.5f, 1.0f, 0.5f, 1.0f	};
-			vec4	friend_proj	={	1.0f, 1.0f, 0.5f, 1.0f	};
-			vec4	enemy		={	1.0f, 0.5f, 0.5f, 1.0f	};
-			vec4	enemy_proj	={	1.0f, 0.5f, 1.0f, 1.0f	};
-
 			vec3	pos;
 			Phys_GetBodyPos(pPhys, pTS->mSphereIDs[i], pos);
 
-			uint16_t	layer;
-			Phys_GetBodyLayer(pPhys, pTS->mSphereIDs[i], &layer);
+			vec4	spCol;
+			sGetSphereColour(pTS, i, spCol);
 
-			if(layer == LAY_MOVING_FRIENDLY)
-			{
-				MAT_SetSolidColour(pSphereMat, friend);
-			}
-			else if(layer == LAY_MOVING_ENEMY)
-			{
-				MAT_SetSolidColour(pSphereMat, enemy);
-			}
-			else if(layer == LAY_MOVING_FRIENDLY_PROJECTILE)
-			{
-				MAT_SetSolidColour(pSphereMat, friend_proj);
-			}
-			else if(layer == LAY_MOVING_ENEMY_PROJECTILE)
-			{
-				MAT_SetSolidColour(pSphereMat, enemy_proj);
-			}
+			MAT_SetSolidColour(pSphereMat, spCol);
 
 			glm_translate_make(wPos, pos);
 			MAT_SetWorld(pSphereMat, wPos);
@@ -547,7 +530,7 @@ __attribute_maybe_unused__
 
 		pTS->mScrollDelta.x	=pTS->mScrollDelta.y	=0.0f;
 	
-		Clay_RenderCommandArray renderCommands = sCreateLayout(velocity);
+		Clay_RenderCommandArray renderCommands = sCreateLayout(pTS, velocity);
 	
 		UI_BeginDraw(pTS->mpUI);
 	
@@ -1043,9 +1026,68 @@ static void sMakeSphere(TestStuff *pTS)
 	pTS->mNumSpheres++;
 }
 
-static char	sVelString[64];
+static void	sGetSphereColour(const TestStuff *pTS, int spIdx, vec4 colour)
+{
+	vec4	friend		={	0.5f, 1.0f, 0.5f, 1.0f	};
+	vec4	friend_proj	={	1.0f, 1.0f, 0.5f, 1.0f	};
+	vec4	enemy		={	1.0f, 0.5f, 0.5f, 1.0f	};
+	vec4	enemy_proj	={	1.0f, 0.5f, 1.0f, 1.0f	};
+	vec4	unknown		={	0.1f, 0.1f, 0.1f, 1.0f	};
 
-static Clay_RenderCommandArray	sCreateLayout(vec3 velocity)
+	uint16_t	layer;
+	Phys_GetBodyLayer(pTS->mpPhys, pTS->mSphereIDs[spIdx], &layer);
+
+	if(layer == LAY_MOVING_FRIENDLY)
+	{
+		glm_vec4_copy(friend, colour);
+	}
+	else if(layer == LAY_MOVING_ENEMY)
+	{
+		glm_vec4_copy(enemy, colour);
+	}
+	else if(layer == LAY_MOVING_FRIENDLY_PROJECTILE)
+	{
+		glm_vec4_copy(friend_proj, colour);
+	}
+	else if(layer == LAY_MOVING_ENEMY_PROJECTILE)
+	{
+		glm_vec4_copy(enemy_proj, colour);
+	}
+	else
+	{
+		glm_vec4_copy(unknown, colour);
+	}
+}
+
+static char	sVelString[64];
+static char	sLOSStrings[MAX_SPHERES][64];
+
+static void sCheckLOS(const TestStuff *pTS)
+{
+	vec3	charEyePos;
+	vec3	toEye		={0, PLAYER_EYE_OFFSET, 0};
+
+	glm_vec3_add(pTS->mPlayerPos, toEye, charEyePos);
+
+	for(int i=0;i < pTS->mNumSpheres;i++)
+	{
+		if(Phys_CastRayAtBodyNarrow(pTS->mpPhys, charEyePos, pTS->mSphereIDs[i]))
+		{
+			sprintf(sLOSStrings[i], "Can see sphere index %d\n", i);
+
+			vec4	spCol;
+			sGetSphereColour(pTS, i, spCol);
+
+			Misc_SRGBToLinear255(spCol, spCol);
+
+			Clay_String	los	={	strlen(sLOSStrings[i]), sLOSStrings[i]	};
+
+			CLAY_TEXT(los, CLAY_TEXT_CONFIG({ .fontSize = 26, .textColor = { spCol[0], spCol[1], spCol[2], spCol[3] } }));
+		}
+	}
+}
+
+static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, vec3 velocity)
 {
 	Clay_BeginLayout();
 
@@ -1056,9 +1098,21 @@ static Clay_RenderCommandArray	sCreateLayout(vec3 velocity)
 	velInfo.chars	=sVelString;
 	velInfo.length	=strlen(sVelString);
 
-	CLAY({.id=CLAY_ID("OuterContainer"), .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) }, .padding = { 16, 16, 16, 16 }, .childGap = 16 }})
+	CLAY({.id=CLAY_ID("OuterContainer"), .layout =
+		{
+			.layoutDirection = CLAY_TOP_TO_BOTTOM,
+			.sizing =
+			{
+				.width = CLAY_SIZING_GROW(0),
+				.height = CLAY_SIZING_GROW(0)
+			},
+			.padding = { 8, 8, 8, 8 },
+			.childGap = 8
+		}})
 	{
 		CLAY_TEXT(velInfo, CLAY_TEXT_CONFIG({ .fontSize = 26, .textColor = {0, 70, 70, 155} }));
+
+		sCheckLOS(pTS);
 	}
 
 	return	Clay_EndLayout();

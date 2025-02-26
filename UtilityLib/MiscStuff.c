@@ -180,6 +180,24 @@ void	Misc_SRGBToLinear(const vec4 vSRGB, vec4 vLin)
 	vLin[3]	=vSRGB[3];
 }
 
+void	Misc_SRGBToLinear255(const vec4 vSRGB, vec4 vLin)
+{
+	for(int i=0;i < 3;i++)
+	{
+		vLin[i]	=powf(vSRGB[i], 2.2f);
+	}
+	vLin[3]	=vSRGB[3];
+
+	__m128	arg	=_mm_load_ps(vLin);
+
+	__m128	bRec	=_mm_load_ps(byteMul);
+
+	//scale by 255
+	arg	=_mm_mul_ps(bRec, arg);
+
+	_mm_store_ps(vLin, arg);
+}
+
 
 void	Misc_ClearBounds(vec3 min, vec3 max)
 {

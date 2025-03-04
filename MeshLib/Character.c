@@ -163,6 +163,37 @@ StringList	*Character_GetPartList(const Character *pChar)
 	return	pRet;
 }
 
+bool	Character_RayIntersectBones(const Character *pChar, const vec3 startPos, const vec3 endPos,
+									int *pHitIndex, vec3 hitPos, vec3 hitNorm)
+{
+	assert(pChar != NULL);
+
+	for(int i=0;i < MAX_BONES;i++)
+	{
+		mat4	boneToWorld;
+
+		glm_mat4_mul(pChar->mBones[i], pChar->mTransform, boneToWorld);
+
+		int	choice	=Skin_GetBoundChoice(pChar->mpSkin, i);
+
+		if(choice == BONE_COL_SHAPE_BOX)
+		{
+		}
+		else if(choice == BONE_COL_SHAPE_CAPSULE)
+		{
+		}
+		else if(choice == BONE_COL_SHAPE_SPHERE)
+		{
+		}
+		else if(choice == BONE_COL_SHAPE_INVALID)
+		{
+			continue;
+		}
+	}
+
+
+}
+
 void	Character_ReNamePart(Character *pChar, const char *pOldName, const char *pNewName)
 {
 	assert(pChar != NULL);

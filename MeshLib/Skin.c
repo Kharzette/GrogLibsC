@@ -12,7 +12,6 @@
 typedef struct	Skin_t
 {
 	mat4	mInverseBindPoses[MAX_BONES];
-	mat4	mBindPoses[MAX_BONES];	
 
 	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
 										//units in meters by default
@@ -29,6 +28,22 @@ typedef struct	Skin_t
 	mat4	mRootTransform;	//art prog -> grogspace
 	mat4	mScaledRoot;	//scaleMat * root
 }	Skin;
+
+
+Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
+{
+	#ifdef __AVX__
+	Skin	*pRet	=aligned_alloc(32, sizeof(Skin));
+#else
+	Skin	*pRet	=aligned_alloc(16, sizeof(Skin));
+#endif
+
+	memset(pRet, 0, sizeof(Skin));
+
+	memcpy(pRet->mInverseBindPoses, pIBPs, numBinds);
+
+	pRet->mNumBinds	=numBinds;
+}
 
 
 void	Skin_Destroy(Skin *pSkin)
@@ -51,7 +66,6 @@ Skin	*Skin_Read(FILE *f)
 #endif
 
 	glm_mat4_identity_array(pRet->mInverseBindPoses, MAX_BONES);
-	glm_mat4_identity_array(pRet->mBindPoses, MAX_BONES);
 
 	fread(&pRet->mNumBinds, sizeof(int), 1, f);
 
@@ -61,10 +75,6 @@ Skin	*Skin_Read(FILE *f)
 		fread(&idx, sizeof(int), 1, f);
 
 		fread(pRet->mInverseBindPoses[idx], sizeof(mat4), 1, f);
-
-//		glm_mat4_inv(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
-
-		glm_mat4_transpose_to(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
 	}
 
 	fread(&pRet->mNumShapes, sizeof(int), 1, f);

@@ -10,6 +10,7 @@
 typedef struct	Skin_t		Skin;
 typedef struct	Skeleton_t	Skeleton;
 
+Skin	*Skin_Create(mat4 *pIBPs, int numBinds);
 Skin	*Skin_Read(FILE *f);
 void	Skin_Write(const Skin *pSkin, FILE *f);
 void	Skin_Destroy(Skin *pSkin);

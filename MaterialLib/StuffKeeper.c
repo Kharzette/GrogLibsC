@@ -48,7 +48,7 @@ typedef struct	StuffKeeper_t
 
 	DictSZ	*mpLayouts;			//ID3D11InputLayout
 	DictSZ	*mpLayCounts;		//Num elements in layout
-	DictSZ	*mpDescs;			//Layout element descriptors
+	DictSZ	*mpElems;			//Layout elements in simple int arrays
 
 	DictSZ	*mpEntryLayouts;	//UT_string layout name
 
@@ -1216,11 +1216,11 @@ static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
 	}
 	ReadEntryLayouts(f, &pSK->mpEntryLayouts);
 
-	//make the layout descriptors
-	MakeDescs(&pSK->mpDescs);
+	//make the layout elements for matching later
+	Layouts_MakeElems(&pSK->mpElems, &pSK->mpLayCounts);
 
 	//fill the layouts dictionary
-	MakeLayouts(pGD, &pSK->mpDescs, pSK->mpVSCode, &pSK->mpLayouts, &pSK->mpLayCounts);
+	Layouts_MakeLayouts(pGD, pSK->mpVSCode, &pSK->mpLayouts);
 }
 
 
@@ -1467,5 +1467,6 @@ void	TestSKStuff(void)
 ID3D11InputLayout	*StuffKeeper_FindMatch(const StuffKeeper *pSK,
 	int elems[], int elCounts)
 {
-	return	FindMatch(&pSK->mpLayouts, &pSK->mpLayCounts, &pSK->mpDescs, elems, elCounts);
+	return	Layouts_FindMatch(pSK->mpLayouts, pSK->mpLayCounts,
+		pSK->mpElems, elems, elCounts);
 }

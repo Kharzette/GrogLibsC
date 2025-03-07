@@ -17,10 +17,15 @@ typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef	struct	DictSZ_t			DictSZ;
 
 
-extern void	MakeDescs(DictSZ **ppDescs);
-extern void	MakeLayouts(GraphicsDevice *pGD, const DictSZ **ppDescs,
-	const DictSZ *pVSCode, DictSZ **ppLayouts, DictSZ **ppLaySizes);
+//create vertex formats for later matching to layouts
+extern void	Layouts_MakeElems(DictSZ **ppElems, DictSZ **ppLaySizes);
 
-extern ID3D11InputLayout	*FindMatch(const DictSZ **ppLays,
-	const DictSZ **ppLayCounts, const DictSZ **ppDescs,
+//returns the usual grog sizes (I squish into 16 bit floats alot)
+extern void	Layouts_GetGrogSizes(const int elems[], int sizes[], int elCount);
+
+extern void	Layouts_MakeLayouts(GraphicsDevice *pGD,
+	const DictSZ *pVSCode, DictSZ **ppLayouts);
+
+extern ID3D11InputLayout	*Layouts_FindMatch(const DictSZ *pLays,
+	const DictSZ *pLayCounts, const DictSZ *pElems,
 	int elems[], int elCount);

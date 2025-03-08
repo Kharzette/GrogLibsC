@@ -523,19 +523,23 @@ void CBK_SetAniIntensities(CBKeeper *pCBK, const float *pAni)
 
 
 //character bones
-void CBK_SetBones(CBKeeper *pCBK, const mat4 *pBones)
+void CBK_SetBones(CBKeeper *pCBK, const mat4 *pBones, int numBones)
 {
-	memcpy(pCBK->mBones, pBones, MAX_BONES * sizeof(mat4));
+	assert(numBones < MAX_BONES);
+
+	memcpy(pCBK->mBones, pBones, numBones * sizeof(mat4));
 }
 
-void CBK_SetBonesWithTranspose(CBKeeper *pCBK, const mat4 *pBones)
+void CBK_SetBonesWithTranspose(CBKeeper *pCBK, const mat4 *pBones, int numBones)
 {
 	if(pBones == NULL)
 	{
 		return;
 	}
 
-	for(int i=0;i < MAX_BONES;i++)
+	assert(numBones < MAX_BONES);
+
+	for(int i=0;i < numBones;i++)
 	{
 		glm_mat4_transpose_to(pBones[i], pCBK->mBones[i]);
 	}

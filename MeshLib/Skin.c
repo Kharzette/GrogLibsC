@@ -137,7 +137,7 @@ void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
 {
 	Skeleton_FillBoneArray(pSkel, pBones);
 
-	for(int i=0;i < MAX_BONES;i++)
+	for(int i=0;i < pSkin->mNumBinds;i++)
 	{
 		//On windows side this is: bone	=ibp * bone * rootXForm * scale
 		//here it seems to be root * bone * ibp * scale
@@ -145,6 +145,11 @@ void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
 		glm_mat4_mul(pBones[i], pSkin->mInverseBindPoses[i], pBones[i]);
 		glm_mat4_mul(pSkin->mScaleMat, pBones[i], pBones[i]);
 	}
+}
+
+int	Skin_GetNumBones(const Skin *pSkin)
+{
+	return	pSkin->mNumBinds;
 }
 
 int		Skin_GetBoundChoice(const Skin *pSkin, int boneIdx)

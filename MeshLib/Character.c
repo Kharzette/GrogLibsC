@@ -33,6 +33,41 @@ typedef struct	Character_t
 
 }	Character;
 
+Character	*Character_Create(Skin *pSkin, Mesh *pMesh)
+{
+#ifdef __AVX__
+	Character	*pRet	=aligned_alloc(32, sizeof(Character));
+#else
+	Character	*pRet	=aligned_alloc(16, sizeof(Character));
+#endif
+
+	memset(pRet, 0, sizeof(Character));
+
+	glm_mat4_identity(pRet->mTransform);
+
+	pRet->mpSkin	=pSkin;
+
+	pRet->mpParts	=malloc(sizeof(MeshPart));
+
+	pRet->mpParts->mbVisible	=true;
+	pRet->mpParts->mMaterialID	=0;
+	pRet->mpParts->mpPartName	=Mesh_GetName(pMesh);
+
+	utstring_new(pRet->mpParts->mpMatName);
+
+	utstring_printf(pRet->mpParts->mpMatName, "default");
+
+	pRet->mNumParts	=1;
+
+	int	numBones	=Skin_GetNumBones(pSkin);
+
+#ifdef __AVX__
+	pRet->mBones	=aligned_alloc(32, sizeof(mat4) * numBones);
+#else
+	pRet->mBones	=aligned_alloc(16, sizeof(mat4) * numBones);
+#endif
+}
+
 
 Character	*Character_Read(const char *szFileName)
 {
@@ -124,7 +159,7 @@ void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
 	//set bones from anim lib / skin
 	Skin_FillBoneArray(pChar->mpSkin, AnimLib_GetSkeleton(pAL), pChar->mBones);
 
-	CBK_SetBonesWithTranspose(pCBK, pChar->mBones);
+	CBK_SetBonesWithTranspose(pCBK, pChar->mBones, Skin_GetNumBones(pChar->mpSkin));
 	CBK_UpdateCharacter(pCBK, pGD);
 	CBK_SetCharacterToShaders(pCBK, pGD);
 

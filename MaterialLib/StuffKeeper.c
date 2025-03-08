@@ -1285,6 +1285,8 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	DictSZ_New(&pRet->mpSSs);
 	DictSZ_New(&pRet->mpLayouts);
 	DictSZ_New(&pRet->mpEntryLayouts);
+	DictSZ_New(&pRet->mpElems);
+	DictSZ_New(&pRet->mpLayCounts);
 
 	LoadShaders(pRet, sm);
 	CreateShadersFromCode(pRet, pGD);

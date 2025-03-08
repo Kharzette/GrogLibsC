@@ -32,6 +32,7 @@ typedef struct	Mesh_t
 	uint16_t	*mpIndData;
 }	Mesh;
 
+
 //C# stored types, but we just need the size
 //dumped from MeshDumpTypes
 size_t	sTypeSizes[110]	={
@@ -96,6 +97,37 @@ static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
 }
 
+
+Mesh	*Mesh_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
+	const UT_string *pName, const void *pVData, const void *pIndData,
+	const int vertElems[], int velCount,
+	int	numVerts, int numInds, int vertSize)
+{
+	Mesh	*pRet	=malloc(sizeof(Mesh));
+
+	memset(pRet, 0, sizeof(Mesh));
+
+	pRet->mpName	=pName;
+
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeVBDesc(&bufDesc, vertSize * numVerts);
+	pRet->mpVerts	=GD_CreateBufferWithData(pGD, &bufDesc, pVData, bufDesc.ByteWidth);
+
+	MakeIBDesc(&bufDesc, numInds * sizeof(uint16_t));
+	pRet->mpIndexs	=GD_CreateBufferWithData(pGD, &bufDesc, pIndData, bufDesc.ByteWidth);
+
+	//find a match for the vert format
+	pRet->mpLayout	=StuffKeeper_FindMatch(pSK, vertElems, velCount);
+
+	pRet->mNumVerts		=numVerts;
+	pRet->mNumTriangles	=numInds / 3;
+	pRet->mVertSize		=vertSize;
+
+	//c# stuff, will get rid of eventually
+	pRet->mTypeIndex	=-1;
+
+	return	pRet;
+}
 
 Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 					const char *szFileName, bool bEditor)
@@ -218,6 +250,12 @@ void	Mesh_Write(const Mesh *pMesh, const char *szFileName)
 	}
 
 	fclose(f);
+}
+
+
+const UT_string	*Mesh_GetName(const Mesh *pMesh)
+{
+	return	pMesh->mpName;
 }
 
 //an early draw effort, later will have material lib

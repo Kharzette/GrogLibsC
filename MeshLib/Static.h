@@ -9,6 +9,7 @@ typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	CBKeeper_t			CBKeeper;
 
 
+Static	*Static_Create(Mesh *pMesh);
 Static	*Static_Read(const char *szFileName);
 void	Static_Write(const Static *pStat, const char *szFileName);
 void	Static_Draw(const Static *pStat, const DictSZ *pMeshes,

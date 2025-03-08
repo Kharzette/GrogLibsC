@@ -10,7 +10,10 @@ typedef struct	MaterialLib_t		MaterialLib;
 typedef struct	AnimLib_t			AnimLib;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	CBKeeper_t			CBKeeper;
+typedef struct	Mesh_t				Mesh;
 
+
+Character	*Character_Create(Skin *pSkin, Mesh *pMesh);
 Character	*Character_Read(const char *szFileName);
 void		Character_Write(const Character *pChar, const char *szFileName);
 

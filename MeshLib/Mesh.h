@@ -1,4 +1,5 @@
 #pragma once
+#include	<utstring.h>
 
 
 typedef struct	Mesh_t				Mesh;
@@ -7,6 +8,13 @@ typedef struct	StuffKeeper_t		StuffKeeper;
 typedef struct	Material_t			Material;
 typedef struct	CBKeeper_t			CBKeeper;
 
+//new gltf way
+Mesh	*Mesh_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
+	const UT_string *pName, const void *pVData, const void *pIndData,
+	const int vertElems[], int velCount,
+	int	numVerts, int numInds, int vertSize);
+
+const UT_string	*Mesh_GetName(const Mesh *pMesh);
 
 Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName, bool bEditor);
 void	Mesh_Write(const Mesh *pMesh, const char *szFileName);

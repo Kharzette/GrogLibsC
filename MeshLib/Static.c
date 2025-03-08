@@ -29,6 +29,42 @@ typedef struct	Static_t
 }	Static;
 
 
+Static	*Static_Create(Mesh *pMesh)
+{
+#ifdef __AVX__
+	Static	*pRet	=aligned_alloc(32, sizeof(Static));
+#else
+	Static	*pRet	=aligned_alloc(16, sizeof(Static));
+#endif
+
+	memset(pRet, 0, sizeof(Static));
+
+	glm_mat4_identity(pRet->mTransform);
+
+	pRet->mpParts	=malloc(sizeof(MeshPart));
+
+	pRet->mpParts->mbVisible	=true;
+	pRet->mpParts->mMaterialID	=0;
+	pRet->mpParts->mpPartName	=Mesh_GetName(pMesh);
+
+	utstring_new(pRet->mpParts->mpMatName);
+
+	utstring_printf(pRet->mpParts->mpMatName, "default");
+
+	pRet->mNumParts	=1;
+
+#ifdef __AVX__
+	pRet->mTransforms	=aligned_alloc(32, sizeof(mat4) * pRet->mNumParts);
+#else
+	pRet->mTransforms	=aligned_alloc(16, sizeof(mat4) * pRet->mNumParts);
+#endif
+
+	//TODO: replace with real xforms
+	glm_mat4_identity_array(pRet->mTransforms, pRet->mNumParts);
+
+	return	pRet;
+}
+
 Static	*Static_Read(const char *szFileName)
 {
 	FILE	*f	=fopen(szFileName, "rb");

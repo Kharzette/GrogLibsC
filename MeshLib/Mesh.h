@@ -16,8 +16,10 @@ Mesh	*Mesh_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
 
 const UT_string	*Mesh_GetName(const Mesh *pMesh);
 
-Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName, bool bEditor);
-void	Mesh_Write(const Mesh *pMesh, const char *szFileName);
+Mesh	*Mesh_ReadFromFile(GraphicsDevice *pGD, StuffKeeper *pSK, const char *szFileName, bool bEditor);
+Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK, FILE *, bool bEditor);
+void	Mesh_WriteToFile(const Mesh *pMesh, const char *szFileName);
+void	Mesh_Write(const Mesh *pMesh, FILE *f);
 void	Mesh_Destroy(Mesh *pMesh);
 void	Mesh_SetName(Mesh *pMesh, const char *szNew);
 void	Mesh_DrawMat(const Mesh *pMesh, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat);

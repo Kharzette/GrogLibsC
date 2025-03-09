@@ -15,13 +15,13 @@ typedef struct	ShaderBytes_t
 typedef struct	Match_t
 {
 	//search criteria
-	int	*mpElements;
-	int	mElementCount;
+	const int	*mpElements;
+	int			mElementCount;
 
-	DictSZ	*mpLayCounts;
+	const DictSZ	*mpLayCounts;
 
 	//the match
-	UT_string	*mpKey;
+	const UT_string	*mpKey;
 }	Match;
 
 
@@ -530,6 +530,17 @@ static void	sForEachEDesc(const UT_string *pKey, const void *pValue, void *pCont
 }
 
 
+const UT_string	*Layouts_FindMatch(
+	const DictSZ *pLayCounts, const DictSZ *pElems,
+	const int elems[], int elCount)
+{
+	Match	m	={	elems, elCount, pLayCounts, NULL	};
+
+	DictSZ_ForEach(pElems, sForEachEDesc, &m);
+
+	return	m.mpKey;
+}
+
 void	Layouts_GetGrogSizes(const int elems[], int sizes[], int elCount)
 {
 	for(int i=0;i < elCount;i++)
@@ -556,21 +567,4 @@ void	Layouts_GetGrogSizes(const int elems[], int sizes[], int elCount)
 				break;
 		}
 	}
-}
-
-
-ID3D11InputLayout	*Layouts_FindMatch(const DictSZ *pLays,
-	const DictSZ *pLayCounts, const DictSZ *pElems,
-	int elems[], int elCount)
-{
-	Match	m	={	elems, elCount, pLayCounts, NULL	};
-
-	DictSZ_ForEach(pElems, sForEachEDesc, &m);
-
-	if(m.mpKey == NULL)
-	{
-		return	NULL;	//no match
-	}
-
-	return	DictSZ_GetValue(pLays, m.mpKey);
 }

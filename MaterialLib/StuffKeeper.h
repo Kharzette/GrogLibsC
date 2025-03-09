@@ -36,4 +36,4 @@ const UT_string				*StuffKeeper_GetSRVName(const StuffKeeper *pSK, const ID3D11S
 StringList					*StuffKeeper_GetTextureList(const StuffKeeper *pSK);
 
 //search for an input layout match
-ID3D11InputLayout	*StuffKeeper_FindMatch(const StuffKeeper *pSK, int elems[], int elCounts);
+const UT_string	*StuffKeeper_FindMatch(const StuffKeeper *pSK, const int elems[], int elCounts);

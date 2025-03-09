@@ -7,13 +7,16 @@ typedef struct	DictSZ_t			DictSZ;
 typedef struct	MaterialLib_t		MaterialLib;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	CBKeeper_t			CBKeeper;
+typedef struct	StuffKeeper_t		StuffKeeper;
 
 
-Static	*Static_Create(Mesh *pMesh);
-Static	*Static_Read(const char *szFileName);
+Static	*Static_Create(Mesh *pMeshes[], int numMeshes);
+Static	*Static_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
+					const char *szFileName, bool bEditor);
 void	Static_Write(const Static *pStat, const char *szFileName);
-void	Static_Draw(const Static *pStat, const DictSZ *pMeshes,
-					MaterialLib *pML, GraphicsDevice *pGD, CBKeeper *pCBK);
+
+void	Static_Draw(const Static *pStat, MaterialLib *pML,
+					GraphicsDevice *pGD, CBKeeper *pCBK);
 
 int			Static_GetNumParts(const Static *pStat);
 StringList	*Static_GetPartList(const Static *pStat);

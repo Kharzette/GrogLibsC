@@ -1466,9 +1466,9 @@ void	TestSKStuff(void)
 }
 
 
-ID3D11InputLayout	*StuffKeeper_FindMatch(const StuffKeeper *pSK,
-	int elems[], int elCounts)
+const UT_string	*StuffKeeper_FindMatch(const StuffKeeper *pSK,
+	const int elems[], int elCounts)
 {
-	return	Layouts_FindMatch(pSK->mpLayouts, pSK->mpLayCounts,
+	return	Layouts_FindMatch(pSK->mpLayCounts,
 		pSK->mpElems, elems, elCounts);
 }

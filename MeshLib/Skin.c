@@ -43,6 +43,8 @@ Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
 	memcpy(pRet->mInverseBindPoses, pIBPs, numBinds);
 
 	pRet->mNumBinds	=numBinds;
+
+	return	pRet;
 }
 
 

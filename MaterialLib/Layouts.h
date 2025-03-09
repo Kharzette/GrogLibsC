@@ -1,5 +1,6 @@
 #pragma once
 #include	"d3d11.h"
+#include	"utstring.h"
 
 #define	EL_POSITION		0
 #define	EL_NORMAL		1
@@ -26,6 +27,6 @@ extern void	Layouts_GetGrogSizes(const int elems[], int sizes[], int elCount);
 extern void	Layouts_MakeLayouts(GraphicsDevice *pGD,
 	const DictSZ *pVSCode, DictSZ **ppLayouts);
 
-extern ID3D11InputLayout	*Layouts_FindMatch(const DictSZ *pLays,
+extern const UT_string	*Layouts_FindMatch(
 	const DictSZ *pLayCounts, const DictSZ *pElems,
-	int elems[], int elCount);
+	const int elems[], int elCount);

@@ -51,11 +51,10 @@ Character	*Character_Create(Skin *pSkin, Mesh *pMesh)
 
 	pRet->mpParts->mbVisible	=true;
 	pRet->mpParts->mMaterialID	=0;
-	pRet->mpParts->mpPartName	=Mesh_GetName(pMesh);
+	pRet->mpParts->mpPart		=pMesh;
 
-	utstring_new(pRet->mpParts->mpMatName);
-
-	utstring_printf(pRet->mpParts->mpMatName, "default");
+	utstring_new(pRet->mpParts->mpMaterial);
+	utstring_printf(pRet->mpParts->mpMaterial, "default");
 
 	pRet->mNumParts	=1;
 
@@ -66,10 +65,13 @@ Character	*Character_Create(Skin *pSkin, Mesh *pMesh)
 #else
 	pRet->mBones	=aligned_alloc(16, sizeof(mat4) * numBones);
 #endif
+
+	return	pRet;
 }
 
 
-Character	*Character_Read(const char *szFileName)
+Character	*Character_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
+							const char *szFileName, bool bEditor)
 {
 	FILE	*f	=fopen(szFileName, "rb");
 	if(f == NULL)
@@ -99,8 +101,9 @@ Character	*Character_Read(const char *szFileName)
 
 	for(int i=0;i < pRet->mNumParts;i++)
 	{
-		pRet->mpParts[i].mpPartName	=SZ_ReadString(f);
-		pRet->mpParts[i].mpMatName	=SZ_ReadString(f);
+		pRet->mpParts[i].mpPart	=Mesh_Read(pGD, pSK, f, bEditor);
+
+		pRet->mpParts[i].mpMaterial	=SZ_ReadString(f);
 
 		fread(&pRet->mpParts[i].mMaterialID, sizeof(int), 1, f);
 
@@ -113,8 +116,14 @@ Character	*Character_Read(const char *szFileName)
 
 	fclose(f);
 
+	int	numBones	=Skin_GetNumBones(pRet->mpSkin);
+
 	//bone array alloc
-	pRet->mBones	=aligned_alloc(32, sizeof(mat4) * MAX_BONES);
+#ifdef __AVX__
+	pRet->mBones	=aligned_alloc(32, sizeof(mat4) * numBones);
+#else
+	pRet->mBones	=aligned_alloc(16, sizeof(mat4) * numBones);
+#endif
 
 	return	pRet;
 }
@@ -140,8 +149,9 @@ void	Character_Write(const Character *pChar, const char *szFileName)
 
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
-		SZ_WriteString(f, pChar->mpParts[i].mpPartName);
-		SZ_WriteString(f, pChar->mpParts[i].mpMatName);
+		Mesh_Write(pChar->mpParts[i].mpPart, f);
+
+		SZ_WriteString(f, pChar->mpParts[i].mpMaterial);
 
 		fwrite(&pChar->mpParts[i].mMaterialID, sizeof(int), 1, f);
 		fwrite(&pChar->mpParts[i].mbVisible, sizeof(bool), 1, f);
@@ -150,7 +160,7 @@ void	Character_Write(const Character *pChar, const char *szFileName)
 	fclose(f);
 }
 
-void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
+void	Character_Draw(const Character *pChar,
 						const MaterialLib *pML, const AnimLib *pAL,
 						GraphicsDevice *pGD, CBKeeper *pCBK)
 {
@@ -165,14 +175,12 @@ void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
 
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
-		Mesh	*pMesh	=DictSZ_GetValue(pMeshes, pChar->mpParts[i].mpPartName);
-
 		const Material	*pMat	=MatLib_GetConstMaterial(pML,
-								utstring_body(pChar->mpParts[i].mpMatName));
+									utstring_body(pChar->mpParts[i].mpMaterial));
 
-		if(pMesh != NULL && pMat != NULL)
+		if(pMat != NULL)
 		{
-			Mesh_DrawMat(pMesh, pGD, pCBK, pMat);
+			Mesh_DrawMat(pChar->mpParts[i].mpPart, pGD, pCBK, pMat);
 		}
 	}
 }
@@ -192,7 +200,7 @@ StringList	*Character_GetPartList(const Character *pChar)
 
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
-		SZList_AddUT(&pRet, pChar->mpParts[i].mpPartName);
+		SZList_AddUT(&pRet, Mesh_GetName(pChar->mpParts[i].mpPart));
 	}
 
 	return	pRet;
@@ -235,11 +243,12 @@ void	Character_ReNamePart(Character *pChar, const char *pOldName, const char *pN
 
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
-		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), pOldName);
+		const UT_string	*pPartName	=Mesh_GetName(pChar->mpParts[i].mpPart);
+
+		int	res	=strcmp(utstring_body(pPartName), pOldName);
 		if(res == 0)
 		{
-			utstring_clear(pChar->mpParts[i].mpPartName);
-			utstring_printf(pChar->mpParts[i].mpPartName, "%s", pNewName);
+			Mesh_SetName(pChar->mpParts[i].mpPart, pNewName);
 		}
 	}
 }
@@ -258,8 +267,8 @@ void	Character_DeletePartIndex(Character *pChar, int idx)
 		{
 			if(i == idx)
 			{
-				utstring_done(pChar->mpParts[i].mpMatName);
-				utstring_done(pChar->mpParts[i].mpPartName);
+				utstring_done(pChar->mpParts[i].mpMaterial);
+				Mesh_Destroy(pChar->mpParts[i].mpPart);
 				continue;
 			}
 
@@ -272,8 +281,8 @@ void	Character_DeletePartIndex(Character *pChar, int idx)
 	}
 	else
 	{
-		utstring_done(pChar->mpParts[0].mpMatName);
-		utstring_done(pChar->mpParts[0].mpPartName);
+		utstring_done(pChar->mpParts[0].mpMaterial);
+		Mesh_Destroy(pChar->mpParts[0].mpPart);
 		free(pChar->mpParts);
 		pChar->mpParts	=NULL;
 	}
@@ -285,7 +294,8 @@ void	Character_DeletePart(Character *pChar, const char *szName)
 
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
-		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), szName);
+		const UT_string	*pPartName	=Mesh_GetName(pChar->mpParts[i].mpPart);
+		int	res	=strcmp(utstring_body(pPartName), szName);
 		if(res == 0)
 		{
 			Character_DeletePartIndex(pChar, i);
@@ -303,8 +313,8 @@ void	Character_Destroy(Character *pChar)
 
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
-		utstring_done(pChar->mpParts[i].mpMatName);
-		utstring_done(pChar->mpParts[i].mpPartName);
+		utstring_done(pChar->mpParts[i].mpMaterial);
+		Mesh_Destroy(pChar->mpParts[i].mpPart);
 	}
 
 	if(pChar->mpParts != NULL)
@@ -323,9 +333,9 @@ void	Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatN
 	assert(pChar != NULL);
 	assert(partIndex < pChar->mNumParts);
 
-	utstring_clear(pChar->mpParts[partIndex].mpMatName);
+	utstring_clear(pChar->mpParts[partIndex].mpMaterial);
 
-	utstring_printf(pChar->mpParts[partIndex].mpMatName, "%s", pMatName);
+	utstring_printf(pChar->mpParts[partIndex].mpMaterial, "%s", pMatName);
 }
 
 const char	*Character_GetMaterialForPart(const Character *pChar, const char *szPartName)
@@ -334,10 +344,11 @@ const char	*Character_GetMaterialForPart(const Character *pChar, const char *szP
 
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
-		int	res	=strcmp(utstring_body(pChar->mpParts[i].mpPartName), szPartName);
+		const UT_string	*pPartName	=Mesh_GetName(pChar->mpParts[i].mpPart);
+		int	res	=strcmp(utstring_body(pPartName), szPartName);
 		if(res == 0)
 		{
-			return	utstring_body(pChar->mpParts[i].mpMatName);
+			return	utstring_body(pChar->mpParts[i].mpMaterial);
 		}
 	}
 	return	NULL;

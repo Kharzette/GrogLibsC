@@ -10,11 +10,13 @@ typedef struct	MaterialLib_t		MaterialLib;
 typedef struct	AnimLib_t			AnimLib;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	CBKeeper_t			CBKeeper;
+typedef struct	StuffKeeper_t		StuffKeeper;
 typedef struct	Mesh_t				Mesh;
 
 
 Character	*Character_Create(Skin *pSkin, Mesh *pMesh);
-Character	*Character_Read(const char *szFileName);
+Character	*Character_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
+							const char *szFileName, bool bEditor);
 void		Character_Write(const Character *pChar, const char *szFileName);
 
 void		Character_Destroy(Character *pChar);
@@ -29,6 +31,6 @@ const char	*Character_GetMaterialForPart(const Character *pChar, const char *szP
 const Skin	*Character_GetConstSkin(const Character *pChar);
 Skin		*Character_GetSkin(const Character *pChar);
 
-void	Character_Draw(const Character *pChar, const DictSZ *pMeshes,
+void	Character_Draw(const Character *pChar,
 						const MaterialLib *pML, const AnimLib *pAL,
 						GraphicsDevice *pGD, CBKeeper *pCBK);

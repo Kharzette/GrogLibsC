@@ -10,7 +10,7 @@ typedef struct	CBKeeper_t			CBKeeper;
 typedef struct	StuffKeeper_t		StuffKeeper;
 
 
-Static	*Static_Create(Mesh *pMeshes[], int numMeshes);
+Static	*Static_Create(Mesh *pMeshes[], mat4 xForms[], int numMeshes);
 Static	*Static_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 					const char *szFileName, bool bEditor);
 void	Static_Write(const Static *pStat, const char *szFileName);

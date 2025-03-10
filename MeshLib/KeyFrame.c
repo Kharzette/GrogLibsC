@@ -44,3 +44,17 @@ void	KeyFrame_GetMatrix(const KeyFrame *pKey, mat4 mat)
 	glm_mat4_mul(pos, rot, mat);
 	glm_mat4_mul(scale, mat, mat);
 }
+
+void	KeyFrame_GetMatrixOtherWay(const KeyFrame *pKey, mat4 mat)
+{
+	mat4	scale, rot, pos;
+
+	glm_scale_make(scale, pKey->mScale);
+
+	glm_quat_mat4(pKey->mRotation, rot);
+
+	glm_translate_make(pos, pKey->mPosition);
+ 
+	glm_mat4_mul(rot, scale, mat);
+	glm_mat4_mul(pos, mat, mat);
+}

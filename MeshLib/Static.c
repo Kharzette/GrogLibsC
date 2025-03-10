@@ -29,7 +29,7 @@ typedef struct	Static_t
 }	Static;
 
 
-Static	*Static_Create(Mesh *ppMeshes[], int numMeshes)
+Static	*Static_Create(Mesh *ppMeshes[], mat4 xForms[], int numMeshes)
 {
 #ifdef __AVX__
 	Static	*pRet	=aligned_alloc(32, sizeof(Static));
@@ -61,8 +61,7 @@ Static	*Static_Create(Mesh *ppMeshes[], int numMeshes)
 	pRet->mTransforms	=aligned_alloc(16, sizeof(mat4) * pRet->mNumParts);
 #endif
 
-	//TODO: replace with real xforms
-	glm_mat4_identity_array(pRet->mTransforms, pRet->mNumParts);
+	memcpy(pRet->mTransforms, xForms, sizeof(mat4) * numMeshes);
 
 	return	pRet;
 }

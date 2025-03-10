@@ -106,6 +106,52 @@ const StringList	*StuffKeeper_GetPSEntryList(const StuffKeeper *pSK, const UT_st
 	return	DictSZ_GetValue(pSK->mpPSEntryPoints, szKey);
 }
 
+typedef struct	ShaderSearch_t
+{
+	const UT_string	*mpShader;
+	const UT_string	*mpFile;
+}	ShaderSearch;
+
+static void	sFindShaderFile(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	const StringList	*pList	=pValue;
+	const StringList	*pCur	=SZList_Iterate(pList);
+	ShaderSearch		*pSS	=(ShaderSearch *)pContext;
+	const UT_string		*pShd	=pSS->mpShader;
+
+	int	len	=utstring_len(pShd);
+
+//	printf("Search key: %s\n", utstring_body(pKey));
+
+	while(pCur != NULL)
+	{
+//		printf("\t%s\n", SZList_IteratorVal(pCur));
+
+		if(0 == strncmp(utstring_body(pShd), SZList_IteratorVal(pCur), len))
+		{
+			pSS->mpFile	=pKey;
+		}
+
+		pCur	=SZList_IteratorNext(pCur);
+	}
+}
+
+const UT_string	*StuffKeeper_GetVSFile(const StuffKeeper *pSK, const UT_string *pVSName)
+{
+	ShaderSearch	ss	={	pVSName, NULL	};
+	DictSZ_ForEach(pSK->mpVSEntryPoints, sFindShaderFile, &ss);
+
+	return	ss.mpFile;
+}
+
+const UT_string	*StuffKeeper_GetPSFile(const StuffKeeper *pSK, const UT_string *pPSName)
+{
+	ShaderSearch	ss	={	pPSName, NULL	};
+	DictSZ_ForEach(pSK->mpPSEntryPoints, sFindShaderFile, &ss);
+
+	return	ss.mpFile;
+}
+
 
 DictSZ	*ReadEntryPoints(FILE *f)
 {
@@ -309,7 +355,7 @@ static UT_string	*ProfileFromSM(ShaderModel sm, ShaderEntryType set)
 
 
 //callback for the dictionary foreach below
-void	PrintEntryPointsCB(const UT_string *pKey, const void *pValue, void *pContext)
+static void	sPrintEntryPointsCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
 	const StringList	*pList	=pValue;
 	const StringList	*pCur	=SZList_Iterate(pList);
@@ -1454,7 +1500,7 @@ void	TestSKStuff(void)
 
 	fclose(f);
 
-	DictSZ_ForEach(pPSEP, PrintEntryPointsCB, NULL);
+	DictSZ_ForEach(pPSEP, sPrintEntryPointsCB, NULL);
 
 	//delete stuff, note that because our void * in the dictionary
 	//is a complicated SZList type, additional work needs to be done

@@ -57,6 +57,14 @@ void	Misc_Convert2ToF16(float f0, float f1, uint16_t *pDest)
 	memcpy(pDest, &converted, 4);
 }
 
+void	Misc_ConvertFlippedUVVec2ToF16(const vec2 vec, uint16_t *pDest)
+{
+	//note the 1-
+	__m128i	converted	=Convert4F32ToF16m128i(vec[0], 1.0f - vec[1], 1.0f, 1.0f);
+
+	memcpy(pDest, &converted, 4);
+}
+
 void	Misc_ConvertVec2ToF16(const vec2 vec, uint16_t *pDest)
 {
 	__m128i	converted	=Convert4F32ToF16m128i(vec[0], vec[1], 1.0f, 1.0f);

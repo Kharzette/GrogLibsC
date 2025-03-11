@@ -28,6 +28,13 @@ void	KeyFrame_Write(const KeyFrame *pKey, FILE *f)
 	fwrite(pKey->mScale, sizeof(vec3), 1, f);
 }
 
+void	KeyFrame_Identity(KeyFrame *pKey)
+{
+	glm_vec3_zero(pKey->mPosition);
+	glm_vec3_one(pKey->mScale);
+	glm_quat_identity(pKey->mRotation);
+}
+
 
 void	KeyFrame_GetMatrix(const KeyFrame *pKey, mat4 mat)
 {

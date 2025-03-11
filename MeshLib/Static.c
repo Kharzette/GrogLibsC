@@ -29,7 +29,7 @@ typedef struct	Static_t
 }	Static;
 
 
-Static	*Static_Create(Mesh *ppMeshes[], mat4 xForms[], int numMeshes)
+Static	*Static_Create(Mesh *pMeshes[], mat4 xForms[], int numMeshes)
 {
 #ifdef __AVX__
 	Static	*pRet	=aligned_alloc(32, sizeof(Static));
@@ -45,8 +45,8 @@ Static	*Static_Create(Mesh *ppMeshes[], mat4 xForms[], int numMeshes)
 
 	for(int i=0;i < numMeshes;i++)
 	{
-		pRet->mpParts[i].mpPart		=ppMeshes[i];
-		pRet->mpParts[i].mbVisible	=true;
+		pRet->mpParts[i].mpPart			=pMeshes[i];
+		pRet->mpParts[i].mbVisible		=true;
 		pRet->mpParts[i].mMaterialID	=0;
 
 		utstring_new(pRet->mpParts[i].mpMaterial);

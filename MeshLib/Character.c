@@ -33,7 +33,8 @@ typedef struct	Character_t
 
 }	Character;
 
-Character	*Character_Create(Skin *pSkin, Mesh *pMesh)
+
+Character	*Character_Create(Skin *pSkin, Mesh *pMeshes[], int numMeshes)
 {
 #ifdef __AVX__
 	Character	*pRet	=aligned_alloc(32, sizeof(Character));
@@ -47,16 +48,19 @@ Character	*Character_Create(Skin *pSkin, Mesh *pMesh)
 
 	pRet->mpSkin	=pSkin;
 
-	pRet->mpParts	=malloc(sizeof(MeshPart));
+	pRet->mpParts	=malloc(sizeof(MeshPart) * numMeshes);
 
-	pRet->mpParts->mbVisible	=true;
-	pRet->mpParts->mMaterialID	=0;
-	pRet->mpParts->mpPart		=pMesh;
+	for(int i=0;i < numMeshes;i++)
+	{
+		pRet->mpParts[i].mpPart			=pMeshes[i];
+		pRet->mpParts[i].mbVisible		=true;
+		pRet->mpParts[i].mMaterialID	=0;
 
-	utstring_new(pRet->mpParts->mpMaterial);
-	utstring_printf(pRet->mpParts->mpMaterial, "default");
+		utstring_new(pRet->mpParts[i].mpMaterial);
 
-	pRet->mNumParts	=1;
+		utstring_printf(pRet->mpParts[i].mpMaterial, "default");
+	}
+	pRet->mNumParts	=numMeshes;
 
 	int	numBones	=Skin_GetNumBones(pSkin);
 

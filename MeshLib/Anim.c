@@ -19,6 +19,24 @@ typedef struct	Anim_t
 }	Anim;
 
 
+Anim	*Anim_Create(const UT_string *pName, SubAnim **ppSubs, int numSubs)
+{
+	Anim	*pRet	=malloc(sizeof(Anim));
+
+	utstring_new(pRet->szName);
+	utstring_printf(pRet->szName, "%s", utstring_body(pName));
+
+	//this is mallocated so can just grab
+	pRet->mpSubAnims	=ppSubs;
+
+	pRet->mNumSubAnims	=numSubs;
+
+	pRet->mbLooping		=true;
+	pRet->mbPingPong	=false;
+
+	return	pRet;
+}
+
 Anim	*Anim_Read(FILE *f, const Skeleton *pSkel)
 {
 	Anim	*pRet	=malloc(sizeof(Anim));
@@ -66,7 +84,7 @@ void	Anim_Animate(Anim *pAnim, float time)
 	}
 }
 
-UT_string	*Anim_GetName(Anim *pAnim)
+const UT_string	*Anim_GetName(const Anim *pAnim)
 {
 	return	pAnim->szName;
 }

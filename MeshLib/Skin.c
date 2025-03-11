@@ -11,7 +11,7 @@
 
 typedef struct	Skin_t
 {
-	mat4	mInverseBindPoses[MAX_BONES];
+	mat4	*mpInverseBindPoses;
 
 	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
 										//units in meters by default
@@ -32,17 +32,26 @@ typedef struct	Skin_t
 
 Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
 {
-	#ifdef __AVX__
+#ifdef __AVX__
 	Skin	*pRet	=aligned_alloc(32, sizeof(Skin));
-#else
-	Skin	*pRet	=aligned_alloc(16, sizeof(Skin));
-#endif
-
 	memset(pRet, 0, sizeof(Skin));
 
-	memcpy(pRet->mInverseBindPoses, pIBPs, numBinds);
+	pRet->mpInverseBindPoses	=aligned_alloc(32, sizeof(mat4) * numBinds);	
+#else
+	Skin	*pRet	=aligned_alloc(16, sizeof(Skin));
+	memset(pRet, 0, sizeof(Skin));
+
+	pRet->mpInverseBindPoses	=aligned_alloc(16, sizeof(mat4) * numBinds);	
+#endif
+
+	memcpy(pRet->mpInverseBindPoses, pIBPs, sizeof(mat4) * numBinds);
 
 	pRet->mNumBinds	=numBinds;
+
+	glm_mat4_identity(pRet->mRootTransform);
+	glm_mat4_identity(pRet->mScaledRoot);
+	glm_mat4_identity(pRet->mScaleMat);
+	glm_mat4_identity(pRet->mInvScaleMat);
 
 	return	pRet;
 }
@@ -50,6 +59,7 @@ Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
 
 void	Skin_Destroy(Skin *pSkin)
 {
+	free(pSkin->mpInverseBindPoses);
 	free(pSkin->mpBoneBoxes);
 	free(pSkin->mpBoneSpheres);
 	free(pSkin->mpBoneCapsules);
@@ -67,16 +77,20 @@ Skin	*Skin_Read(FILE *f)
 	Skin	*pRet	=aligned_alloc(16, sizeof(Skin));
 #endif
 
-	glm_mat4_identity_array(pRet->mInverseBindPoses, MAX_BONES);
-
 	fread(&pRet->mNumBinds, sizeof(int), 1, f);
+
+#ifdef __AVX__
+	pRet->mpInverseBindPoses	=aligned_alloc(32, sizeof(mat4) * pRet->mNumBinds);	
+#else
+	pRet->mpInverseBindPoses	=aligned_alloc(16, sizeof(mat4) * pRet->mNumBinds);	
+#endif
 
 	for(int i=0;i < pRet->mNumBinds;i++)
 	{
 		int	idx;
 		fread(&idx, sizeof(int), 1, f);
 
-		fread(pRet->mInverseBindPoses[idx], sizeof(mat4), 1, f);
+		fread(pRet->mpInverseBindPoses[idx], sizeof(mat4), 1, f);
 	}
 
 	fread(&pRet->mNumShapes, sizeof(int), 1, f);
@@ -116,7 +130,7 @@ void	Skin_Write(const Skin *pSkin, FILE *f)
 		//is a int dictionary in C# out of order
 		fwrite(&i, sizeof(int), 1, f);
 
-		fwrite(pSkin->mInverseBindPoses[i], sizeof(mat4), 1, f);
+		fwrite(pSkin->mpInverseBindPoses[i], sizeof(mat4), 1, f);
 	}
 
 	fwrite(&pSkin->mNumShapes, sizeof(int), 1, f);
@@ -137,14 +151,14 @@ void	Skin_Write(const Skin *pSkin, FILE *f)
 
 void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
 {
-	Skeleton_FillBoneArray(pSkel, pBones);
+	Skeleton_FillBoneArray(pSkel, pBones, pSkin->mNumBinds);
 
 	for(int i=0;i < pSkin->mNumBinds;i++)
 	{
 		//On windows side this is: bone	=ibp * bone * rootXForm * scale
 		//here it seems to be root * bone * ibp * scale
 		glm_mat4_mul(pSkin->mRootTransform, pBones[i], pBones[i]);
-		glm_mat4_mul(pBones[i], pSkin->mInverseBindPoses[i], pBones[i]);
+		glm_mat4_mul(pBones[i], pSkin->mpInverseBindPoses[i], pBones[i]);
 		glm_mat4_mul(pSkin->mScaleMat, pBones[i], pBones[i]);
 	}
 }
@@ -226,7 +240,7 @@ void	Skin_GetBoneByIndex(const Skin *pSkin, const Skeleton *pSkel,
 	//On windows side this is: bone	=ibp * bone * rootXForm * scale
 	//here it seems to be root * bone * ibp * scale
 	glm_mat4_mul(pSkin->mRootTransform, outMat, outMat);
-	glm_mat4_mul(outMat, pSkin->mInverseBindPoses[boneIdx], outMat);
+	glm_mat4_mul(outMat, pSkin->mpInverseBindPoses[boneIdx], outMat);
 	glm_mat4_mul(pSkin->mScaleMat, outMat, outMat);
 }
 

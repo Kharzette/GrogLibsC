@@ -9,79 +9,54 @@
 #define	MAX_BONES			55
 
 
+Skeleton	*Skeleton_Create(GSNode *pRoot)
+{
+	Skeleton	*pRet	=malloc(sizeof(Skeleton));
+
+	pRet->mpRoot	=pRoot;
+
+	return	pRet;
+}
+
 Skeleton	*Skeleton_Read(FILE *f)
 {
 	Skeleton	*pRet	=malloc(sizeof(Skeleton));
 
-	fread(&pRet->mNumRoots, sizeof(int), 1, f);
-
-	pRet->mpRoots	=malloc(sizeof(GSNode *) * pRet->mNumRoots);
-
 	int	curIndex	=0;
-	for(int i=0;i < pRet->mNumRoots;i++)
-	{
-		pRet->mpRoots[i]	=GSNode_Read(f);
 
-		GSNode_SetBoneIndexes(pRet->mpRoots[i], &curIndex);
-	}
+	pRet->mpRoot	=GSNode_Read(f);
+
+	GSNode_SetBoneIndexes(pRet->mpRoot, &curIndex);
+	
 	return	pRet;
 }
 
 void	Skeleton_Write(const Skeleton *pSkel, FILE *f)
 {
-	fwrite(&pSkel->mNumRoots, sizeof(int), 1, f);
-
-	for(int i=0;i < pSkel->mNumRoots;i++)
-	{
-		GSNode_Write(pSkel->mpRoots[i], f);
-	}
+	GSNode_Write(pSkel->mpRoot, f);
 }
 
 
 const GSNode	*Skeleton_GetConstBoneByName(const Skeleton *pSkel, const char *szName)
 {
-	const GSNode	*pRet	=NULL;
-	for(int i=0;i < pSkel->mNumRoots;i++)
-	{
-		pRet	=GSNode_GetConstNodeByName(pSkel->mpRoots[i], szName);
-
-		if(pRet != NULL)
-		{
-			return	pRet;	//found!
-		}
-	}
-	return	NULL;
+	return	GSNode_GetConstNodeByName(pSkel->mpRoot, szName);
 }
 
 KeyFrame	*Skeleton_GetBoneKey(const Skeleton *pSkel, const char *szName)
 {
-	KeyFrame	*pRet	=NULL;
-	for(int i=0;i < pSkel->mNumRoots;i++)
-	{
-		pRet	=GSNode_GetKeyByName(pSkel->mpRoots[i], szName);
+	return	GSNode_GetKeyByName(pSkel->mpRoot, szName);
+}
 
-		if(pRet != NULL)
-		{
-			return	pRet;	//found!
-		}
-	}
-	return	NULL;
+KeyFrame	*Skeleton_GetBoneKeyByIndex(const Skeleton *pSkel, int index)
+{
+	return	GSNode_GetKeyByIndex(pSkel->mpRoot, index);
 }
 
 //Warning: this does some allocations!
 GSNode	*Skeleton_GetBoneMirror(const Skeleton *pSkel, const UT_string *pName)
 {
 	//see if the bone exists
-	GSNode	*pNode	=NULL;
-	for(int i=0;i < pSkel->mNumRoots;i++)
-	{
-		pNode	=GSNode_GetNodeByName(pSkel->mpRoots[i], utstring_body(pName));
-		if(pNode != NULL)
-		{
-			break;
-		}
-	}
-
+	GSNode	*pNode	=GSNode_GetNodeByName(pSkel->mpRoot, utstring_body(pName));
 	if(pNode == NULL)
 	{
 		return	NULL;
@@ -131,42 +106,29 @@ GSNode	*Skeleton_GetBoneMirror(const Skeleton *pSkel, const UT_string *pName)
 	}
 
 	//see if the mirror exists
-	pNode	=NULL;
-	for(int i=0;i < pSkel->mNumRoots;i++)
-	{
-		pNode	=GSNode_GetNodeByName(pSkel->mpRoots[i], utstring_body(pMirror));
-		if(pNode != NULL)
-		{
-			break;
-		}
-	}
+	pNode	=GSNode_GetNodeByName(pSkel->mpRoot, utstring_body(pMirror));
 
 	utstring_done(pMirror);
 
-	if(pNode == NULL)
-	{
-		return	NULL;
-	}
 	return	pNode;
 }
 
 
 bool	Skeleton_GetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat)
 {
-	for(int i=0;i < pSkel->mNumRoots;i++)
+	if(GSNode_GetMatrixForBoneIndex(pSkel->mpRoot, idx, mat))
 	{
-		if(GSNode_GetMatrixForBoneIndex(pSkel->mpRoots[i], idx, mat))
-		{
-//			printf("of index %d\n", idx);
-			return	true;
-		}
+//		printf("of index %d\n", idx);
+		return	true;
 	}
 	return	false;
 }
 
-void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones)
+void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones, int numBones)
 {
-	for(int i=0;i < MAX_BONES;i++)
+	assert(numBones < MAX_BONES);
+
+	for(int i=0;i < numBones;i++)
 	{
 		Skeleton_GetMatrixForBoneIndex(pSkel, i, pBones[i]);
 	}

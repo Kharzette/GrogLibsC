@@ -20,21 +20,56 @@ typedef struct	SubAnim_t
 								//quicken key finding
 	
 	KeyFrame	*mpBone;	//pointer to affected bone
-	UT_string	*szBoneName;
+	int			mBoneIndex;
+
 }	SubAnim;
 
+
+//static forward decs
+static void	sAddKeyAtTime(SubAnim *pSA, float t);
+static void	sFillGaps(SubAnim *pSAT, SubAnim *pSAS, SubAnim *pSAR);
+
+
+SubAnim	*SubAnim_Create(const float *pTimes, KeyFrame *pKeys,
+	int numKeys, KeyFrame *pBone, int boneIdx)
+{
+	SubAnim	*pRet	=malloc(sizeof(SubAnim));
+	memset(pRet, 0, sizeof(SubAnim));
+
+	//this is mallocated so just point to it
+	pRet->mpKeys	=pKeys;
+
+	//copy times, they come from bin
+	pRet->mpTimes	=malloc(sizeof(float) * numKeys);
+	memcpy(pRet->mpTimes, pTimes, sizeof(float) * numKeys);
+
+	pRet->mNumKeys	=numKeys;
+
+	pRet->mpBone		=pBone;
+	pRet->mBoneIndex	=boneIdx;
+
+	//compute totaltime
+	for(int i=0;i < numKeys;i++)
+	{
+		if(pTimes[i] > pRet->mTotalTime)
+		{
+			pRet->mTotalTime	=pTimes[i];
+		}
+	}
+	return	pRet;
+}
 
 SubAnim	*SubAnim_Read(FILE *f, const Skeleton *pSkel)
 {
 	SubAnim	*pRet	=malloc(sizeof(SubAnim));
 	memset(pRet, 0, sizeof(SubAnim));
 
-	pRet->szBoneName	=SZ_ReadString(f);
+	fread(&pRet->mBoneIndex, sizeof(int), 1, f);
 
-	pRet->mpBone	=Skeleton_GetBoneKey(pSkel, utstring_body(pRet->szBoneName));
+	pRet->mpBone	=Skeleton_GetBoneKeyByIndex(pSkel, pRet->mBoneIndex);
 	if(pRet->mpBone == NULL)
 	{
-		printf("Warning: Bone %s not found in skeleton.\n", utstring_body(pRet->szBoneName));
+		printf("Warning: Bone %d not found in skeleton.\n", pRet->mBoneIndex);
 	}
 
 	int	numTimes;
@@ -60,7 +95,7 @@ SubAnim	*SubAnim_Read(FILE *f, const Skeleton *pSkel)
 
 void	SubAnim_Write(const SubAnim *pSA, FILE *f)
 {	
-	SZ_WriteString(f, pSA->szBoneName);
+	fwrite(&pSA->mBoneIndex, sizeof(int), 1, f);
 
 	fwrite(&pSA->mNumKeys, sizeof(int), 1, f);
 
@@ -167,7 +202,176 @@ void	SubAnim_Destroy(SubAnim *pSA)
 	free(pSA->mpKeys);
 	free(pSA->mpTimes);
 
-	utstring_done(pSA->szBoneName);
-
 	free(pSA);
+}
+
+
+//take 3 sub anims that operate only on T S R
+//and combine them into a single SubAnim
+SubAnim	*SubAnim_Merge(SubAnim *pSAT, SubAnim *pSAS, SubAnim *pSAR)
+{
+	SubAnim	*pRet	=malloc(sizeof(SubAnim));
+	memset(pRet, 0, sizeof(SubAnim));
+
+	sFillGaps(pSAT, pSAS, pSAR);
+
+	assert(pSAT->mNumKeys == pSAS->mNumKeys);
+	assert(pSAT->mNumKeys == pSAR->mNumKeys);
+
+	pRet->mBoneIndex	=pSAT->mBoneIndex;
+	pRet->mNumKeys		=pSAT->mNumKeys;
+	pRet->mpBone		=pSAT->mpBone;
+	pRet->mTotalTime	=pSAT->mTotalTime;
+
+	pRet->mpKeys	=malloc(sizeof(KeyFrame) * pRet->mNumKeys);
+	pRet->mpTimes	=malloc(sizeof(float) * pRet->mNumKeys);
+
+	//copy times
+	memcpy(pRet->mpTimes, pSAT->mpTimes, sizeof(float) * pRet->mNumKeys);
+
+	//merge keys
+	for(int i=0;i < pRet->mNumKeys;i++)
+	{
+		glm_vec3_copy(pSAT->mpKeys[i].mPosition, pRet->mpKeys[i].mPosition);
+		glm_vec3_copy(pSAS->mpKeys[i].mScale, pRet->mpKeys[i].mScale);
+		glm_vec4_copy(pSAR->mpKeys[i].mRotation, pRet->mpKeys[i].mRotation);
+	}
+
+	return	pRet;
+}
+
+
+static void	sAddKeyAtTime(SubAnim *pSA, float t)
+{
+	//ensure the key isn't already there
+	for(int i=0;i < pSA->mNumKeys;i++)
+	{
+		//danger!  comparing floats
+		if(pSA->mpTimes[i] == t)
+		{
+			return;
+		}
+	}
+
+	//animate to time t
+	SubAnim_Animate(pSA, t, false);
+
+	//make new times and keys storage
+	float		*pNewT	=malloc(sizeof(float) * (pSA->mNumKeys + 1));
+	KeyFrame	*pNewKF	=malloc(sizeof(KeyFrame) * (pSA->mNumKeys + 1));
+
+	//search for time
+	int	insertIndex	=-1;
+	for(int i=0;i < pSA->mNumKeys;i++)
+	{
+		if(pSA->mpTimes[i] > t)
+		{
+			insertIndex	=i;
+			break;
+		}
+	}
+
+	if(insertIndex == -1)
+	{
+		//on the far end...
+		//animated key might look strange?
+		insertIndex	=pSA->mNumKeys;
+	}
+
+	//examples
+	//0 0.1 0.3 0.6 0.7 1.2 1.4
+	//0.5 t
+	//insertIndex is 3
+	//
+	//0.6 0.7 1.2 1.4 1.8 2.5
+	//0.5 t
+	//insertIndex is 0
+	//
+	//0 0.1 0.3 0.6 0.7 1.2 1.4
+	//1.5 t
+	//insertIndex is 6
+	//
+
+	if(insertIndex != 0)
+	{
+		memcpy(pNewT, pSA->mpTimes, sizeof(float) * insertIndex);
+		memcpy(pNewKF, pSA->mpKeys, sizeof(KeyFrame) * insertIndex);
+	}
+
+	pNewT[insertIndex]	=t;
+
+	//copy animated values
+	glm_vec3_copy(pSA->mpBone->mPosition, pNewKF[insertIndex].mPosition);
+	glm_vec3_copy(pSA->mpBone->mScale, pNewKF[insertIndex].mScale);
+	glm_vec4_copy(pSA->mpBone->mRotation, pNewKF[insertIndex].mRotation);
+
+	int	remaining	=pSA->mNumKeys - insertIndex;
+	if(remaining > 0)
+	{
+		//copy rest of stuff
+		memcpy(&pNewT[insertIndex + 1], &pSA->mpTimes[insertIndex], sizeof(float) * remaining);
+		memcpy(&pNewKF[insertIndex + 1], &pSA->mpKeys[insertIndex], sizeof(KeyFrame) * remaining);
+	}
+
+	//free old
+	free(pSA->mpTimes);
+	free(pSA->mpKeys);
+
+	//assign new
+	pSA->mpTimes	=pNewT;
+	pSA->mpKeys		=pNewKF;
+
+	pSA->mNumKeys++;
+}
+
+//take 3 sub anims that operate only on T S R
+//and fill any keyframe gaps so they can be merged
+static void	sFillGaps(SubAnim *pSAT,
+	SubAnim *pSAS, SubAnim *pSAR)
+{
+	//if all have the same number of keys, done
+	if(pSAT->mNumKeys == pSAS->mNumKeys
+		&& pSAT->mNumKeys == pSAR->mNumKeys)
+	{
+		return;
+	}
+
+	if(pSAT->mNumKeys >= pSAS->mNumKeys
+		&& pSAT->mNumKeys >= pSAR->mNumKeys)
+	{
+		//use T keys to fill in the others
+		for(int i=0;i < pSAT->mNumKeys;i++)
+		{
+			float	t	=pSAT->mpTimes[i];
+
+			sAddKeyAtTime(pSAS, t);
+			sAddKeyAtTime(pSAR, t);
+		}
+	}
+	else if(pSAS->mNumKeys >= pSAT->mNumKeys
+		&& pSAS->mNumKeys >= pSAR->mNumKeys)
+	{
+		//use S keys to fill in the others
+		for(int i=0;i < pSAS->mNumKeys;i++)
+		{
+			float	t	=pSAS->mpTimes[i];
+
+			sAddKeyAtTime(pSAT, t);
+			sAddKeyAtTime(pSAR, t);
+		}
+	}
+	else
+	{
+		//use R keys to fill in the others
+		assert(pSAR->mNumKeys >= pSAT->mNumKeys
+			&& pSAR->mNumKeys >= pSAS->mNumKeys);
+
+		for(int i=0;i < pSAR->mNumKeys;i++)
+		{
+			float	t	=pSAR->mpTimes[i];
+
+			sAddKeyAtTime(pSAS, t);
+			sAddKeyAtTime(pSAT, t);
+		}
+	}
 }

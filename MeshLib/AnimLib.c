@@ -14,6 +14,17 @@ typedef struct	AnimLib_t
 }	AnimLib;
 
 
+AnimLib	*AnimLib_Create(Skeleton *pSkel)
+{
+	AnimLib	*pRet	=malloc(sizeof(AnimLib));
+
+	pRet->mpSkeleton	=pSkel;
+
+	DictSZ_New(&pRet->mpAnims);
+
+	return	pRet;
+}
+
 AnimLib	*AnimLib_Read(const char *fileName)
 {
 	FILE	*f	=fopen(fileName, "rb");
@@ -46,7 +57,7 @@ AnimLib	*AnimLib_Read(const char *fileName)
 	{
 		Anim	*pAnim	=Anim_Read(f, pRet->mpSkeleton);
 
-		UT_string	*szName	=Anim_GetName(pAnim);
+		const UT_string	*szName	=Anim_GetName(pAnim);
 
 		printf("Anim: %s\n", utstring_body(szName));
 
@@ -111,9 +122,9 @@ void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 }
 
 
-void	AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones)
+void	AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones, int numBones)
 {
-	Skeleton_FillBoneArray(pAL->mpSkeleton, pBones);
+	Skeleton_FillBoneArray(pAL->mpSkeleton, pBones, numBones);
 }
 
 
@@ -126,6 +137,12 @@ const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL)
 int	AnimLib_GetNumAnims(const AnimLib *pAL)
 {
 	return	DictSZ_Count(pAL->mpAnims);
+}
+
+
+void	AnimLib_Add(AnimLib *pALib, Anim *pAnim)
+{
+	DictSZ_Add(&pALib->mpAnims, Anim_GetName(pAnim), pAnim);
 }
 
 

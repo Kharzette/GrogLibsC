@@ -14,7 +14,7 @@ typedef struct	StuffKeeper_t		StuffKeeper;
 typedef struct	Mesh_t				Mesh;
 
 
-Character	*Character_Create(Skin *pSkin, Mesh *pMesh);
+Character	*Character_Create(Skin *pSkin, Mesh *pMeshes[], int numMeshes);
 Character	*Character_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 							const char *szFileName, bool bEditor);
 void		Character_Write(const Character *pChar, const char *szFileName);

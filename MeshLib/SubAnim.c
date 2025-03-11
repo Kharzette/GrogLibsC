@@ -206,6 +206,12 @@ void	SubAnim_Destroy(SubAnim *pSA)
 }
 
 
+void	SubAnim_SetBone(SubAnim *pSA, KeyFrame *pBoneRef, int boneIdx)
+{
+	pSA->mpBone		=pBoneRef;
+	pSA->mBoneIndex	=boneIdx;
+}
+
 //take 3 sub anims that operate only on T S R
 //and combine them into a single SubAnim
 SubAnim	*SubAnim_Merge(SubAnim *pSAT, SubAnim *pSAS, SubAnim *pSAR)
@@ -254,7 +260,7 @@ static void	sAddKeyAtTime(SubAnim *pSA, float t)
 	}
 
 	//animate to time t
-	SubAnim_Animate(pSA, t, false);
+	SubAnim_Animate(pSA, t, true);
 
 	//make new times and keys storage
 	float		*pNewT	=malloc(sizeof(float) * (pSA->mNumKeys + 1));

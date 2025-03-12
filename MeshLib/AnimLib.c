@@ -4,6 +4,7 @@
 #include	"../UtilityLib/ListStuff.h"
 #include	"Skeleton.h"
 #include	"Anim.h"
+#include	"AnimLib.h"
 
 
 //should match CommonFunctions.hlsli
@@ -16,14 +17,6 @@ typedef struct	AnimLib_t
 	Skeleton	*mpSkeleton;
 }	AnimLib;
 
-typedef struct	SkellyMap_t
-{
-	int	mBoneMap[MAX_BONES];
-
-	bool	mbSuccess;
-
-	Skeleton	*mpForeignSkel;
-}	SkellyMap;
 
 //static forward decs
 static void sMakeMapCB(const UT_string *pKey, const void *pValue, void *pContext);
@@ -161,6 +154,21 @@ void	AnimLib_Add(AnimLib *pALib, Anim *pAnim)
 	AnimLib_SetBoneRefs(pALib);
 }
 
+//get a mapping array that maps bones from foreign to local
+const SkellyMap	*AnimLib_GetMapping(const AnimLib *pALib, const Skeleton *pForeignSkel)
+{
+	SkellyMap	*pSM	=malloc(sizeof(SkellyMap));
+
+	memset(pSM, 0, sizeof(SkellyMap));
+
+	pSM->mpLocalSkel	=pALib->mpSkeleton;
+	pSM->mpForeignSkel	=pForeignSkel;
+
+	DictSZ_ForEach(pForeignSkel->mpNameToIndex, sMakeMapCB, pSM);
+
+	return	pSM;
+}
+
 //adapt anim from another skeleton
 //foreign is non const because we might adopt it
 void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, Skeleton *pForeignSkel)
@@ -187,8 +195,8 @@ void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, Skeleton *pForeignSkel)
 
 	SkellyMap	sm;
 
+	sm.mpLocalSkel		=pALib->mpSkeleton;
 	sm.mpForeignSkel	=pForeignSkel;
-	sm.mbSuccess		=false;
 
 	DictSZ_ForEach(pForeignSkel->mpNameToIndex, sMakeMapCB, &sm);
 
@@ -284,7 +292,7 @@ static void sMakeMapCB(const UT_string *pKey, const void *pValue, void *pContext
 
 	if(pSM == NULL)
 	{
-		printf("Null SkellyMap in AddForeign!\n");
+		printf("Null SkellyMap in sMakeMapCB!\n");
 		return;
 	}
 

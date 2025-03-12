@@ -9,14 +9,25 @@ typedef struct	Anim_t			Anim;
 typedef struct	Skeleton_t		Skeleton;
 typedef struct	StringList_t	StringList;
 
+//useful struct to remap between skeletons
+typedef struct	SkellyMap_t
+{
+	int	mBoneMap[MAX_BONES];
+
+	Skeleton	*mpLocalSkel;
+	Skeleton	*mpForeignSkel;
+}	SkellyMap;
+
+
 AnimLib	*AnimLib_Create(Skeleton *pSkel);
 AnimLib	*AnimLib_Read(const char *fileName);
 void	AnimLib_Write(const AnimLib *pAL, const char *szFileName);
 
-void			AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones);
+void			AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones, int numBones);
 const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL);
 int				AnimLib_GetNumAnims(const AnimLib *pAL);
 StringList		*AnimLib_GetAnimList(const AnimLib *pAL);
+const SkellyMap	*AnimLib_GetMapping(const AnimLib *pALib, const Skeleton *pForeignSkel);
 
 void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew);
 void	AnimLib_Delete(AnimLib *pAL, const char *szAnim);

@@ -31,4 +31,5 @@ KeyFrame		*GSNode_GetKeyByName(GSNode *pNode, const char *pName);
 KeyFrame		*GSNode_GetKeyByIndex(GSNode *pNode, int index);
 bool			GSNode_GetMatrixForBoneIndex(const GSNode *pNode, int index, mat4 mat);
 
-void		GSNode_SetBoneIndexes(GSNode *pNode, int *pIndex);
+void	GSNode_SetBoneIndexes(GSNode *pNode, int *pIndex);
+void	GSNode_ConvertToLeftHanded(GSNode *pNode);

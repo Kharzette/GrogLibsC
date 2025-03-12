@@ -4,11 +4,14 @@
 #include	<utstring.h>
 
 typedef struct	GSNode_t	GSNode;
+typedef struct	DictSZ_t	DictSZ;
 
 //public structure
 typedef struct	Skeleton_t
 {
 	GSNode	*mpRoot;
+
+	DictSZ	*mpNameToIndex;
 }	Skeleton;
 
 typedef struct	KeyFrame_t		KeyFrame;

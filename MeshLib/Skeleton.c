@@ -1,12 +1,15 @@
 #include	<stdint.h>
 #include	"GSNode.h"
 #include	"Skeleton.h"
-#include	"../UtilityLib/ListStuff.h"
+#include	"../UtilityLib/DictionaryStuff.h"
 #include	"../UtilityLib/StringStuff.h"
 
 
 //should match CommonFunctions.hlsli
 #define	MAX_BONES			55
+
+//static forward decs
+static void	srMakeNameDict(Skeleton *pSkel, GSNode *pNode);
 
 
 Skeleton	*Skeleton_Create(GSNode *pRoot)
@@ -14,6 +17,10 @@ Skeleton	*Skeleton_Create(GSNode *pRoot)
 	Skeleton	*pRet	=malloc(sizeof(Skeleton));
 
 	pRet->mpRoot	=pRoot;
+
+	DictSZ_New(&pRet->mpNameToIndex);
+
+	srMakeNameDict(pRet, pRoot);
 
 	return	pRet;
 }
@@ -131,5 +138,16 @@ void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones, int numBones)
 	for(int i=0;i < numBones;i++)
 	{
 		Skeleton_GetMatrixForBoneIndex(pSkel, i, pBones[i]);
+	}
+}
+
+
+static void	srMakeNameDict(Skeleton *pSkel, GSNode *pNode)
+{
+	DictSZ_Add(&pSkel->mpNameToIndex, pNode->szName, (void *)pNode->mIndex);
+
+	for(int i=0;i < pNode->mNumChildren;i++)
+	{
+		srMakeNameDict(pSkel, pNode->mpChildren[i]);
 	}
 }

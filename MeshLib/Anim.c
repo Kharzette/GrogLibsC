@@ -106,3 +106,19 @@ void	Anim_Destroy(Anim *pAnim)
 
 	free(pAnim);
 }
+
+void	Anim_ReMapBoneIndexes(Anim *pAnim, int boneMap[])
+{
+	for(int i=0;i < pAnim->mNumSubAnims;i++)
+	{
+		SubAnim_ReMapBoneIndex(pAnim->mpSubAnims[i], boneMap);
+	}
+}
+
+void	Anim_SetBoneRefs(Anim *pAnim, Skeleton *pSkel)
+{
+	for(int i=0;i < pAnim->mNumSubAnims;i++)
+	{
+		SubAnim_SetBoneRef(pAnim->mpSubAnims[i], pSkel);
+	}
+}

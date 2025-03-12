@@ -6,12 +6,30 @@
 #include	"Anim.h"
 
 
+//should match CommonFunctions.hlsli
+#define	MAX_BONES			55
+
 typedef struct	AnimLib_t
 {
 	DictSZ	*mpAnims;
 
 	Skeleton	*mpSkeleton;
 }	AnimLib;
+
+typedef struct	SkellyMap_t
+{
+	int	mBoneMap[MAX_BONES];
+
+	bool	mbSuccess;
+
+	Skeleton	*mpForeignSkel;
+}	SkellyMap;
+
+//static forward decs
+static void sMakeMapCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void	sSetBoneRefsCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void	sAnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext);
 
 
 AnimLib	*AnimLib_Create(Skeleton *pSkel)
@@ -69,23 +87,6 @@ AnimLib	*AnimLib_Read(const char *fileName)
 	return	pRet;
 }
 
-static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pContext)
-{
-	Anim	*pAnm	=(Anim *)pValue;
-	if(pAnm == NULL)
-	{
-		return;
-	}
-
-	FILE	*f	=(FILE *)pContext;
-	if(f == NULL)
-	{
-		return;
-	}
-
-	Anim_Write(pAnm, f);
-}
-
 void	AnimLib_Write(const AnimLib *pAL, const char *szFileName)
 {
 	FILE	*f	=fopen(szFileName, "wb");
@@ -121,7 +122,6 @@ void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 	Anim_Animate(pAnim, time);
 }
 
-
 void	AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones, int numBones)
 {
 	Skeleton_FillBoneArray(pAL->mpSkeleton, pBones, numBones);
@@ -133,18 +133,71 @@ const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL)
 	return	pAL->mpSkeleton;
 }
 
-
 int	AnimLib_GetNumAnims(const AnimLib *pAL)
 {
 	return	DictSZ_Count(pAL->mpAnims);
 }
 
+StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
+{
+	StringList	*pRet	=SZList_New();
+
+	DictSZ_ForEach(pAL->mpAnims, sAnimNamesCB, &pRet);
+
+	return	pRet;
+}
+
+
+//make sure all anims point to the right bones
+void	AnimLib_SetBoneRefs(AnimLib *pAL)
+{
+	DictSZ_ForEach(pAL->mpAnims, sSetBoneRefsCB, pAL);
+}
 
 void	AnimLib_Add(AnimLib *pALib, Anim *pAnim)
 {
 	DictSZ_Add(&pALib->mpAnims, Anim_GetName(pAnim), pAnim);
+
+	AnimLib_SetBoneRefs(pALib);
 }
 
+//adapt anim from another skeleton
+//foreign is non const because we might adopt it
+void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, Skeleton *pForeignSkel)
+{
+	int	locBCnt	=DictSZ_Count(pALib->mpSkeleton->mpNameToIndex);
+	int	forBCnt	=DictSZ_Count(pForeignSkel->mpNameToIndex);
+
+	if(locBCnt != forBCnt)
+	{
+		printf("Warning, skeletons are different!\n");
+
+		if(locBCnt < forBCnt)
+		{
+			printf("Foreign skeleton is more complex, so using it.\n");
+
+			Skeleton	*pOld	=pALib->mpSkeleton;
+			pALib->mpSkeleton	=pForeignSkel;
+
+			//will this actually work!?
+			AnimLib_AddForeign(pALib, pAnim, pOld);			
+			return;
+		}
+	}
+
+	SkellyMap	sm;
+
+	sm.mpForeignSkel	=pForeignSkel;
+	sm.mbSuccess		=false;
+
+	DictSZ_ForEach(pForeignSkel->mpNameToIndex, sMakeMapCB, &sm);
+
+	Anim_ReMapBoneIndexes(pAnim, sm.mBoneMap);
+
+	DictSZ_Add(&pALib->mpAnims, Anim_GetName(pAnim), pAnim);
+
+	AnimLib_SetBoneRefs(pALib);
+}
 
 void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew)
 {
@@ -161,7 +214,6 @@ void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew)
 	Anim_SetNameccp(pAn, szNew);
 }
 
-
 void	AnimLib_Delete(AnimLib *pAL, const char *szAnim)
 {
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
@@ -177,7 +229,8 @@ void	AnimLib_Delete(AnimLib *pAL, const char *szAnim)
 }
 
 
-void	AnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
+//statics
+static void	sAnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
 	StringList	**ppSL	=(StringList **)pContext;
 
@@ -189,11 +242,62 @@ void	AnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
 	SZList_AddUT(ppSL, pKey);
 }
 
-StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
+static void	sSetBoneRefsCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
-	StringList	*pRet	=SZList_New();
+	AnimLib	*pAL	=(AnimLib *)pContext;
+	if(pAL == NULL)
+	{
+		printf("Null AnimLib in SetBoneRefs!\n");
+		return;
+	}
 
-	DictSZ_ForEach(pAL->mpAnims, AnimNamesCB, &pRet);
+	Anim	*pAnim	=(Anim *)pValue;
+	if(pAnim == NULL)
+	{
+		printf("Null Anim in SetBoneRefs!\n");
+		return;
+	}
 
-	return	pRet;
+	Anim_SetBoneRefs(pAnim, pAL->mpSkeleton);
+}
+
+static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	Anim	*pAnm	=(Anim *)pValue;
+	if(pAnm == NULL)
+	{
+		return;
+	}
+
+	FILE	*f	=(FILE *)pContext;
+	if(f == NULL)
+	{
+		return;
+	}
+
+	Anim_Write(pAnm, f);
+}
+
+static void sMakeMapCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	SkellyMap	*pSM	=(SkellyMap *)pContext;
+
+	if(pSM == NULL)
+	{
+		printf("Null SkellyMap in AddForeign!\n");
+		return;
+	}
+
+	if(!DictSZ_ContainsKey(pSM->mpForeignSkel->mpNameToIndex, pKey))
+	{
+		//key doesn't exist in skeleton, no big deal, anim won't ref it
+	}
+	else
+	{
+		int	locIdx	=(int)pValue;
+
+		int	forIdx	=(int)DictSZ_GetValue(pSM->mpForeignSkel->mpNameToIndex, pKey);
+
+		pSM->mBoneMap[forIdx]	=locIdx;
+	}
 }

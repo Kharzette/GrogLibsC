@@ -16,3 +16,5 @@ void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping);
 void	SubAnim_Destroy(SubAnim *pSA);
 void	SubAnim_SetBone(SubAnim *pSA, KeyFrame *pBoneRef, int boneIdx);
 SubAnim	*SubAnim_Merge(SubAnim *pSAT, SubAnim *pSAS, SubAnim *pSAR);
+void	SubAnim_ReMapBoneIndex(SubAnim *pSA, int boneMap[]);
+void	SubAnim_SetBoneRef(SubAnim *pSA, Skeleton *pSkel);

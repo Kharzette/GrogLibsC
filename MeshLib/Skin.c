@@ -53,6 +53,21 @@ Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
 	glm_mat4_identity(pRet->mScaleMat);
 	glm_mat4_identity(pRet->mInvScaleMat);
 
+//	glm_scale_make(pRet->mRootTransform, (vec3){-1, 1, 1});
+
+//	glm_rotate_x(pRet->mRootTransform, -GLM_PI_2f, pRet->mRootTransform);
+
+	//set up the root transform to do right to left
+//	pRet->mRootTransform[2][0]	=-pRet->mRootTransform[2][0];
+//	pRet->mRootTransform[2][1]	=-pRet->mRootTransform[2][1];
+//	pRet->mRootTransform[2][2]	=-pRet->mRootTransform[2][2];
+//	pRet->mRootTransform[2][3]	=-pRet->mRootTransform[2][3];
+
+//	pRet->mRootTransform[0][2]	=-pRet->mRootTransform[0][2];
+//	pRet->mRootTransform[1][2]	=-pRet->mRootTransform[1][2];
+//	pRet->mRootTransform[2][2]	=-pRet->mRootTransform[2][2];
+//	pRet->mRootTransform[3][2]	=-pRet->mRootTransform[3][2];
+
 	return	pRet;
 }
 

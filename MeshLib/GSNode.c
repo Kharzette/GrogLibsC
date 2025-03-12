@@ -154,3 +154,8 @@ void	GSNode_SetBoneIndexes(GSNode *pNode, int *pIndex)
 	pNode->mIndex	=*pIndex;
 	(*pIndex)++;
 }
+
+void	GSNode_ConvertToLeftHanded(GSNode *pNode)
+{
+	KeyFrame_ConvertToLeftHanded(&pNode->mKeyValue);
+}

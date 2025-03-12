@@ -206,10 +206,20 @@ void	SubAnim_Destroy(SubAnim *pSA)
 }
 
 
+void	SubAnim_SetBoneRef(SubAnim *pSA, Skeleton *pSkel)
+{
+	pSA->mpBone	=Skeleton_GetBoneKeyByIndex(pSkel, pSA->mBoneIndex);
+}
+
 void	SubAnim_SetBone(SubAnim *pSA, KeyFrame *pBoneRef, int boneIdx)
 {
 	pSA->mpBone		=pBoneRef;
 	pSA->mBoneIndex	=boneIdx;
+}
+
+void	SubAnim_ReMapBoneIndex(SubAnim *pSA, int boneMap[])
+{
+	pSA->mBoneIndex	=boneMap[pSA->mBoneIndex];
 }
 
 //take 3 sub anims that operate only on T S R

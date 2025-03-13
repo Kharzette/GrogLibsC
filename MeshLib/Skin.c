@@ -46,12 +46,38 @@ Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
 
 	memcpy(pRet->mpInverseBindPoses, pIBPs, sizeof(mat4) * numBinds);
 
-	pRet->mNumBinds	=numBinds;
+	pRet->mNumShapes	=pRet->mNumBinds	=numBinds;
 
 	glm_mat4_identity(pRet->mRootTransform);
 	glm_mat4_identity(pRet->mScaledRoot);
 	glm_mat4_identity(pRet->mScaleMat);
 	glm_mat4_identity(pRet->mInvScaleMat);
+
+	pRet->mpBoneBoxes		=malloc(sizeof(vec3) * 2 * pRet->mNumShapes);
+	pRet->mpBoneSpheres		=malloc(sizeof(vec4) * pRet->mNumShapes);
+	pRet->mpBoneCapsules	=malloc(sizeof(vec2) * pRet->mNumShapes);
+	pRet->mpBoneColShapes	=malloc(sizeof(int) * pRet->mNumShapes);
+
+	//some default shapes
+	vec3	bxMax	={	.1, .1, .1		};
+	vec3	bxMin	={	-.1, -.1, -.1	};
+	vec4	sphere	={	0, 0, 0, 0.1	};
+	vec2	cap		={	0.1, 0.3		};
+
+	for(int i=0;i < numBinds;i++)
+	{
+		pRet->mpBoneColShapes[i]	=BONE_COL_SHAPE_INVALID;
+
+		//box
+		glm_vec3_copy(bxMin, pRet->mpBoneBoxes[i * 2]);
+		glm_vec3_copy(bxMax, pRet->mpBoneBoxes[i * 2 + 1]);
+
+		//sphere
+		glm_vec4_copy(sphere, pRet->mpBoneSpheres[i]);
+
+		//capsule
+		glm_vec2_copy(cap, pRet->mpBoneCapsules[i]);
+	}
 
 //	glm_scale_make(pRet->mRootTransform, (vec3){-1, 1, 1});
 

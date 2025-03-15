@@ -87,7 +87,7 @@ Skin	*Skin_Create(mat4 *pIBPs, int joints[], int numBinds)
 		glm_vec2_copy(cap, pRet->mpBoneCapsules[i]);
 	}
 
-//	glm_scale_make(pRet->mRootTransform, (vec3){-1, 1, 1});
+	glm_scale_make(pRet->mRootTransform, (vec3){-1, 1, 1});
 
 //	glm_rotate_x(pRet->mRootTransform, -GLM_PI_2f, pRet->mRootTransform);
 

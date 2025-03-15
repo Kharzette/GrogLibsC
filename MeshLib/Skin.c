@@ -15,6 +15,10 @@ typedef struct	Skin_t
 
 	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
 										//units in meters by default
+
+	//indexes from vert bone idx to skeleton node idx I think
+	int	*mpJoints;
+
 	int	mNumBinds;	//num ibp/bp above
 	int	mNumShapes;	//num col shapes below
 										
@@ -30,7 +34,7 @@ typedef struct	Skin_t
 }	Skin;
 
 
-Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
+Skin	*Skin_Create(mat4 *pIBPs, int joints[], int numBinds)
 {
 #ifdef __AVX__
 	Skin	*pRet	=aligned_alloc(32, sizeof(Skin));
@@ -47,6 +51,10 @@ Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
 	memcpy(pRet->mpInverseBindPoses, pIBPs, sizeof(mat4) * numBinds);
 
 	pRet->mNumShapes	=pRet->mNumBinds	=numBinds;
+
+	pRet->mpJoints	=malloc(sizeof(int) * numBinds);
+
+	memcpy(pRet->mpJoints, joints, sizeof(int) * numBinds);
 
 	glm_mat4_identity(pRet->mRootTransform);
 	glm_mat4_identity(pRet->mScaledRoot);
@@ -101,6 +109,7 @@ Skin	*Skin_Create(mat4 *pIBPs, int numBinds)
 void	Skin_Destroy(Skin *pSkin)
 {
 	free(pSkin->mpInverseBindPoses);
+	free(pSkin->mpJoints);
 	free(pSkin->mpBoneBoxes);
 	free(pSkin->mpBoneSpheres);
 	free(pSkin->mpBoneCapsules);
@@ -192,7 +201,7 @@ void	Skin_Write(const Skin *pSkin, FILE *f)
 
 void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
 {
-	Skeleton_FillBoneArray(pSkel, pBones, pSkin->mNumBinds);
+	Skeleton_FillBoneArray(pSkel, pSkin->mpJoints, pBones, pSkin->mNumBinds);
 
 	for(int i=0;i < pSkin->mNumBinds;i++)
 	{

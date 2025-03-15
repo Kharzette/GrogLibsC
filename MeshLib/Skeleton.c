@@ -131,13 +131,14 @@ bool	Skeleton_GetMatrixForBoneIndex(const Skeleton *pSkel, int idx, mat4 mat)
 	return	false;
 }
 
-void	Skeleton_FillBoneArray(const Skeleton *pSkel, mat4 *pBones, int numBones)
+void	Skeleton_FillBoneArray(const Skeleton *pSkel,
+	const int joints[], mat4 *pBones, int numBones)
 {
 	assert(numBones < MAX_BONES);
 
 	for(int i=0;i < numBones;i++)
 	{
-		Skeleton_GetMatrixForBoneIndex(pSkel, i, pBones[i]);
+		Skeleton_GetMatrixForBoneIndex(pSkel, joints[i], pBones[i]);
 	}
 }
 

@@ -23,7 +23,6 @@ AnimLib	*AnimLib_Create(Skeleton *pSkel);
 AnimLib	*AnimLib_Read(const char *fileName);
 void	AnimLib_Write(const AnimLib *pAL, const char *szFileName);
 
-void			AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones, int numBones);
 const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL);
 int				AnimLib_GetNumAnims(const AnimLib *pAL);
 StringList		*AnimLib_GetAnimList(const AnimLib *pAL);

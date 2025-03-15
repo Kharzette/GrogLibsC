@@ -115,11 +115,6 @@ void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 	Anim_Animate(pAnim, time);
 }
 
-void	AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones, int numBones)
-{
-	Skeleton_FillBoneArray(pAL->mpSkeleton, pBones, numBones);
-}
-
 
 const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL)
 {
@@ -302,9 +297,12 @@ static void sMakeMapCB(const UT_string *pKey, const void *pValue, void *pContext
 	}
 	else
 	{
-		int	locIdx	=(int)pValue;
+		int	forIdx	=(int)pValue;
 
-		int	forIdx	=(int)DictSZ_GetValue(pSM->mpForeignSkel->mpNameToIndex, pKey);
+		int	locIdx	=(int)DictSZ_GetValue(pSM->mpLocalSkel->mpNameToIndex, pKey);
+
+		printf("Mapping foreign bone index %d, %s to index %d in the AnimLib.\n",
+			forIdx, utstring_body(pKey), locIdx);
 
 		pSM->mBoneMap[forIdx]	=locIdx;
 	}

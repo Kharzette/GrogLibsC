@@ -9,28 +9,20 @@ typedef struct	Anim_t			Anim;
 typedef struct	Skeleton_t		Skeleton;
 typedef struct	StringList_t	StringList;
 
-//useful struct to remap between skeletons
-typedef struct	SkellyMap_t
-{
-	int	mBoneMap[MAX_BONES];
-
-	Skeleton	*mpLocalSkel;
-	Skeleton	*mpForeignSkel;
-}	SkellyMap;
-
 
 AnimLib	*AnimLib_Create(Skeleton *pSkel);
+void	AnimLib_Destroy(AnimLib **ppAL);
 AnimLib	*AnimLib_Read(const char *fileName);
 void	AnimLib_Write(const AnimLib *pAL, const char *szFileName);
 
 const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL);
 int				AnimLib_GetNumAnims(const AnimLib *pAL);
 StringList		*AnimLib_GetAnimList(const AnimLib *pAL);
-const SkellyMap	*AnimLib_GetMapping(const AnimLib *pALib, const Skeleton *pForeignSkel);
+bool			AnimLib_CheckSkeleton(const AnimLib *pALib, const Skeleton *pForeignSkel);
 
 void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew);
 void	AnimLib_Delete(AnimLib *pAL, const char *szAnim);
 void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time);
 void	AnimLib_Add(AnimLib *pALib, Anim *pAnim);
-void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, Skeleton *pForeignSkel);
+void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, const Skeleton *pForeignSkel);
 void	AnimLib_SetBoneRefs(AnimLib *pAL);

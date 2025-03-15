@@ -172,15 +172,26 @@ void	DictSZ_New(DictSZ **ppHead)
 }
 
 
+//this used to just check for null from a get value,
+//but one of the things I do with this sometimes is
+//store an int instead of a pointer, and if there's
+//a zero, it is the same as null so contains would fail
 bool	DictSZ_ContainsKey(const DictSZ *pHead, const UT_string *pKey)
 {
-	return	(DictSZ_GetValue(pHead, pKey) != NULL);
+	return	DictSZ_ContainsKeyccp(pHead, utstring_body(pKey));
 }
 
 
 bool	DictSZ_ContainsKeyccp(const DictSZ *pHead, const char *pKey)
 {
-	return	(DictSZ_GetValueccp(pHead, pKey) != NULL);
+	DictSZ	*pHash;
+	
+	HASH_FIND_STR(pHead, pKey, pHash);
+	if(pHash == NULL)
+	{
+		return	false;
+	}
+	return	true;
 }
 
 

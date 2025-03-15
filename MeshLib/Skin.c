@@ -16,8 +16,8 @@ typedef struct	Skin_t
 	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
 										//units in meters by default
 
-	//indexes from vert bone idx to skeleton node idx I think
-	int	*mpJoints;
+	//indexes from vert bone idx to skeleton node idx
+	uint8_t	*mpJoints;
 
 	int	mNumBinds;	//num ibp/bp above
 	int	mNumShapes;	//num col shapes below
@@ -34,7 +34,7 @@ typedef struct	Skin_t
 }	Skin;
 
 
-Skin	*Skin_Create(mat4 *pIBPs, int joints[], int numBinds)
+Skin	*Skin_Create(mat4 *pIBPs, uint8_t joints[], int numBinds)
 {
 #ifdef __AVX__
 	Skin	*pRet	=aligned_alloc(32, sizeof(Skin));
@@ -48,13 +48,14 @@ Skin	*Skin_Create(mat4 *pIBPs, int joints[], int numBinds)
 	pRet->mpInverseBindPoses	=aligned_alloc(16, sizeof(mat4) * numBinds);	
 #endif
 
+	//these are in right handed space
 	memcpy(pRet->mpInverseBindPoses, pIBPs, sizeof(mat4) * numBinds);
 
 	pRet->mNumShapes	=pRet->mNumBinds	=numBinds;
 
-	pRet->mpJoints	=malloc(sizeof(int) * numBinds);
-
-	memcpy(pRet->mpJoints, joints, sizeof(int) * numBinds);
+	//just an index into skeleton
+	pRet->mpJoints	=malloc(sizeof(uint8_t) * numBinds);
+	memcpy(pRet->mpJoints, joints, sizeof(uint8_t) * numBinds);
 
 	glm_mat4_identity(pRet->mRootTransform);
 	glm_mat4_identity(pRet->mScaledRoot);
@@ -87,20 +88,18 @@ Skin	*Skin_Create(mat4 *pIBPs, int joints[], int numBinds)
 		glm_vec2_copy(cap, pRet->mpBoneCapsules[i]);
 	}
 
+	float	scaleFactor	=1.0f;	//default meters
+
+	//this flips the character into left handed space as a final step.
 	glm_scale_make(pRet->mRootTransform, (vec3){-1, 1, 1});
 
-//	glm_rotate_x(pRet->mRootTransform, -GLM_PI_2f, pRet->mRootTransform);
+	vec3	scaleVec	={ scaleFactor, scaleFactor, scaleFactor	};
+	vec3	scaleVecInv	={ 1.0f / scaleFactor, 1.0f / scaleFactor, 1.0f / scaleFactor	};
 
-	//set up the root transform to do right to left
-//	pRet->mRootTransform[2][0]	=-pRet->mRootTransform[2][0];
-//	pRet->mRootTransform[2][1]	=-pRet->mRootTransform[2][1];
-//	pRet->mRootTransform[2][2]	=-pRet->mRootTransform[2][2];
-//	pRet->mRootTransform[2][3]	=-pRet->mRootTransform[2][3];
+	glm_scale_make(pRet->mScaleMat, scaleVec);
+	glm_scale_make(pRet->mInvScaleMat, scaleVecInv);
 
-//	pRet->mRootTransform[0][2]	=-pRet->mRootTransform[0][2];
-//	pRet->mRootTransform[1][2]	=-pRet->mRootTransform[1][2];
-//	pRet->mRootTransform[2][2]	=-pRet->mRootTransform[2][2];
-//	pRet->mRootTransform[3][2]	=-pRet->mRootTransform[3][2];
+	glm_mat4_mul(pRet->mScaleMat, pRet->mRootTransform, pRet->mScaledRoot);
 
 	return	pRet;
 }
@@ -143,6 +142,10 @@ Skin	*Skin_Read(FILE *f)
 		fread(pRet->mpInverseBindPoses[idx], sizeof(mat4), 1, f);
 	}
 
+	//joints array
+	pRet->mpJoints	=malloc(sizeof(uint8_t) * pRet->mNumBinds);
+	fread(pRet->mpJoints, 1, pRet->mNumBinds, f);
+
 	fread(&pRet->mNumShapes, sizeof(int), 1, f);
 
 	pRet->mpBoneBoxes		=malloc(sizeof(vec3) * 2 * pRet->mNumShapes);
@@ -182,6 +185,9 @@ void	Skin_Write(const Skin *pSkin, FILE *f)
 
 		fwrite(pSkin->mpInverseBindPoses[i], sizeof(mat4), 1, f);
 	}
+
+	//joint array
+	fwrite(pSkin->mpJoints, 1, pSkin->mNumBinds, f);
 
 	fwrite(&pSkin->mNumShapes, sizeof(int), 1, f);
 

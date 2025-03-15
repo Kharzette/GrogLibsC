@@ -16,7 +16,6 @@ void	KeyFrame_Read(FILE *f, KeyFrame *pKey);
 void	KeyFrame_Write(const KeyFrame *pKey, FILE *f);
 
 void	KeyFrame_Identity(KeyFrame *pKey);
-void	KeyFrame_ConvertToLeftHanded(KeyFrame *pKey);
 
 void	KeyFrame_GetMatrix(const KeyFrame *pKey, mat4 mat);
 void	KeyFrame_GetMatrixOtherWay(const KeyFrame *pKey, mat4 mat);

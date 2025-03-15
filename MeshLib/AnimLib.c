@@ -17,12 +17,24 @@ typedef struct	AnimLib_t
 	Skeleton	*mpSkeleton;
 }	AnimLib;
 
+typedef struct	SkeletonChecker_t
+{
+	Skeleton	*mpForeignSkeleton;
+
+	bool	mbMatch;
+
+	StringList	*mpMissingBones;
+
+}	SkeletonChecker;
+
 
 //static forward decs
-static void sMakeMapCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void sCheckSkelCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void sFindMissingBonesCB(const UT_string *pKey, const void *pValue, void *pContext);
 static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pContext);
 static void	sSetBoneRefsCB(const UT_string *pKey, const void *pValue, void *pContext);
 static void	sAnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void	sNukeAnimCB(void *pStuff);
 
 
 AnimLib	*AnimLib_Create(Skeleton *pSkel)
@@ -149,54 +161,76 @@ void	AnimLib_Add(AnimLib *pALib, Anim *pAnim)
 	AnimLib_SetBoneRefs(pALib);
 }
 
-//get a mapping array that maps bones from foreign to local
-const SkellyMap	*AnimLib_GetMapping(const AnimLib *pALib, const Skeleton *pForeignSkel)
-{
-	SkellyMap	*pSM	=malloc(sizeof(SkellyMap));
 
-	memset(pSM, 0, sizeof(SkellyMap));
-
-	pSM->mpLocalSkel	=pALib->mpSkeleton;
-	pSM->mpForeignSkel	=pForeignSkel;
-
-	DictSZ_ForEach(pForeignSkel->mpNameToIndex, sMakeMapCB, pSM);
-
-	return	pSM;
-}
-
-//adapt anim from another skeleton
-//foreign is non const because we might adopt it
-void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, Skeleton *pForeignSkel)
+//see if skeletons match exactly
+bool	AnimLib_CheckSkeleton(const AnimLib *pALib, const Skeleton *pForeignSkel)
 {
 	int	locBCnt	=DictSZ_Count(pALib->mpSkeleton->mpNameToIndex);
 	int	forBCnt	=DictSZ_Count(pForeignSkel->mpNameToIndex);
 
 	if(locBCnt != forBCnt)
 	{
-		printf("Warning, skeletons are different!\n");
-
-		if(locBCnt < forBCnt)
-		{
-			printf("Foreign skeleton is more complex, so using it.\n");
-
-			Skeleton	*pOld	=pALib->mpSkeleton;
-			pALib->mpSkeleton	=pForeignSkel;
-
-			//will this actually work!?
-			AnimLib_AddForeign(pALib, pAnim, pOld);			
-			return;
-		}
+		return	false;
 	}
 
-	SkellyMap	sm;
+	SkeletonChecker	sc;
 
-	sm.mpLocalSkel		=pALib->mpSkeleton;
-	sm.mpForeignSkel	=pForeignSkel;
+	sc.mbMatch				=true;
+	sc.mpForeignSkeleton	=pForeignSkel;
+	sc.mpMissingBones		=NULL;	//not used for this check
 
-	DictSZ_ForEach(pForeignSkel->mpNameToIndex, sMakeMapCB, &sm);
+	DictSZ_ForEach(pALib->mpSkeleton->mpNameToIndex, sCheckSkelCB, &sc);
 
-	Anim_ReMapBoneIndexes(pAnim, sm.mBoneMap);
+	return	sc.mbMatch;
+}
 
+
+//adapt anim from another skeleton
+void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, const Skeleton *pForeignSkel)
+{
+	DictSZ	*pForN2I	=pForeignSkel->mpNameToIndex;
+
+	//Probably the best way to do this is to merge the skeletons.
+	//If any bones exist in the foreign skeleton that aren't in
+	//the animlib's skeleton, merge them in at the next available
+	//index.
+	SkeletonChecker	sc;
+
+	//for this test, this is backwards
+	//the foreign skeleton is iterated and checked against the local
+	sc.mpForeignSkeleton	=pALib->mpSkeleton;
+	sc.mpMissingBones		=SZList_New();
+	sc.mbMatch				=true;
+
+	DictSZ_ForEach(pForN2I, sFindMissingBonesCB, &sc);
+
+	if(sc.mpMissingBones != NULL)
+	{
+		//found some new bones to add
+		//need to figure out where the bone is in the heirarchy
+		//then add it to the animlib skeleton in that spot
+		//then update the name to index dictionary
+		//then remap the bone indexes of the verts referencing the new bone?
+		//that's super complicated and annoying, maybe just not allow this?
+		//make people fix it in blender?
+		for(const StringList *pCur=SZList_Iterate(sc.mpMissingBones);pCur != NULL;pCur=SZList_IteratorNext(pCur))
+		{
+			const UT_string	*pCurBoneName	=SZList_IteratorValUT(pCur);
+
+			//see what the foreign index is for this bone
+			int	forIdx	=(int)DictSZ_GetValue(pForN2I, pCurBoneName);
+
+			printf("AnimLib skeleton is missing bone %s with index %d\n", utstring_body(pCurBoneName), forIdx);	
+		}
+
+		printf("Maybe start a new AnimLib with the most complex bone?\n");
+
+		//free
+		SZList_Clear(&sc.mpMissingBones);
+		return;
+	}
+
+	//no new bones, so it should add normally
 	DictSZ_Add(&pALib->mpAnims, Anim_GetName(pAnim), pAnim);
 
 	AnimLib_SetBoneRefs(pALib);
@@ -229,6 +263,18 @@ void	AnimLib_Delete(AnimLib *pAL, const char *szAnim)
 	DictSZ_Removeccp(&pAL->mpAnims, szAnim);
 
 	Anim_Destroy(pAn);
+}
+
+void	AnimLib_Destroy(AnimLib **ppAL)
+{
+	AnimLib	*pAL	=*ppAL;
+	DictSZ_ClearCB(&pAL->mpAnims, sNukeAnimCB);
+
+	Skeleton_Destroy(pAL->mpSkeleton);
+
+	free(pAL);
+
+	*ppAL	=NULL;
 }
 
 
@@ -281,29 +327,56 @@ static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pConte
 	Anim_Write(pAnm, f);
 }
 
-static void sMakeMapCB(const UT_string *pKey, const void *pValue, void *pContext)
+static void sCheckSkelCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
-	SkellyMap	*pSM	=(SkellyMap *)pContext;
+	SkeletonChecker	*pSC	=(SkeletonChecker *)pContext;
 
-	if(pSM == NULL)
+	if(pSC == NULL)
 	{
-		printf("Null SkellyMap in sMakeMapCB!\n");
+		printf("Null Skelcheck in sCheckSkelCB!\n");
 		return;
 	}
 
-	if(!DictSZ_ContainsKey(pSM->mpForeignSkel->mpNameToIndex, pKey))
+	if(!DictSZ_ContainsKey(pSC->mpForeignSkeleton->mpNameToIndex, pKey))
 	{
-		//key doesn't exist in skeleton, no big deal, anim won't ref it
+		printf("Foreign skeleton has no bone %s\n", utstring_body(pKey));
+		pSC->mbMatch	=false;
 	}
 	else
 	{
-		int	forIdx	=(int)pValue;
+		int	locIdx	=(int)pValue;
+		int	forIdx	=(int)DictSZ_GetValue(pSC->mpForeignSkeleton->mpNameToIndex, pKey);
 
-		int	locIdx	=(int)DictSZ_GetValue(pSM->mpLocalSkel->mpNameToIndex, pKey);
-
-		printf("Mapping foreign bone index %d, %s to index %d in the AnimLib.\n",
-			forIdx, utstring_body(pKey), locIdx);
-
-		pSM->mBoneMap[forIdx]	=locIdx;
+		if(locIdx != forIdx)
+		{
+			printf("Bone %s has differing index for new animation vs animation lib!\n", utstring_body(pKey));
+			pSC->mbMatch	=false;
+		}
 	}
+}
+
+static void sFindMissingBonesCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	SkeletonChecker	*pSC	=(SkeletonChecker *)pContext;
+
+	if(pSC == NULL)
+	{
+		printf("Null Skelcheck in sFindMissingBonesCB!\n");
+		return;
+	}
+
+	if(!DictSZ_ContainsKey(pSC->mpForeignSkeleton->mpNameToIndex, pKey))
+	{
+		printf("Foreign skeleton has no bone %s\n", utstring_body(pKey));
+		pSC->mbMatch	=false;
+
+		SZList_AddUT(&pSC->mpMissingBones, pKey);
+	}
+}
+
+static void	sNukeAnimCB(void *pStuff)
+{
+	Anim	*pAnim	=(Anim *)pStuff;
+
+	Anim_Destroy(pAnim);
 }

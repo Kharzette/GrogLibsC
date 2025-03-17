@@ -16,6 +16,9 @@ void	Anim_Write(const Anim *pAnim, FILE *f);
 void	Anim_Destroy(Anim *pAnim);
 
 void	Anim_Animate(Anim *pAnim, float time);
+void	Anim_Blend(Anim *pAnim1, Anim *pAnim2,
+	float anTime1, float anTime2, float percentage);
+
 void	Anim_SetNameccp(Anim *pAnim, const char *szNew);
 void	Anim_ReMapBoneIndexes(Anim *pAnim, int boneMap[]);
 void	Anim_SetBoneRefs(Anim *pAnim, Skeleton *pSkel);

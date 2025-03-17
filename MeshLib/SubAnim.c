@@ -28,6 +28,7 @@ typedef struct	SubAnim_t
 //static forward decs
 static void	sAddKeyAtTime(SubAnim *pSA, float t);
 static void	sFillGaps(SubAnim *pSAT, SubAnim *pSAS, SubAnim *pSAR);
+static void	sAnimateKey(SubAnim *pSA, float time, bool bLooping, KeyFrame *pDest);
 
 
 SubAnim	*SubAnim_Create(const float *pTimes, KeyFrame *pKeys,
@@ -118,83 +119,7 @@ void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping)
 		return;
 	}
 
-	//make sure the time is in range
-	float	animTime;
-	if(bLooping)
-	{
-		animTime	=fmodf(time, pSA->mTotalTime);
-	}
-	else
-	{
-		animTime	=time;
-	}
-
-	if(animTime < pSA->mpTimes[0])
-	{
-		//bring into range
-		animTime	=pSA->mpTimes[0];
-	}
-	else if(animTime > pSA->mpTimes[pSA->mNumKeys - 1])
-	{
-		animTime	=pSA->mpTimes[pSA->mNumKeys - 1];
-	}
-
-	//locate the key index to start with
-	int	startIndex;
-	for(startIndex = pSA->mLastTimeIndex;startIndex < pSA->mNumKeys;startIndex++)
-	{
-		if(startIndex > 0)
-		{
-			if(animTime < pSA->mpTimes[startIndex] && animTime >= pSA->mpTimes[startIndex - 1])
-			{
-				//back up one
-				startIndex			=GLM_MAX(startIndex - 1, 0);
-				pSA->mLastTimeIndex	=startIndex;
-				break;	//found
-			}
-		}
-		else
-		{
-			if(animTime <= pSA->mpTimes[startIndex])
-			{
-				//back up one
-				startIndex			=GLM_MAX(startIndex - 1, 0);
-				pSA->mLastTimeIndex	=startIndex;
-				break;	//found
-			}
-		}
-	}
-
-	if(startIndex >= pSA->mNumKeys)
-	{
-		//wasn't found, search all
-		for(startIndex = 0;startIndex < pSA->mNumKeys;startIndex++)
-		{
-			if(animTime <= pSA->mpTimes[startIndex])
-			{
-				//back up one
-				startIndex			=GLM_MAX(startIndex - 1, 0);
-				pSA->mLastTimeIndex	=startIndex;
-				break;	//found
-			}
-		}
-	}
-
-	assert(startIndex < pSA->mNumKeys);
-
-	//figure out the percentage between pos1 and pos2
-	//get the deltatime
-	float	percentage	=pSA->mpTimes[startIndex + 1] - pSA->mpTimes[startIndex];
-
-	//convert to percentage
-	percentage	=1.0f / percentage;
-
-	//multiply by amount beyond p1
-	percentage	*=(animTime - pSA->mpTimes[startIndex]);
-
-	assert(percentage >= 0.0f && percentage <= 1.0f);
-
-	KeyFrame_Lerp(&pSA->mpKeys[startIndex], &pSA->mpKeys[startIndex + 1], percentage, pSA->mpBone);
+	sAnimateKey(pSA, time, bLooping, pSA->mpBone);
 }
 
 void	SubAnim_Destroy(SubAnim *pSA)
@@ -203,6 +128,17 @@ void	SubAnim_Destroy(SubAnim *pSA)
 	free(pSA->mpTimes);
 
 	free(pSA);
+}
+
+
+const KeyFrame	*SubAnim_GetBone(const SubAnim *pSA)
+{
+	return	pSA->mpBone;
+}
+
+int	SubAnim_GetBoneIndex(const SubAnim *pSA)
+{
+	return	pSA->mBoneIndex;
 }
 
 
@@ -390,4 +326,90 @@ static void	sFillGaps(SubAnim *pSAT,
 			sAddKeyAtTime(pSAT, t);
 		}
 	}
+}
+
+void	sAnimateKey(SubAnim *pSA, float time, bool bLooping, KeyFrame *pDest)
+{	
+	if(pDest == NULL)
+	{
+		return;
+	}
+
+	//make sure the time is in range
+	float	animTime;
+	if(bLooping)
+	{
+		animTime	=fmodf(time, pSA->mTotalTime);
+	}
+	else
+	{
+		animTime	=time;
+	}
+
+	if(animTime < pSA->mpTimes[0])
+	{
+		//bring into range
+		animTime	=pSA->mpTimes[0];
+	}
+	else if(animTime > pSA->mpTimes[pSA->mNumKeys - 1])
+	{
+		animTime	=pSA->mpTimes[pSA->mNumKeys - 1];
+	}
+
+	//locate the key index to start with
+	int	startIndex;
+	for(startIndex = pSA->mLastTimeIndex;startIndex < pSA->mNumKeys;startIndex++)
+	{
+		if(startIndex > 0)
+		{
+			if(animTime < pSA->mpTimes[startIndex] && animTime >= pSA->mpTimes[startIndex - 1])
+			{
+				//back up one
+				startIndex			=GLM_MAX(startIndex - 1, 0);
+				pSA->mLastTimeIndex	=startIndex;
+				break;	//found
+			}
+		}
+		else
+		{
+			if(animTime <= pSA->mpTimes[startIndex])
+			{
+				//back up one
+				startIndex			=GLM_MAX(startIndex - 1, 0);
+				pSA->mLastTimeIndex	=startIndex;
+				break;	//found
+			}
+		}
+	}
+
+	if(startIndex >= pSA->mNumKeys)
+	{
+		//wasn't found, search all
+		for(startIndex = 0;startIndex < pSA->mNumKeys;startIndex++)
+		{
+			if(animTime <= pSA->mpTimes[startIndex])
+			{
+				//back up one
+				startIndex			=GLM_MAX(startIndex - 1, 0);
+				pSA->mLastTimeIndex	=startIndex;
+				break;	//found
+			}
+		}
+	}
+
+	assert(startIndex < pSA->mNumKeys);
+
+	//figure out the percentage between pos1 and pos2
+	//get the deltatime
+	float	percentage	=pSA->mpTimes[startIndex + 1] - pSA->mpTimes[startIndex];
+
+	//convert to percentage
+	percentage	=1.0f / percentage;
+
+	//multiply by amount beyond p1
+	percentage	*=(animTime - pSA->mpTimes[startIndex]);
+
+	assert(percentage >= 0.0f && percentage <= 1.0f);
+
+	KeyFrame_Lerp(&pSA->mpKeys[startIndex], &pSA->mpKeys[startIndex + 1], percentage, pDest);
 }

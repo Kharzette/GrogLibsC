@@ -22,7 +22,10 @@ bool			AnimLib_CheckSkeleton(const AnimLib *pALib, const Skeleton *pForeignSkel)
 
 void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew);
 void	AnimLib_Delete(AnimLib *pAL, const char *szAnim);
-void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time);
 void	AnimLib_Add(AnimLib *pALib, Anim *pAnim);
 void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, const Skeleton *pForeignSkel);
 void	AnimLib_SetBoneRefs(AnimLib *pAL);
+
+void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time);
+void	AnimLib_Blend(AnimLib *pAL, const char *szAnim1, const char *szAnim2,
+	float anTime1, float anTime2, float percentage);

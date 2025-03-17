@@ -119,12 +119,35 @@ void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 {
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnimName))
 	{
+		printf("No anim %s in anim lib.\n", szAnimName);
 		return;
 	}
 
 	Anim	*pAnim	=DictSZ_GetValueccp(pAL->mpAnims, szAnimName);
 
 	Anim_Animate(pAnim, time);
+}
+
+void	AnimLib_Blend(AnimLib *pAL, const char *szAnim1, const char *szAnim2,
+						float anTime1, float anTime2, float percentage)
+{
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim1))
+	{
+		printf("No anim %s in anim lib blend.\n", szAnim1);
+		return;
+	}
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim2))
+	{
+		printf("No anim %s in anim lib blend.\n", szAnim2);
+		return;
+	}
+
+	Anim	*pAnim1	=DictSZ_GetValueccp(pAL->mpAnims, szAnim1);
+	Anim	*pAnim2	=DictSZ_GetValueccp(pAL->mpAnims, szAnim2);
+
+	assert(pAnim1 != pAnim2);
+
+	Anim_Blend(pAnim1, pAnim2, anTime1, anTime2, percentage);
 }
 
 
@@ -240,6 +263,7 @@ void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew)
 {
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szOld))
 	{
+		printf("No anim %s in anim lib ReName.\n", szOld);
 		return;
 	}
 
@@ -255,6 +279,7 @@ void	AnimLib_Delete(AnimLib *pAL, const char *szAnim)
 {
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
 	{
+		printf("No anim %s in anim lib delete.\n", szAnim);
 		return;
 	}
 

@@ -96,7 +96,8 @@ Character	*Character_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 
 	fread(pRet->mTransform, sizeof(mat4), 1, f);
 
-	pRet->mpBound	=MeshBound_Read(f);
+//	pRet->mpBound	=MeshBound_Read(f);
+	pRet->mpBound	=NULL;
 
 	pRet->mpSkin	=Skin_Read(f);
 
@@ -146,7 +147,7 @@ void	Character_Write(const Character *pChar, const char *szFileName)
 
 	fwrite(pChar->mTransform, sizeof(mat4), 1, f);
 
-	MeshBound_Write(pChar->mpBound, f);
+//	MeshBound_Write(pChar->mpBound, f);
 	Skin_Write(pChar->mpSkin, f);
 
 	fwrite(&pChar->mNumParts, sizeof(int), 1, f);

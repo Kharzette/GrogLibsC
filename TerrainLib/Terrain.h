@@ -11,44 +11,14 @@ typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	StuffKeeper_t		StuffKeeper;
 typedef struct	Material_t			Material;
 typedef struct	CBKeeper_t			CBKeeper;
+typedef struct	PhysicsStuff_t		PhysicsStuff;
 
-//the vertex structure used by the buffer,
-//but also used in the quadtree stuff
-typedef struct	TerrainVert_t
-{
-	vec3		mPosition;
-	uint16_t	mNormal[4];		//16 bit float4
 
-	//these are percentages of each texture in the 8 way atlas
-	uint16_t	mTexFactor0[4];	//16 bit float4
-	uint16_t	mTexFactor1[4];	//16 bit float4
-
-}	TerrainVert;
-
-Terrain	*Terrain_Create(GraphicsDevice *pGD,
-	const char *pName, const char *pPath, int numSmoothPasses, float heightScalar);
+Terrain	*Terrain_Create(GraphicsDevice *pGD, PhysicsStuff *pPhys,
+	const char *pName, const char *pPath,
+	int numSmoothPasses, float heightScalar);
+void	Terrain_Destroy(Terrain **ppTer, PhysicsStuff *pPhys);
 
 void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat);
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);
 void	Terrain_SetSRVAndLayout(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK);
-void	Terrain_GetQuadTreeLeafBoxes(Terrain *pTer, vec3 **ppMins, vec3 **ppMaxs, int *pNumBounds);
-void	Terrain_GetBounds(const Terrain *pTer, vec3 mins, vec3 maxs);
-
-//collision
-//int	Terrain_LineIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-//							vec3 intersection, vec4 planeHit);
-int	Terrain_SweptSphereIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-									float radius, vec3 intersection, vec4 planeHit);
-int	Terrain_SphereIntersect(const Terrain *pTer, const vec3 pos, float radius, vec4 planeHit);
-//int	Terrain_SweptBoundIntersect(const Terrain *pTer, const vec3 start, const vec3 end,
-//								const vec3 min, const vec3 max,
-//								vec3 intersection, vec4 planeHit);
-
-//movement
-//return footing
-int	Terrain_MoveSphere(const Terrain *pTer, const vec3 start, const vec3 end,
-					   float radius, vec3 finalPos);
-
-
-void	Terrain_SweptSphereIntersectPL(const Terrain *pTer, const vec3 start, const vec3 end,
-										float radius, Vec4List **ppPlanesHit);

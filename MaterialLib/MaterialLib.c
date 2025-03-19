@@ -27,6 +27,29 @@ MaterialLib	*MatLib_Create(StuffKeeper *pSK)
 	return	pRet;
 }
 
+static void	NukeMatsCB(void *pValue)
+{
+	Material	*pMat	=(Material *)pValue;
+	if(pMat == NULL)
+	{
+		printf("Null material in NukeMatsCB!\n");
+		return;
+	}
+
+	MAT_Destroy(pMat);
+}
+
+void	MatLib_Destroy(MaterialLib **ppMatLib)
+{
+	MaterialLib	*pMatLib	=*ppMatLib;
+
+	DictSZ_ClearCB(&pMatLib->mpMats, NukeMatsCB);
+
+	free(pMatLib);
+
+	*ppMatLib	=NULL;
+}
+
 MaterialLib	*MatLib_Read(const char *pFileName, StuffKeeper *pSK)
 {
 	FILE	*f	=fopen(pFileName, "rb");

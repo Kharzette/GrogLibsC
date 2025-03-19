@@ -24,9 +24,9 @@
             "includePath": [
                 "${workspaceFolder}/**"
             ],
-            "defines": [],
-            "cStandard": "gnu17",
-            "cppStandard": "gnu++17",
+            "defines": [ "true=1","false=0" ],  //TODO: annoying workaround
+            "cStandard": "gnu23",
+            "cppStandard": "gnu++23",
             "intelliSenseMode": "linux-gcc-x64"
         }
     ],

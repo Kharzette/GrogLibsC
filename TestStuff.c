@@ -15,6 +15,7 @@
 #include	"MaterialLib/PostProcess.h"
 #include	"MaterialLib/Material.h"
 #include	"MaterialLib/MaterialLib.h"
+#define	CLAY_IMPLEMENTATION
 #include	"MaterialLib/UIStuff.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
@@ -24,34 +25,44 @@
 #include	"UtilityLib/DictionaryStuff.h"
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/PrimFactory.h"
+#include	"UtilityLib/BipedMover.h"
+#include	"UtilityLib/PlaneMath.h"
 #include	"TerrainLib/Terrain.h"
 #include	"MeshLib/Mesh.h"
 #include	"MeshLib/AnimLib.h"
 #include	"MeshLib/Character.h"
 #include	"MeshLib/CommonPrims.h"
 #include	"InputLib/Input.h"
-#include	"UtilityLib/BipedMover.h"
+#include	"PhysicsLib/PhysicsStuff.h"
 
 
-#define	RESX			1280
-#define	RESY			720
-#define	ROT_RATE		10.0f
-#define	UVSCALE_RATE	1.0f
-#define	KEYTURN_RATE	0.01f
-#define	MOVE_RATE		0.1f
-#define	HEIGHT_SCALAR	0.15f
-#define	RAY_LEN			100.0f
-#define	RAY_WIDTH		0.05f
-#define	IMPACT_WIDTH	0.2f
-#define	NUM_RAYS		1000
-#define	MOUSE_TO_ANG	0.001f
-#define	MAX_ST_CHARS	256
-#define	START_CAM_DIST	5.0f
-#define	MAX_CAM_DIST	25.0f
-#define	MIN_CAM_DIST	0.25f
+#define	RESX				1280
+#define	RESY				720
+#define	ROT_RATE			10.0f
+#define	UVSCALE_RATE		1.0f
+#define	KEYTURN_RATE		0.01f
+#define	MOVE_THRESHOLD		0.1f
+#define	HEIGHT_SCALAR		0.15f
+#define	TER_SMOOTH_STEPS	4
+#define	RAY_LEN				100.0f
+#define	RAY_WIDTH			0.05f
+#define	IMPACT_WIDTH		0.2f
+#define	NUM_RAYS			1000
+#define	MOUSE_TO_ANG		0.001f
+#define	START_CAM_DIST		5.0f
+#define	MAX_CAM_DIST		25.0f
+#define	MIN_CAM_DIST		0.25f
+#define	SPHERE_SIZE			(1.0f)
+#define	MAX_SPHERES			50
+#define	BOUNCINESS			(0.8f)
+#define	PLAYER_RADIUS		(0.25f)
+#define	PLAYER_HEIGHT		(1.75f)
+#define	PLAYER_EYE_OFFSET	(0.8)
+#define	MAX_UI_VERTS		(8192)
+#define	RAMP_ANGLE			0.7f	//steepness can traverse on foot
 
 //should match CommonFunctions.hlsli
-#define	MAX_BONES		55
+#define	MAX_BONES	55
 
 
 //input context, stuff input handlers will need
@@ -63,17 +74,28 @@ typedef struct	TestStuff_t
 	PrimObject		*mpManyRays;
 	PrimObject		*mpManyImpacts;
 	UIStuff			*mpUI;
+	PhysicsStuff	*mpPhys;
+	PhysVCharacter	*mpPhysChar;
 	BipedMover		*mpBPM;
 
 	//toggles
 	bool	mbDrawTerNodes;
 	bool	mbMouseLooking;
+	bool	mbLeftMouseDown;
 	bool	mbRunning;
 	bool	mbFlyMode;
+	
+	//clay pointer stuff
+	Clay_Vector2	mScrollDelta;
+	Clay_Vector2	mMousePos;
 
-	//character movement
-	vec3	mCharMoveVec;
-
+	//jolt stuff
+	uint32_t	mSphereIDs[MAX_SPHERES];
+	int			mNumSpheres;
+	
+	//prims
+	PrimObject      *mpSphere;
+	
 	//misc data
 	vec3	mDanglyForce;
 	vec3	mLightDir;
@@ -86,11 +108,19 @@ typedef struct	TestStuff_t
 //static forward decs
 static void		sSetupKeyBinds(Input *pInp);
 static void		sSetupRastVP(GraphicsDevice *pGD);
-static void		sMoveCharacter(TestStuff *pTS, const vec3 moveVec);
+static void		sMakeSphere(TestStuff *pTS);
 static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
+static void		sFreeCharacterMeshParts(DictSZ **ppMeshes);
+static void 	sCheckLOS(const TestStuff *pTS);
+static void		sGetSphereColour(const TestStuff *pTS, int spIdx, vec4 colour);
+
+//clay stuff
+static const Clay_RenderCommandArray sCreateLayout(const TestStuff *pTS, vec3 velocity);
+static void sHandleClayErrors(Clay_ErrorData errorData);
 
 //material setups
 static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
+static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK);
 
@@ -100,6 +130,7 @@ static void	sDangleDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sDangleUpEH(void *pContext, const SDL_Event *pEvt);
 static void	sToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt);
 static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt);
+static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt);
 static void	sRightMouseDownEH(void *pContext, const SDL_Event *pEvt);
@@ -119,12 +150,15 @@ static void	sKeyTurnDownEH(void *pContext, const SDL_Event *pEvt);
 static void sMouseMoveEH(void *pContext, const SDL_Event *pEvt);
 static void sEscEH(void *pContext, const SDL_Event *pEvt);
 
+//extern PhysicsStuff	*_Z11Phys_Createv();
 
 int main(void)
 {
 	printf("DirectX action!\n");
 
-	Audio	*pAud	=Audio_Create(2);
+	PhysicsStuff	*pPhys	=Phys_Create();
+
+	Audio	*pAud	=Audio_Create(0);
 
 	//store a bunch of vars in a struct
 	//for ref/modifying by input handlers
@@ -132,11 +166,12 @@ int main(void)
 	memset(pTS, 0, sizeof(TestStuff));
 
 	//start in fly mode?
-	pTS->mbFlyMode	=true;
+	pTS->mbFlyMode	=false;
 	pTS->mCamDist	=START_CAM_DIST;
+	pTS->mpPhys		=pPhys;
 	
 	//set player on corner near origin
-	glm_vec3_scale(GLM_VEC3_ONE, 13.0f, pTS->mPlayerPos);
+	glm_vec3_scale(GLM_VEC3_ONE, 113.0f, pTS->mPlayerPos);
 
 	//input and key / mouse bindings
 	Input	*pInp	=INP_CreateInput();
@@ -164,14 +199,9 @@ int main(void)
 	}
 
 	//a terrain chunk
-	pTS->mpTer	=Terrain_Create(pTS->mpGD, "Blort", "Textures/Terrain/HeightMaps/HeightMap.png", 10, HEIGHT_SCALAR);
-
-	//debugdraw quadtree boxes
-	int		numBounds;
-	vec3	*pMins, *pMaxs;
-	Terrain_GetQuadTreeLeafBoxes(pTS->mpTer, &pMins, &pMaxs, &numBounds);
-
-	PrimObject	*pQTBoxes	=PF_CreateCubesFromBoundArray(pMins, pMaxs, numBounds, pTS->mpGD);
+	pTS->mpTer	=Terrain_Create(pTS->mpGD, pPhys, "Blort",
+		"Textures/Terrain/HeightMaps/HeightMap.png",
+		TER_SMOOTH_STEPS, HEIGHT_SCALAR);
 
 	vec4	lightRayCol	={	1.0f, 1.0f, 0.0f, 1.0f	};
 	vec4	XAxisCol	={	1.0f, 0.0f, 0.0f, 1.0f	};
@@ -199,13 +229,16 @@ __attribute_maybe_unused__
 	PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
 
 	float	aspect	=(float)RESX / (float)RESY;
+	
+	pTS->mpSphere	=PF_CreateSphere(GLM_VEC3_ZERO, SPHERE_SIZE, false, pTS->mpGD);
 
 	//these need align
 	__attribute((aligned(32)))	mat4	charMat, camProj;
 	__attribute((aligned(32)))	mat4	textProj, viewMat;
 
-	pTS->mEyePos[1]	=0.6f;
-	pTS->mEyePos[2]	=4.5f;
+	pTS->mEyePos[0] =185.0f;
+	pTS->mEyePos[1] =36.0f;
+	pTS->mEyePos[2] =180.0f;
 
 	//game camera
 	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
@@ -213,7 +246,12 @@ __attribute_maybe_unused__
 	//biped mover
 	pTS->mpBPM	=BPM_Create(pTS->mpCam);
 
-	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
+	//physics character
+	pTS->mpPhysChar	=Phys_CreateVCharacter(pPhys,
+		PLAYER_RADIUS, PLAYER_HEIGHT,
+		pTS->mPlayerPos);
+
+	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? BPM_MOVE_FLY : BPM_MOVE_GROUND);
 
 	SoundEffectPlay("synth", pTS->mPlayerPos);
 
@@ -227,6 +265,18 @@ __attribute_maybe_unused__
 	//set constant buffers to shaders, think I just have to do this once
 	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
+	pTS->mpUI	=UI_Create(pTS->mpGD, pSK, MAX_UI_VERTS);
+
+	UI_AddFont(pTS->mpUI, "MeiryoUI26", 0);
+
+	//clay init
+    uint64_t totalMemorySize = Clay_MinMemorySize();
+    Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(totalMemorySize, malloc(totalMemorySize));
+    Clay_Initialize(clayMemory, (Clay_Dimensions) { (float)RESX, (float)RESY }, (Clay_ErrorHandler) { sHandleClayErrors });
+    Clay_SetMeasureTextFunction(UI_MeasureText, pTS->mpUI);
+
+	Clay_SetDebugModeEnabled(false);
+
 	pTS->mLightDir[0]		=0.3f;
 	pTS->mLightDir[1]		=-0.7f;
 	pTS->mLightDir[2]		=-0.5f;
@@ -236,10 +286,12 @@ __attribute_maybe_unused__
 	glm_mat4_identity(charMat);
 
 	UpdateTimer	*pUT	=UpdateTimer_Create(true, false);
-	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
+//	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 6.944444f);	//144hz
+	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 16.66666f);	//60hz
 
 	//materials
 	Material	*pTerMat	=sMakeTerrainMat(pTS, pSK);
+	Material	*pSphereMat	=sMakeSphereMat(pTS, pSK);
 	Material	*pBoxesMat	=sMakeNodeBoxesMat(pTS, pSK);
 	Material	*pSkyBoxMat	=sMakeSkyBoxMat(pTS, pSK);
 
@@ -263,47 +315,87 @@ __attribute_maybe_unused__
 			secDelta > 0.0f;
 			secDelta =UpdateTimer_GetUpdateDeltaSeconds(pUT))
 		{
-			//zero out charmove
-			glm_vec3_zero(pTS->mCharMoveVec);
-
 			//do input here
 			//move turn etc
 			INP_Update(pInp, pTS);
 
 			{
-				bool	bJumped	=BPM_Update(pTS->mpBPM, secDelta, pTS->mCharMoveVec);
+				vec3	moveVec;
+
+				//check on ground and footing
+				bool	bSup		=Phys_VCharacterIsSupported(pTS->mpPhysChar);
+				bool	bFooting	=false;
+				if(bSup)
+				{
+					vec3	norm;
+					Phys_VCharacterGetGroundNormal(pTS->mpPhysChar, norm);
+					bFooting	=PM_IsGroundNormalAng(norm, RAMP_ANGLE);
+				}
+
+				bool	bJumped	=BPM_Update(pTS->mpBPM, bSup, bFooting, secDelta, moveVec);
 				if(bJumped)
 				{
 					SoundEffectPlay("jump", pTS->mPlayerPos);
 				}
+
+				//moveVec is an amount to move this frame
+				//convert to meters per second for phys
+				vec3	mpsMove;
+				glm_vec3_scale(moveVec, 60, mpsMove);
+
+				vec3	resultVelocity;
+				Phys_VCharacterMove(pPhys, pTS->mpPhysChar, mpsMove,
+					secDelta, resultVelocity);
+				
+				bSup	=Phys_VCharacterIsSupported(pTS->mpPhysChar);
+				if(bSup)
+				{
+					//here I think maybe the plane the player is on
+					//should be checked for a bad footing situation
+					//in which case velocity shouldn't be cleared
+					vec3	norm;
+					Phys_VCharacterGetGroundNormal(pTS->mpPhysChar, norm);
+					if(PM_IsGroundNormalAng(norm, RAMP_ANGLE))
+					{
+						//if still on the ground, cancel out vertical velocity
+						BPM_SetVerticalVelocity(pTS->mpBPM, resultVelocity);
+					}
+				}
 			}
-			sMoveCharacter(pTS, pTS->mCharMoveVec);
+
+			Phys_VCharacterGetPos(pTS->mpPhysChar, pTS->mPlayerPos);
+
+			Phys_Update(pPhys, secDelta);
 
 			UpdateTimer_UpdateDone(pUT);
 		}
 
 		//update materials incase light changed
 		MAT_SetLightDirection(pTerMat, pTS->mLightDir);
+		MAT_SetLightDirection(pSphereMat, pTS->mLightDir);
 		MAT_SetLightDirection(pBoxesMat, pTS->mLightDir);
 
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
 
+		vec3	velocity;
+		BPM_GetVelocity(pTS->mpBPM, velocity);
+
 		//update audio
-		Audio_Update(pAud, pTS->mPlayerPos, pTS->mCharMoveVec);
+		Audio_Update(pAud, pTS->mPlayerPos, velocity);
 
 		//player moving?
-		float	moving	=glm_vec3_norm(pTS->mCharMoveVec);
+		float	moving	=glm_vec3_norm(velocity);
 
-		if(moving > 0.0f)
+		if(moving > MOVE_THRESHOLD)
 		{
-			if(BPM_IsGoodFooting(pTS->mpBPM))
+			if(Phys_VCharacterIsSupported(pTS->mpPhysChar))
 			{
-				animTime	+=dt * moving * 200.0f;
+				animTime	+=dt * moving * 1.0f;
 			}
 			else
 			{
-				animTime	+=dt * moving * 10.0f;
+				animTime	+=dt * moving * 0.1f;
 			}
 			AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
 		}
@@ -335,7 +427,7 @@ __attribute_maybe_unused__
 			glm_vec3_copy(pTS->mPlayerPos, pTS->mEyePos);
 			GameCam_UpdateRotationSecondary(pTS->mpCam, pTS->mPlayerPos, dt,
 											pTS->mDeltaPitch, pTS->mDeltaYaw, 0.0f,
-											(moving > 0)? true : false);
+											(moving > MOVE_THRESHOLD)? true : false);
 		}
 
 		//set CB view
@@ -385,15 +477,6 @@ __attribute_maybe_unused__
 		//draw xyz axis
 		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
 
-		//debug draw quadtree leaf cubes
-		if(pTS->mbDrawTerNodes)
-		{
-			GD_IASetVertexBuffers(pTS->mpGD, pQTBoxes->mpVB, pQTBoxes->mVertSize, 0);
-			GD_IASetIndexBuffers(pTS->mpGD, pQTBoxes->mpIB, DXGI_FORMAT_R32_UINT, 0);
-			MAT_Apply(pBoxesMat, pCBK, pTS->mpGD);
-			GD_DrawIndexed(pTS->mpGD, pQTBoxes->mIndexCount, 0, 0);
-		}
-
 		//terrain draw
 		Terrain_DrawMat(pTS->mpTer, pTS->mpGD, pCBK, pTerMat);
 
@@ -404,7 +487,7 @@ __attribute_maybe_unused__
 			GameCam_GetFlatLookMatrix(pTS->mpCam, charMat);
 
 			//drop mesh to ground
-			vec3	feetToCenter	={	0.0f, -0.25f, 0.0f	};
+			vec3	feetToCenter	={	0.0f, -(PLAYER_HEIGHT * 0.5f), 0.0f	};
 
 			glm_translate(charMat, feetToCenter);
 
@@ -416,17 +499,65 @@ __attribute_maybe_unused__
 		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
 		Character_Draw(pChar, pMeshes, pCharMats, pALib, pTS->mpGD, pCBK);
+		
+		for(int i=0;i < pTS->mNumSpheres;i++)
+		{
+			__attribute((aligned(32)))	mat4	wPos;
+
+			vec3	pos;
+			Phys_GetBodyPos(pPhys, pTS->mSphereIDs[i], pos);
+
+			vec4	spCol;
+			sGetSphereColour(pTS, i, spCol);
+
+			MAT_SetSolidColour(pSphereMat, spCol);
+
+			glm_translate_make(wPos, pos);
+			MAT_SetWorld(pSphereMat, wPos);
+			
+			//draw test spheres (could instance these, but lazy)
+			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpSphere->mpVB, pTS->mpSphere->mVertSize, 0);
+			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpSphere->mpIB, DXGI_FORMAT_R16_UINT, 0);
+			MAT_Apply(pSphereMat, pCBK, pTS->mpGD);
+			GD_DrawIndexed(pTS->mpGD, pTS->mpSphere->mIndexCount, 0, 0);
+		}
 
 		//set proj for 2D
 		CBK_SetProjection(pCBK, textProj);
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
+		Clay_UpdateScrollContainers(true, pTS->mScrollDelta, dt);
+
+		pTS->mScrollDelta.x	=pTS->mScrollDelta.y	=0.0f;
+	
+		Clay_RenderCommandArray renderCommands = sCreateLayout(pTS, velocity);
+	
+		UI_BeginDraw(pTS->mpUI);
+	
+		UI_ClayRender(pTS->mpUI, renderCommands);
+	
+		UI_EndDraw(pTS->mpUI);
+	
 		//change back to 3D
 		CBK_SetProjection(pCBK, camProj);
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
 		GD_Present(pTS->mpGD);
 	}
+
+	Terrain_Destroy(&pTS->mpTer, pPhys);
+
+	Character_Destroy(pChar);
+	sFreeCharacterMeshParts(&pMeshes);
+
+	MatLib_Destroy(&pCharMats);
+
+	for(int i=0;i < pTS->mNumSpheres;i++)
+	{
+		Phys_RemoveAndDestroyBody(pPhys, pTS->mSphereIDs[i]);
+	}
+
+	Phys_Destroy(&pPhys);
 
 	GD_Destroy(&pTS->mpGD);
 
@@ -481,7 +612,16 @@ static void	sToggleFlyModeEH(void *pContext, const SDL_Event *pEvt)
 
 	pTS->mbFlyMode	=!pTS->mbFlyMode;
 
-	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? MOVE_FLY : MOVE_GROUND);
+	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? BPM_MOVE_FLY : BPM_MOVE_GROUND);
+}
+
+static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	sMakeSphere(pTS);
 }
 
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt)
@@ -489,6 +629,13 @@ static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt)
 	TestStuff	*pTS	=(TestStuff *)pContext;
 
 	assert(pTS);
+
+	pTS->mbLeftMouseDown	=true;
+
+	if(!pTS->mbMouseLooking)
+	{
+		Clay_SetPointerState(pTS->mMousePos, true);
+	}
 }
 
 static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt)
@@ -496,6 +643,13 @@ static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt)
 	TestStuff	*pTS	=(TestStuff *)pContext;
 
 	assert(pTS);
+
+	pTS->mbLeftMouseDown	=false;
+
+	if(!pTS->mbMouseLooking)
+	{
+		Clay_SetPointerState(pTS->mMousePos, false);
+	}
 }
 
 static void	sRightMouseDownEH(void *pContext, const SDL_Event *pEvt)
@@ -530,6 +684,13 @@ static void	sMouseMoveEH(void *pContext, const SDL_Event *pEvt)
 	{
 		pTS->mDeltaYaw		+=(pEvt->motion.xrel * MOUSE_TO_ANG);
 		pTS->mDeltaPitch	+=(pEvt->motion.yrel * MOUSE_TO_ANG);
+	}
+	else
+	{
+		pTS->mMousePos.x	=pEvt->motion.x;
+		pTS->mMousePos.y	=pEvt->motion.y;
+
+		Clay_SetPointerState(pTS->mMousePos, pTS->mbLeftMouseDown);
 	}
 }
 
@@ -662,12 +823,34 @@ static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetVShader(pRet, "WNormWPosTexFactVS", pSK);
 	MAT_SetPShader(pRet, "TriTexFact8PS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
-	MAT_SetSRV0(pRet, "Terrain/TerAtlas", pSK);
 	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 3.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
+	if(!MAT_SetSRV0(pRet, "Terrain/TerAtlas", pSK))
+	{
+		printf("Atlas texture not found!\n");
+	}
 
 	//srv is set in the material, but need input layout set
 	Terrain_SetSRVAndLayout(pTS->mpTer, NULL, pSK);
+
+	return	pRet;
+}
+
+static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	Material	*pRet	=MAT_Create(pTS->mpGD);
+
+	vec3	light0		={	1.0f, 1.0f, 1.0f		};
+	vec3	light1		={	0.5f, 0.5f, 0.5f		};
+	vec3	light2		={	0.2f, 0.2f, 0.2f		};
+	vec4	col			={	1.0f, 1.0f, 1.0f, 1.0f	};
+
+	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
+	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
+	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetSolidColour(pRet, col);
+	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 16.0f);
+	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
 }
@@ -709,6 +892,7 @@ static void	sSetupKeyBinds(Input *pInp)
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, sToggleDrawTerNodesEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_f, sToggleFlyModeEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, sEscEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_p, sSpawnSphereEH);
 
 	//held bindings
 	//movement
@@ -768,34 +952,6 @@ static void	sSetupRastVP(GraphicsDevice *pGD)
 	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-static void	sMoveCharacter(TestStuff *pTS, const vec3 moveVec)
-{
-	if(pTS->mbFlyMode)
-	{
-		glm_vec3_add(pTS->mEyePos, moveVec, pTS->mEyePos);
-	}
-	else
-	{
-		vec3	end, newPos;
-		glm_vec3_add(pTS->mPlayerPos, moveVec, end);
-
-		int	footing	=Terrain_MoveSphere(pTS->mpTer, pTS->mPlayerPos, end, 0.25f, newPos);
-		
-		BPM_SetFooting(pTS->mpBPM, footing);
-
-		//watch for a glitchy move
-		float	dist	=glm_vec3_distance(pTS->mPlayerPos, newPos);
-		if(dist > 10.0f)
-		{
-			printf("Glitchy Move: %f %f %f to %f %f %f\n",
-				pTS->mPlayerPos[0], pTS->mPlayerPos[1], pTS->mPlayerPos[2], 
-				end[0], end[1], end[2]);
-		}
-
-		glm_vec3_copy(newPos, pTS->mPlayerPos);
-	}
-}
-
 static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar)
 {
 	StringList	*pParts	=Character_GetPartList(pChar);
@@ -822,4 +978,155 @@ static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, co
 	SZList_Clear(&pParts);
 
 	return	pMeshes;
+}
+
+static void	FreeMeshCB(void *pValue)
+{
+	Mesh	*pMesh	=(Mesh *)pValue;
+	if(pMesh == NULL)
+	{
+		printf("Null mesh in FreeMeshCB!\n");
+		return;
+	}
+	
+	Mesh_Destroy(pMesh);
+}
+
+static void	sFreeCharacterMeshParts(DictSZ **ppMeshes)
+{
+	DictSZ_ClearCB(ppMeshes, FreeMeshCB);
+}
+
+static void sMakeSphere(TestStuff *pTS)
+{
+	if(pTS->mNumSpheres >= MAX_SPHERES)
+	{
+		return; //no moar!
+	}
+	
+	vec3	mins	={	200, 20, 200	};
+	vec3	maxs	={	300, 30, 300	};
+	vec3	randPoint;
+
+	//randomize layer
+	int	layer	=rand();
+
+	//make 2 to 5
+	layer	&=0x3;
+	layer++;
+	
+	Misc_RandomPointInBound(mins, maxs, randPoint);
+	
+	pTS->mSphereIDs[pTS->mNumSpheres]
+		=Phys_CreateAndAddSphere(pTS->mpPhys, SPHERE_SIZE, randPoint,
+		layer);
+
+	Phys_SetRestitution(pTS->mpPhys, pTS->mSphereIDs[pTS->mNumSpheres], BOUNCINESS);
+	
+	pTS->mNumSpheres++;
+}
+
+static void	sGetSphereColour(const TestStuff *pTS, int spIdx, vec4 colour)
+{
+	vec4	friend		={	0.5f, 1.0f, 0.5f, 1.0f	};
+	vec4	friend_proj	={	1.0f, 1.0f, 0.5f, 1.0f	};
+	vec4	enemy		={	1.0f, 0.5f, 0.5f, 1.0f	};
+	vec4	enemy_proj	={	1.0f, 0.5f, 1.0f, 1.0f	};
+	vec4	unknown		={	0.1f, 0.1f, 0.1f, 1.0f	};
+
+	uint16_t	layer;
+	Phys_GetBodyLayer(pTS->mpPhys, pTS->mSphereIDs[spIdx], &layer);
+
+	if(layer == LAY_MOVING_FRIENDLY)
+	{
+		glm_vec4_copy(friend, colour);
+	}
+	else if(layer == LAY_MOVING_ENEMY)
+	{
+		glm_vec4_copy(enemy, colour);
+	}
+	else if(layer == LAY_MOVING_FRIENDLY_PROJECTILE)
+	{
+		glm_vec4_copy(friend_proj, colour);
+	}
+	else if(layer == LAY_MOVING_ENEMY_PROJECTILE)
+	{
+		glm_vec4_copy(enemy_proj, colour);
+	}
+	else
+	{
+		glm_vec4_copy(unknown, colour);
+	}
+}
+
+static char	sVelString[64];
+static char	sLOSStrings[MAX_SPHERES][64];
+
+static void sCheckLOS(const TestStuff *pTS)
+{
+	vec3	charEyePos;
+	vec3	toEye		={0, PLAYER_EYE_OFFSET, 0};
+
+	glm_vec3_add(pTS->mPlayerPos, toEye, charEyePos);
+
+	for(int i=0;i < pTS->mNumSpheres;i++)
+	{
+		if(Phys_CastRayAtBodyNarrow(pTS->mpPhys, charEyePos, pTS->mSphereIDs[i]))
+		{
+			sprintf(sLOSStrings[i], "Can see sphere index %d\n", i);
+
+			vec4	spCol;
+			sGetSphereColour(pTS, i, spCol);
+
+			Misc_SRGBToLinear255(spCol, spCol);
+
+			Clay_String	los	={	strlen(sLOSStrings[i]), sLOSStrings[i]	};
+
+			CLAY_TEXT(los, CLAY_TEXT_CONFIG({ .fontSize = 26, .textColor = { spCol[0], spCol[1], spCol[2], spCol[3] } }));
+		}
+	}
+}
+
+static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, vec3 velocity)
+{
+	Clay_BeginLayout();
+
+	sprintf(sVelString, "Velocity: %f, %f, %f", velocity[0], velocity[1], velocity[2]);
+
+	Clay_String	velInfo;
+
+	velInfo.chars	=sVelString;
+	velInfo.length	=strlen(sVelString);
+
+	CLAY({.id=CLAY_ID("OuterContainer"), .layout =
+		{
+			.layoutDirection = CLAY_TOP_TO_BOTTOM,
+			.sizing =
+			{
+				.width = CLAY_SIZING_GROW(0),
+				.height = CLAY_SIZING_GROW(0)
+			},
+			.padding = { 8, 8, 8, 8 },
+			.childGap = 8
+		}})
+	{
+		CLAY_TEXT(velInfo, CLAY_TEXT_CONFIG({ .fontSize = 26, .textColor = {0, 70, 70, 155} }));
+
+		sCheckLOS(pTS);
+	}
+
+	return	Clay_EndLayout();
+}
+
+static bool reinitializeClay = false;
+
+static void sHandleClayErrors(Clay_ErrorData errorData) {
+    printf("%s", errorData.errorText.chars);
+    if (errorData.errorType == CLAY_ERROR_TYPE_ELEMENTS_CAPACITY_EXCEEDED) {
+        reinitializeClay = true;
+        Clay_SetMaxElementCount(Clay_GetMaxElementCount() * 2);
+    } else if (errorData.errorType == CLAY_ERROR_TYPE_TEXT_MEASUREMENT_CAPACITY_EXCEEDED) {
+        reinitializeClay = true;
+        Clay_SetMaxMeasureTextCacheWordCount(Clay_GetMaxMeasureTextCacheWordCount() * 2);
+    }
 }

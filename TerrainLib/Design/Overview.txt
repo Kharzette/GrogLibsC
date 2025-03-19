@@ -1,13 +1,10 @@
 Goals
-	Basic convex terrain chunks
+x	Basic convex terrain chunks
 	Entity placement
+	Octree for volumey / diggy diggy?
 	Integrate with pathing for generating navmesh data
-	Raycast routines needed
-		Ray
-		RayRadius (swept sphere)
-		RayCapsule (two spheres good enough)
-		RayAxialBox? (tricksy with leafs)
-		RayOrientedBox (very tricksy with leafs)
+x	Raycast routines
+	Test raycasts / movement between chunks
 	TextureAtlas based shading
 		Test textures
 			Grassland
@@ -19,24 +16,8 @@ Goals
 			Cracked mud?
 			Black rock?
 
-Collision
-	Initial non moving resolve into empty space
-		Establish footing and do rotation
-	AABB quadtree for nodes
-		Fast reject, no accuracy needed
-		Could do all 4 child nodes at once
-	Leaf Nodes
-		Big Tri collision best for current terrain
-			Not so great if do diggery later
-			Not so great if more detail
-		Convex volumes
-			Extra hits on fake side planes
-			Complicates runtime editing and diggery
-		2D bsp?
-			faces might get split
-	Octree for volumey / diggy diggy
 
-BigMaps
+Streaming BigMaps
 	9 Heightmaps loaded?
 	1 2 3
 	4 5 6
@@ -47,6 +28,7 @@ BigMaps
 		Three more maps are streamed in
 		After a tunable amount of time, 1,4,7 are unloaded
 	If player moves from 5 to 3, then 1,4,7,8,9 all marked to be unloaded etc
+	This is a single ring around the active chunk, should probably be 2
 
 Editing
 	UV Scale factor of each atlas piece

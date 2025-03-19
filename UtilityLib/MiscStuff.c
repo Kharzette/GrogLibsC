@@ -5,7 +5,6 @@
 #include	<cglm/box.h>
 #include	<assert.h>
 #include	"MiscStuff.h"
-#include	"ConvexVolume.h"
 
 
 #define		MIN_MAX_BOUNDS	15192.0f
@@ -189,6 +188,24 @@ void	Misc_SRGBToLinear(const vec4 vSRGB, vec4 vLin)
 	vLin[3]	=vSRGB[3];
 }
 
+void	Misc_SRGBToLinear255(const vec4 vSRGB, vec4 vLin)
+{
+	for(int i=0;i < 3;i++)
+	{
+		vLin[i]	=powf(vSRGB[i], 2.2f);
+	}
+	vLin[3]	=vSRGB[3];
+
+	__m128	arg	=_mm_load_ps(vLin);
+
+	__m128	bRec	=_mm_load_ps(byteMul);
+
+	//scale by 255
+	arg	=_mm_mul_ps(bRec, arg);
+
+	_mm_store_ps(vLin, arg);
+}
+
 
 void	Misc_ClearBounds(vec3 min, vec3 max)
 {
@@ -304,6 +321,8 @@ void	Misc_RandomPointInBound(const vec3 mins, const vec3 maxs, vec3 result)
 	result[0]	=scalarX * x;
 	result[1]	=scalarY * y;
 	result[2]	=scalarZ * z;
+
+	glm_vec3_add(mins, result, result);
 }
 
 //return a radiuslike distance to adjust a plane by to keep the AABB just touching it

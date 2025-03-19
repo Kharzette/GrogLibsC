@@ -35,7 +35,8 @@
 		"avxintrin.h": "c",
 		"array": "cpp",
 		"stringstuff.h": "c",
-		"faudio.h": "c"
+		"faudio.h": "c",
+		"animlib.h": "c"
 	},
 	"terminal.integrated.profiles.windows": {
 
@@ -67,7 +68,6 @@
 		}
 	},
 	"cmake.configureOnOpen": false,
-	"cmake.sourceDirectory": "${workspaceFolder}/SDL",
 	"dotnet.defaultSolution": "GrogLibsC.sln",
 	"C_Cpp.default.compilerPath": "/usr/bin/gcc"
 }

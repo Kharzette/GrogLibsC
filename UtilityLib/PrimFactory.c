@@ -11,7 +11,6 @@
 #include	"GraphicsDevice.h"
 #include	"PrimFactory.h"
 #include	"MiscStuff.h"
-#include	"ConvexVolume.h"
 #include	"PlaneMath.h"
 
 
@@ -1081,7 +1080,7 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	return	pObj;
 }
 
-PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
+PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDevice *pGD)
 {
 	int	theta, phi;
 
@@ -1159,21 +1158,41 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 
 				glm_vec3_copy(pos, pPoints[pIdx++]);
 
-				pInds[iIdx++]	=curIdx;
-				pInds[iIdx++]	=curIdx + 2;
-				pInds[iIdx++]	=curIdx + 1;
-				pInds[iIdx++]	=curIdx;
-				pInds[iIdx++]	=curIdx + 3;
-				pInds[iIdx++]	=curIdx + 2;
+				if(bFlipped)
+				{
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 2;
+					pInds[iIdx++]	=curIdx + 1;
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 3;
+					pInds[iIdx++]	=curIdx + 2;
+				}
+				else
+				{
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 1;
+					pInds[iIdx++]	=curIdx + 2;
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 2;
+					pInds[iIdx++]	=curIdx + 3;
+				}
 
 				curIdx	+=4;
 			}
 			else
 			{
-				pInds[iIdx++]	=curIdx;
-				pInds[iIdx++]	=curIdx + 2;
-				pInds[iIdx++]	=curIdx + 1;
-
+				if(bFlipped)
+				{
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 2;
+					pInds[iIdx++]	=curIdx + 1;
+				}
+				else
+				{
+					pInds[iIdx++]	=curIdx;
+					pInds[iIdx++]	=curIdx + 1;
+					pInds[iIdx++]	=curIdx + 2;
+				}
 				curIdx	+=3;
 			}
 		}
@@ -1212,9 +1231,18 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, GraphicsDevice *pGD)
 	//index other half, flip winding
 	for(int i=indCount;i < (indCount * 2);i+=3)
 	{
-		pInds[i]		=vertCount + pInds[i - indCount];
-		pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
-		pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
+		if(bFlipped)
+		{
+			pInds[i]		=vertCount + pInds[i - indCount];
+			pInds[i + 1]	=vertCount + pInds[(i + 1) - indCount];
+			pInds[i + 2]	=vertCount + pInds[(i + 2) - indCount];
+		}
+		else
+		{
+			pInds[i]		=vertCount + pInds[i - indCount];
+			pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
+			pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
+		}
 	}
 
 	//return object
@@ -1513,94 +1541,6 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 	free(pPoints);
 	free(pInds);
 	free(vpn);
-
-	pObj->mVertSize	=sizeof(VPosNorm);
-
-	return	pObj;
-}
-
-//make a drawable convex volume
-PrimObject	*PF_CreateCV(const ConvexVolume *pCV, GraphicsDevice *pGD)
-{
-	Winding	*pCur, *pWinds	=NULL;
-
-	//this var isn't used because I end up counting
-	//with foreeach which is lazier
-//	int	numWindings	=
-		CV_GenerateWindings(pCV, &pWinds);
-
-	pCur	=NULL;
-
-	//count up total verts
-	int	totalVerts	=0;
-	int	numIdx		=0;
-	LL_FOREACH(pWinds, pCur)
-	{
-		totalVerts	+=pCur->mNumVerts;
-
-		//count indexes
-		for(int i=1;i < pCur->mNumVerts - 1;i++)
-		{
-			numIdx	+=3;
-		}
-	}
-
-	VPosNorm	*pVerts	=malloc(sizeof(VPosNorm) * totalVerts);
-	uint16_t	*pInds	=malloc(sizeof(uint16_t) * numIdx);
-
-	int		cur		=0;
-	int		curIdx	=0;
-	pCur			=NULL;
-	LL_FOREACH(pWinds, pCur)
-	{
-		vec4	plane;
-		PM_FromVerts(pCur->mpVerts, pCur->mNumVerts, plane);
-
-		int	idx	=cur;
-		for(int i=0;i < pCur->mNumVerts;i++)
-		{
-			glm_vec3_copy(pCur->mpVerts[i],	pVerts[cur].Position);
-
-			Misc_ConvertVec4ToF16(plane, pVerts[cur].Normal);
-			cur++;
-		}
-
-		//indexes
-		for(int i=1;i < pCur->mNumVerts - 1;i++)
-		{
-			pInds[curIdx++]	=idx;
-			pInds[curIdx++]	=idx + i;
-			pInds[curIdx++]	=idx + ((i + 1) % pCur->mNumVerts);
-		}
-	}
-
-	//return object
-	PrimObject	*pObj	=malloc(sizeof(PrimObject));
-
-	pObj->mVertCount	=totalVerts;
-	pObj->mIndexCount	=numIdx;
-
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * totalVerts);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
-
-	//make index buffer
-	MakeIBDesc(&bufDesc, numIdx * 2);
-	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);
-
-	//free temp buffers
-	free(pVerts);
-	free(pInds);
-
-	//free windings
-	pCur	=NULL;
-	Winding	*pTmp;
-	LL_FOREACH_SAFE(pWinds, pCur, pTmp)
-	{
-		LL_DELETE(pWinds, pCur);
-		free(pCur);
-	}
 
 	pObj->mVertSize	=sizeof(VPosNorm);
 

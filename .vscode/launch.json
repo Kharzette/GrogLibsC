@@ -32,6 +32,18 @@
 		{
 			"type": "cppdbg",
 			"request": "launch",
+			"preLaunchTask": "",
+			"name": "Jolt Samples",
+			"program": "${workspaceFolder}/JoltPhysics/Build/Linux_Debug/Samples",
+			"args": [],
+			"stopAtEntry": false,
+			"externalConsole": true,
+			"cwd": "${config:CurrentGame}",
+			"MIMode": "gdb"
+		},
+		{
+			"type": "cppdbg",
+			"request": "launch",
 			"name": "renderdoc",
 			"program": "/usr/bin/renderdoccmd",
 			"args": [],

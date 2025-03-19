@@ -19,3 +19,6 @@
 [submodule "clay"]
 	path = clay
 	url = git@github.com:nicbarker/clay.git
+[submodule "JoltPhysics"]
+	path = JoltPhysics
+	url = git@github.com:jrouwe/JoltPhysics.git

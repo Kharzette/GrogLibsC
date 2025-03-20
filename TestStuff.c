@@ -107,8 +107,6 @@ typedef struct	TestStuff_t
 static void		sSetupKeyBinds(Input *pInp);
 static void		sSetupRastVP(GraphicsDevice *pGD);
 static void		sMakeSphere(TestStuff *pTS);
-static DictSZ	*sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar);
-static void		sFreeCharacterMeshParts(DictSZ **ppMeshes);
 static void 	sCheckLOS(const TestStuff *pTS);
 static void		sGetSphereColour(const TestStuff *pTS, int spIdx, vec4 colour);
 
@@ -148,7 +146,6 @@ static void	sKeyTurnDownEH(void *pContext, const SDL_Event *pEvt);
 static void sMouseMoveEH(void *pContext, const SDL_Event *pEvt);
 static void sEscEH(void *pContext, const SDL_Event *pEvt);
 
-//extern PhysicsStuff	*_Z11Phys_Createv();
 
 int main(void)
 {
@@ -294,10 +291,9 @@ __attribute_maybe_unused__
 	Material	*pSkyBoxMat	=sMakeSkyBoxMat(pTS, pSK);
 
 	//character stuffs
-	Character	*pChar		=Character_Read("Characters/Protag.Character");
+	Character	*pChar		=Character_Read(pTS->mpGD, pSK, "Characters/Protag.Character", false);
 	AnimLib		*pALib		=AnimLib_Read("Characters/Protag.AnimLib");
 	MaterialLib	*pCharMats	=MatLib_Read("Characters/Protag.MatLib", pSK);
-	DictSZ		*pMeshes	=sLoadCharacterMeshParts(pTS->mpGD, pSK, pChar);
 
 	float	animTime		=0.0f;
 	float	maxDT			=0.0f;
@@ -496,7 +492,7 @@ __attribute_maybe_unused__
 		}
 		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
 
-		Character_Draw(pChar, pMeshes, pCharMats, pALib, pTS->mpGD, pCBK);
+		Character_Draw(pChar, pCharMats, pALib, pTS->mpGD, pCBK);
 		
 		for(int i=0;i < pTS->mNumSpheres;i++)
 		{
@@ -546,7 +542,6 @@ __attribute_maybe_unused__
 	Terrain_Destroy(&pTS->mpTer, pPhys);
 
 	Character_Destroy(pChar);
-	sFreeCharacterMeshParts(&pMeshes);
 
 	MatLib_Destroy(&pCharMats);
 
@@ -656,7 +651,7 @@ static void	sRightMouseDownEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	SDL_SetRelativeMouseMode(SDL_TRUE);
+	GD_SetMouseRelative(pTS->mpGD, true);
 
 	pTS->mbMouseLooking	=true;
 }
@@ -667,7 +662,7 @@ static void	sRightMouseUpEH(void *pContext, const SDL_Event *pEvt)
 
 	assert(pTS);
 
-	SDL_SetRelativeMouseMode(SDL_FALSE);
+	GD_SetMouseRelative(pTS->mpGD, false);
 
 	pTS->mbMouseLooking	=false;
 }
@@ -886,33 +881,33 @@ static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK)
 static void	sSetupKeyBinds(Input *pInp)
 {
 	//event style bindings
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_l, sRandLightEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_n, sToggleDrawTerNodesEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_f, sToggleFlyModeEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_L, sRandLightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_N, sToggleDrawTerNodesEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_F, sToggleFlyModeEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, sEscEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_p, sSpawnSphereEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_P, sSpawnSphereEH);
 
 	//held bindings
 	//movement
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_w, sKeyMoveForwardEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_a, sKeyMoveLeftEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_s, sKeyMoveBackEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_d, sKeyMoveRightEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_c, sKeyMoveUpEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_z, sKeyMoveDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_W, sKeyMoveForwardEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_A, sKeyMoveLeftEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_S, sKeyMoveBackEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_D, sKeyMoveRightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_C, sKeyMoveUpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_Z, sKeyMoveDownEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_SPACE, sKeyMoveJumpEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_LSHIFT, sKeySprintEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_LEFT, sDangleDownEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_RIGHT, sDangleUpEH);
 
 	//key turning
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_q, sKeyTurnLeftEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_e, sKeyTurnRightEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_r, sKeyTurnUpEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_t, sKeyTurnDownEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_Q, sKeyTurnLeftEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_E, sKeyTurnRightEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_R, sKeyTurnUpEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_HELD, SDLK_T, sKeyTurnDownEH);
 
 	//move data events
-	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_MOUSEMOTION, sMouseMoveEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_EVENT_MOUSE_MOTION, sMouseMoveEH);
 
 	//down/up events
 	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_RIGHT, sRightMouseDownEH);
@@ -948,51 +943,6 @@ static void	sSetupRastVP(GraphicsDevice *pGD)
 	GD_RSSetViewPort(pGD, &vp);
 	GD_RSSetState(pGD, pRast);
 	GD_IASetPrimitiveTopology(pGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-}
-
-static DictSZ *sLoadCharacterMeshParts(GraphicsDevice *pGD, StuffKeeper *pSK, const Character *pChar)
-{
-	StringList	*pParts	=Character_GetPartList(pChar);
-
-	DictSZ		*pMeshes;
-	UT_string	*szMeshPath;
-
-	DictSZ_New(&pMeshes);
-	utstring_new(szMeshPath);
-
-	const StringList	*pCur	=SZList_Iterate(pParts);
-	while(pCur != NULL)
-	{
-		utstring_printf(szMeshPath, "Characters/%s.mesh", SZList_IteratorVal(pCur));
-
-		Mesh	*pMesh	=Mesh_Read(pGD, pSK, utstring_body(szMeshPath), false);
-
-		DictSZ_Add(&pMeshes, SZList_IteratorValUT(pCur), pMesh);
-
-		pCur	=SZList_IteratorNext(pCur);
-	}
-
-	utstring_done(szMeshPath);
-	SZList_Clear(&pParts);
-
-	return	pMeshes;
-}
-
-static void	FreeMeshCB(void *pValue)
-{
-	Mesh	*pMesh	=(Mesh *)pValue;
-	if(pMesh == NULL)
-	{
-		printf("Null mesh in FreeMeshCB!\n");
-		return;
-	}
-	
-	Mesh_Destroy(pMesh);
-}
-
-static void	sFreeCharacterMeshParts(DictSZ **ppMeshes)
-{
-	DictSZ_ClearCB(ppMeshes, FreeMeshCB);
 }
 
 static void sMakeSphere(TestStuff *pTS)

@@ -327,7 +327,7 @@ void	Character_Destroy(Character *pChar)
 		free(pChar->mpParts);
 	}
 
-	MeshBound_Destroy(pChar->mpBound);
+//	MeshBound_Destroy(pChar->mpBound);
 	Skin_Destroy(pChar->mpSkin);
 
 	free(pChar);

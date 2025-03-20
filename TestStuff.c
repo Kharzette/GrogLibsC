@@ -104,11 +104,12 @@ typedef struct	TestStuff_t
 }	TestStuff;
 
 //static forward decs
-static void		sSetupKeyBinds(Input *pInp);
-static void		sSetupRastVP(GraphicsDevice *pGD);
-static void		sMakeSphere(TestStuff *pTS);
-static void 	sCheckLOS(const TestStuff *pTS);
-static void		sGetSphereColour(const TestStuff *pTS, int spIdx, vec4 colour);
+static void	sSetupKeyBinds(Input *pInp);
+static void	sSetupRastVP(GraphicsDevice *pGD);
+static void	sMakeSphere(TestStuff *pTS);
+static void sCheckLOS(const TestStuff *pTS);
+static void	sGetSphereColour(const TestStuff *pTS, int spIdx, vec4 colour);
+static void	sSetDefaultCel(GraphicsDevice *pGD, CBKeeper *pCBK);
 
 //clay stuff
 static const Clay_RenderCommandArray sCreateLayout(const TestStuff *pTS, vec3 velocity);
@@ -220,6 +221,8 @@ __attribute_maybe_unused__
 		CBK_SetSky(pCBK, skyHorizon, skyHigh);
 		CBK_SetFogVars(pCBK, 50.0f, 300.0f, true);
 	}
+
+	sSetDefaultCel(pTS->mpGD, pCBK);
 
 	PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
 
@@ -381,6 +384,8 @@ __attribute_maybe_unused__
 		//player moving?
 		float	moving	=glm_vec3_norm(velocity);
 
+		//TODO: falling, sliding
+
 		if(moving > MOVE_THRESHOLD)
 		{
 			if(Phys_VCharacterIsSupported(pTS->mpPhysChar))
@@ -391,12 +396,12 @@ __attribute_maybe_unused__
 			{
 				animTime	+=dt * moving * 0.1f;
 			}
-			AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
+			AnimLib_Animate(pALib, "Run", animTime);
 		}
 		else
 		{
 			animTime	+=dt;
-			AnimLib_Animate(pALib, "LD55ProtagIdle", animTime);
+			AnimLib_Animate(pALib, "Idle", animTime);
 		}
 
 		{
@@ -485,7 +490,7 @@ __attribute_maybe_unused__
 
 			glm_translate(charMat, feetToCenter);
 
-			Material	*pCM	=MatLib_GetMaterial(pCharMats, "ProtagHell");
+			Material	*pCM	=MatLib_GetMaterial(pCharMats, "ProtagCel");
 			assert(pCM);
 			MAT_SetWorld(pCM, charMat);
 			MAT_SetDanglyForce(pCM, pTS->mDanglyForce);
@@ -865,6 +870,17 @@ static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
 
 	return	pRet;
+}
+
+static void	sSetDefaultCel(GraphicsDevice *pGD, CBKeeper *pCBK)
+{
+	float	mins[4]	={	0.0f, 0.3f, 0.6f, 1.0f	};
+	float	maxs[4]	={	0.3f, 0.6f, 1.0f, 5.0f	};
+	float	snap[4]	={	0.3f, 0.5f, 0.9f, 1.4f	};
+
+	CBK_SetCelSteps(pCBK, mins, maxs, snap, 4);
+
+	CBK_UpdateCel(pCBK, pGD);
 }
 
 static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK)

@@ -5,7 +5,7 @@ CFLAGS=-std=gnu23 -g -O0 -march=native -fpic -shared	\
 	-I../cglm/include	\
 	-Wall				\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
-LIBS=-lSDL2 -lFAudio
+LIBS=-lSDL3 -lFAudio
 SOURCES=$(wildcard tinywav/tinywav.c) $(wildcard *.c)
 
 all: AudioLib

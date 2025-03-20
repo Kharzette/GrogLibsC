@@ -5,8 +5,6 @@
 #include	<stdlib.h>
 #include	<unistd.h>
 #include	<assert.h>
-#include	<SDL2/SDL.h>
-#include	<SDL2/SDL_keycode.h>
 #include	<cglm/call.h>
 #include	"AudioLib/SoundEffect.h"
 #include	"AudioLib/Audio.h"

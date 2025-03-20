@@ -69,6 +69,7 @@ extern void GD_DrawIndexed(GraphicsDevice *pGD,
 extern void GD_Present(GraphicsDevice *pGD);
 
 //set states
+extern void	GD_SetMouseRelative(GraphicsDevice *pGD, bool bOn);
 extern void	GD_SetWindowBordered(GraphicsDevice *pGD, bool bOn);
 extern void GD_OMSetBlendState(GraphicsDevice *pGD, ID3D11BlendState *pBlend);
 extern void GD_OMSetDepthStencilState(GraphicsDevice *pGD, ID3D11DepthStencilState *pDSS);

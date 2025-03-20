@@ -1,6 +1,6 @@
 #include	<d3d11_1.h>
-#include	<SDL2/SDL.h>
-#include	<SDL2/SDL_vulkan.h>
+#include	<SDL3/SDL.h>
+#include	<SDL3/SDL_vulkan.h>
 #include	<stdint.h>
 #include	<stdbool.h>
 #include	<cglm/call.h>
@@ -15,7 +15,7 @@
 typedef struct GraphicsDevice_t
 {
 	//D3D interfaces
-	HWND					mWnd;
+	SDL_Window				*mpWnd;
 	ID3D11Device			*mpDevice;
 	ID3D11Device1			*mpDevice1;
 	ID3D11Debug				*mpDebug;
@@ -57,20 +57,28 @@ bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 
 	SDL_Vulkan_LoadLibrary(NULL);
 
+	SDL_PropertiesID	props	=SDL_CreateProperties();
+
+	SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, pWindowTitle);
+	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, w);
+	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, h);
+	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, true);
+	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN, true);
 
 	if(bRandomPos)
 	{	
-		pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
-			SDL_WINDOWPOS_UNDEFINED,
-			SDL_WINDOWPOS_UNDEFINED, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
+		SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, SDL_WINDOWPOS_UNDEFINED);
+		SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, SDL_WINDOWPOS_UNDEFINED);
 	}
 	else
 	{
-		pGD->mWnd	=SDL_CreateWindow(pWindowTitle,
-				posX, posY, w, h, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
+		SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, posX);
+		SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, posY);
 	}
 
-	if(pGD->mWnd == NULL)
+	pGD->mpWnd	=SDL_CreateWindowWithProperties(props);
+
+	if(pGD->mpWnd == NULL)
 	{
 		printf("Window creation didn't work: %s\n", SDL_GetError());
 		SDL_Quit();
@@ -90,7 +98,7 @@ bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 	scDesc.SampleDesc.Count						=1;
 	scDesc.SampleDesc.Quality					=0;
 	scDesc.BufferUsage							=DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	scDesc.OutputWindow							=pGD->mWnd;	//Use SDL_Window here!
+	scDesc.OutputWindow							=pGD->mpWnd;	//Use SDL_Window here!
 	scDesc.Windowed								=TRUE;
 	scDesc.BufferCount							=1;
 	scDesc.SwapEffect							=DXGI_SWAP_EFFECT_DISCARD;
@@ -193,7 +201,7 @@ bool	GD_Init(GraphicsDevice **ppGD, const char *pWindowTitle,
 quit:
 	SDL_Vulkan_UnloadLibrary();
 
-	SDL_DestroyWindow(pGD->mWnd);
+	SDL_DestroyWindow(pGD->mpWnd);
 
 	SDL_Quit();
 
@@ -218,7 +226,7 @@ int	GD_GetHeight(const GraphicsDevice *pGD)
 int	GD_GetPosX(const GraphicsDevice *pGD)
 {
 	int	x;
-	SDL_GetWindowPosition(pGD->mWnd, &x, NULL);
+	SDL_GetWindowPosition(pGD->mpWnd, &x, NULL);
 
 	return	x;
 }
@@ -226,14 +234,19 @@ int	GD_GetPosX(const GraphicsDevice *pGD)
 int	GD_GetPosY(const GraphicsDevice *pGD)
 {
 	int	y;
-	SDL_GetWindowPosition(pGD->mWnd, NULL, &y);
+	SDL_GetWindowPosition(pGD->mpWnd, NULL, &y);
 
 	return	y;
 }
 
 void	GD_SetWindowBordered(GraphicsDevice *pGD, bool bOn)
 {
-	SDL_SetWindowBordered(pGD->mWnd, bOn);
+	SDL_SetWindowBordered(pGD->mpWnd, bOn);
+}
+
+void	GD_SetMouseRelative(GraphicsDevice *pGD, bool bOn)
+{
+	SDL_SetWindowRelativeMouseMode(pGD->mpWnd, bOn);
 }
 
 ID3D11RenderTargetView	*GD_GetBackBufferView(const GraphicsDevice *pGD)
@@ -260,7 +273,7 @@ void	GD_Destroy(GraphicsDevice **ppGD)
 
 	SDL_Vulkan_UnloadLibrary();
 
-	SDL_DestroyWindow(pGD->mWnd);
+	SDL_DestroyWindow(pGD->mpWnd);
 
 	SDL_Quit();
 }

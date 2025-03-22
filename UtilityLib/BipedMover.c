@@ -89,6 +89,11 @@ void	BPM_SetVerticalVelocity(BipedMover *pBM, const vec3 vel)
 	pBM->mCamVelocity[1]	=vel[1];
 }
 
+void	BPM_AccumulateVelocity(BipedMover *pBM, const vec3 vel)
+{
+	AccumulateVelocity(pBM, vel);
+}
+
 
 static void	ApplyFriction(BipedMover *pBPM, float secDelta, float friction)
 {
@@ -224,8 +229,9 @@ static void	UpdateFlying(BipedMover *pBPM, float secDelta, vec3 move)
 	}
 }
 
+//Do the first half of walk movement
 //return a bool indicating jumped
-static bool	UpdateWalking(BipedMover *pBPM, bool bOnGround, bool bFooting, float secDelta, vec3 move)
+static bool	UpdateWalking1(BipedMover *pBPM, bool bOnGround, bool bFooting, float secDelta, vec3 move)
 {
 	bool	bGravity	=false;
 	float	friction	=GROUND_FRICTION;
@@ -307,7 +313,25 @@ static bool	UpdateWalking(BipedMover *pBPM, bool bOnGround, bool bFooting, float
 //		glm_vec3_muladds(pBPM->mCamVelocity, secDelta, pos);
 	}
 
+	/*
 	AccumulateVelocity(pBPM, moveVec);
+	ApplyFriction(pBPM, secDelta, friction);
+	if(bGravity)
+	{
+		ApplyForce(pBPM, GRAVITY_FORCE, Down, secDelta);
+	}
+
+	if(bJumped)
+	{
+		ApplyForce(pBPM, JUMP_FORCE, UnitY, secDelta);
+	}*/
+
+	return	bJumped;
+}
+
+bool	BPM_UpdateWalking2(BipedMover *pBPM, bool bGravity, bool bJumped, float friction, float secDelta, vec3 postPhysicsMove)
+{
+	AccumulateVelocity(pBPM, postPhysicsMove);
 	ApplyFriction(pBPM, secDelta, friction);
 	if(bGravity)
 	{
@@ -338,7 +362,7 @@ bool	BPM_Update(BipedMover *pBPM, bool bOnGround, bool bFooting,
 	}
 	else if(pBPM->mMoveMethod == BPM_MOVE_GROUND)
 	{
-		bJumped	=UpdateWalking(pBPM, bOnGround, bFooting, secDelta, moveVec);
+		bJumped	=UpdateWalking1(pBPM, bOnGround, bFooting, secDelta, moveVec);
 	}
 	else if(pBPM->mMoveMethod == BPM_MOVE_SWIM)
 	{

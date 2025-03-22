@@ -683,7 +683,7 @@ void	Phys_CharacterMove(PhysicsStuff *pPS, PhysCharacter *pChar,
 	}
 }
 
-//Move should be a scaled vector coming from BipedMover.
+//Move should be a scaled vector in meters per second.
 //BipedMover holds and controls the frame to frame velocity
 //and this function does the move, bouncing off collidable
 //stuff to end up at a position.  This decides the final

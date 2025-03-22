@@ -158,7 +158,7 @@ int main(void)
 
 	PhysicsStuff	*pPhys	=Phys_Create();
 
-	Audio	*pAud	=Audio_Create(0);
+//	Audio	*pAud	=Audio_Create(0);
 
 	//store a bunch of vars in a struct
 	//for ref/modifying by input handlers
@@ -297,7 +297,7 @@ __attribute_maybe_unused__
 
 	//character stuffs
 	Character	*pChar		=Character_Read("Characters/Protag.Character");
-	AnimLib		*pALib		=AnimLib_Read("Characters/Protag.AnimLib");
+	AnimLib		*pALib		=AnimLib_Read("Characters/ProtagLeft.AnimLib");
 	MaterialLib	*pCharMats	=MatLib_Read("Characters/Protag.MatLib", pSK);
 	DictSZ		*pMeshes	=sLoadCharacterMeshParts(pTS->mpGD, pSK, pChar);
 
@@ -346,6 +346,11 @@ __attribute_maybe_unused__
 				vec3	resultVelocity;
 				Phys_VCharacterMove(pPhys, pTS->mpPhysChar, mpsMove,
 					secDelta, resultVelocity);
+
+				//The biped mover carries a velocity assuming no collisions.
+				//If a frame's movement slides along a wall, the velocity
+				//will still aim at the wall instead of along it.  This
+				//adjusted velocity can be fed back into the biped mover.
 				
 				bSup	=Phys_VCharacterIsSupported(pTS->mpPhysChar);
 				if(bSup)
@@ -358,8 +363,21 @@ __attribute_maybe_unused__
 					if(PM_IsGroundNormalAng(norm, RAMP_ANGLE))
 					{
 						//if still on the ground, cancel out vertical velocity
-						BPM_SetVerticalVelocity(pTS->mpBPM, resultVelocity);
+//						BPM_AccumulateVelocity(pTS->mpBPM, resultVelocity);
+//						BPM_SetVerticalVelocity(pTS->mpBPM, resultVelocity);
+						BPM_UpdateWalking2(pTS->mpBPM, false, bJumped, 3, secDelta, resultVelocity);
 					}
+					else
+					{
+						//bad footing
+						BPM_UpdateWalking2(pTS->mpBPM, true, bJumped, 1.0f, secDelta, resultVelocity);
+					}
+				}
+				else
+				{
+					//falling
+//					BPM_AccumulateVelocity(pTS->mpBPM, resultVelocity);
+					BPM_UpdateWalking2(pTS->mpBPM, true, bJumped, 0.1f, secDelta, resultVelocity);
 				}
 			}
 
@@ -382,22 +400,40 @@ __attribute_maybe_unused__
 		BPM_GetVelocity(pTS->mpBPM, velocity);
 
 		//update audio
-		Audio_Update(pAud, pTS->mPlayerPos, velocity);
+//		Audio_Update(pAud, pTS->mPlayerPos, velocity);
+
+		//player supported?
+		bool	bSup	=Phys_VCharacterIsSupported(pTS->mpPhysChar);
+
+		//solid ground?
+		vec3	norm;
+		Phys_VCharacterGetGroundNormal(pTS->mpPhysChar, norm);
+		bool	bFooting	=PM_IsGroundNormalAng(norm, RAMP_ANGLE);
 
 		//player moving?
 		float	moving	=glm_vec3_norm(velocity);
 
 		if(moving > MOVE_THRESHOLD)
 		{
-			if(Phys_VCharacterIsSupported(pTS->mpPhysChar))
+			if(bSup)
 			{
-				animTime	+=dt * moving * 1.0f;
+				if(bFooting)
+				{
+					animTime	+=dt * moving * 1.0f;
+					AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
+				}
+				else
+				{
+					animTime	+=dt * moving * 0.1f;
+					AnimLib_Animate(pALib, "LD55ProtagSlide", animTime);
+				}
 			}
 			else
 			{
 				animTime	+=dt * moving * 0.1f;
+				//todo: fall anim
+				AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
 			}
-			AnimLib_Animate(pALib, "LD55ProtagRun", animTime);
 		}
 		else
 		{
@@ -561,7 +597,7 @@ __attribute_maybe_unused__
 
 	GD_Destroy(&pTS->mpGD);
 
-	Audio_Destroy(&pAud);
+//	Audio_Destroy(&pAud);
 
 	return	EXIT_SUCCESS;
 }

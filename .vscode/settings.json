@@ -36,7 +36,8 @@
 		"array": "cpp",
 		"stringstuff.h": "c",
 		"faudio.h": "c",
-		"animlib.h": "c"
+		"animlib.h": "c",
+		"cstdint": "c"
 	},
 	"terminal.integrated.profiles.windows": {
 

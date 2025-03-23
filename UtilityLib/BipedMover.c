@@ -78,7 +78,7 @@ void	BPM_SetMoveMethod(BipedMover *pBM, int method)
 }
 
 
-static void AccumulateVelocity(BipedMover *pBPM, vec3 moveVec)
+static void AccumulateVelocity(BipedMover *pBPM, const vec3 moveVec)
 {
 	glm_vec3_muladds(moveVec, 0.5f, pBPM->mCamVelocity);
 }

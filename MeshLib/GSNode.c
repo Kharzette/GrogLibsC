@@ -47,6 +47,23 @@ void	GSNode_Write(const GSNode *pNode, FILE *f)
 	}
 }
 
+void	GSNode_Destroy(GSNode *pNode)
+{
+	utstring_done(pNode->szName);
+
+	for(int i=0;i < pNode->mNumChildren;i++)
+	{
+		GSNode_Destroy(pNode->mpChildren[i]);
+	}
+
+	if(pNode->mNumChildren > 0)
+	{
+		free(pNode->mpChildren);
+	}
+
+	free(pNode);
+}
+
 
 const GSNode	*GSNode_GetConstNodeByName(const GSNode *pNode, const char * pName)
 {

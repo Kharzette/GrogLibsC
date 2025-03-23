@@ -2,11 +2,13 @@
 #include	<stdbool.h>
 #include	<utstring.h>
 
+typedef struct	Mesh_t	Mesh;
+
 
 typedef struct	MeshPart_t
 {
-	UT_string	*mpPartName;
-	UT_string	*mpMatName;
+	Mesh		*mpPart;
+	UT_string	*mpMaterial;
 	int			mMaterialID;
 	bool		mbVisible;
 }	MeshPart;

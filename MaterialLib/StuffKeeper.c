@@ -47,6 +47,9 @@ typedef struct	StuffKeeper_t
 	DictSZ	*mpSSs;				//ID3D11SamplerState
 
 	DictSZ	*mpLayouts;			//ID3D11InputLayout
+	DictSZ	*mpLayCounts;		//Num elements in layout
+	DictSZ	*mpElems;			//Layout elements in simple int arrays
+
 	DictSZ	*mpEntryLayouts;	//UT_string layout name
 
 }	StuffKeeper;
@@ -101,6 +104,52 @@ const StringList	*StuffKeeper_GetPSEntryList(const StuffKeeper *pSK, const UT_st
 	}
 
 	return	DictSZ_GetValue(pSK->mpPSEntryPoints, szKey);
+}
+
+typedef struct	ShaderSearch_t
+{
+	const UT_string	*mpShader;
+	const UT_string	*mpFile;
+}	ShaderSearch;
+
+static void	sFindShaderFile(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	const StringList	*pList	=pValue;
+	const StringList	*pCur	=SZList_Iterate(pList);
+	ShaderSearch		*pSS	=(ShaderSearch *)pContext;
+	const UT_string		*pShd	=pSS->mpShader;
+
+	int	len	=utstring_len(pShd);
+
+//	printf("Search key: %s\n", utstring_body(pKey));
+
+	while(pCur != NULL)
+	{
+//		printf("\t%s\n", SZList_IteratorVal(pCur));
+
+		if(0 == strncmp(utstring_body(pShd), SZList_IteratorVal(pCur), len))
+		{
+			pSS->mpFile	=pKey;
+		}
+
+		pCur	=SZList_IteratorNext(pCur);
+	}
+}
+
+const UT_string	*StuffKeeper_GetVSFile(const StuffKeeper *pSK, const UT_string *pVSName)
+{
+	ShaderSearch	ss	={	pVSName, NULL	};
+	DictSZ_ForEach(pSK->mpVSEntryPoints, sFindShaderFile, &ss);
+
+	return	ss.mpFile;
+}
+
+const UT_string	*StuffKeeper_GetPSFile(const StuffKeeper *pSK, const UT_string *pPSName)
+{
+	ShaderSearch	ss	={	pPSName, NULL	};
+	DictSZ_ForEach(pSK->mpPSEntryPoints, sFindShaderFile, &ss);
+
+	return	ss.mpFile;
 }
 
 
@@ -306,7 +355,7 @@ static UT_string	*ProfileFromSM(ShaderModel sm, ShaderEntryType set)
 
 
 //callback for the dictionary foreach below
-void	PrintEntryPointsCB(const UT_string *pKey, const void *pValue, void *pContext)
+static void	sPrintEntryPointsCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
 	const StringList	*pList	=pValue;
 	const StringList	*pCur	=SZList_Iterate(pList);
@@ -1213,8 +1262,11 @@ static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
 	}
 	ReadEntryLayouts(f, &pSK->mpEntryLayouts);
 
+	//make the layout elements for matching later
+	Layouts_MakeElems(&pSK->mpElems, &pSK->mpLayCounts);
+
 	//fill the layouts dictionary
-	MakeLayouts(pGD, &pSK->mpLayouts, pSK->mpVSCode);
+	Layouts_MakeLayouts(pGD, pSK->mpVSCode, &pSK->mpLayouts);
 }
 
 
@@ -1279,6 +1331,8 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	DictSZ_New(&pRet->mpSSs);
 	DictSZ_New(&pRet->mpLayouts);
 	DictSZ_New(&pRet->mpEntryLayouts);
+	DictSZ_New(&pRet->mpElems);
+	DictSZ_New(&pRet->mpLayCounts);
 
 	LoadShaders(pRet, sm);
 	CreateShadersFromCode(pRet, pGD);
@@ -1446,7 +1500,7 @@ void	TestSKStuff(void)
 
 	fclose(f);
 
-	DictSZ_ForEach(pPSEP, PrintEntryPointsCB, NULL);
+	DictSZ_ForEach(pPSEP, sPrintEntryPointsCB, NULL);
 
 	//delete stuff, note that because our void * in the dictionary
 	//is a complicated SZList type, additional work needs to be done
@@ -1455,4 +1509,12 @@ void	TestSKStuff(void)
 	//delete stuff
 	DictSZ_ClearCB(&pVSEP, NukeSZListCB);
 	DictSZ_ClearCB(&pPSEP, NukeSZListCB);
+}
+
+
+const UT_string	*StuffKeeper_FindMatch(const StuffKeeper *pSK,
+	const int elems[], int elCounts)
+{
+	return	Layouts_FindMatch(pSK->mpLayCounts,
+		pSK->mpElems, elems, elCounts);
 }

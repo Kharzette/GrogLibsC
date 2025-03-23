@@ -59,8 +59,8 @@ void CBK_SetTexSize(CBKeeper *pCBK, const vec2 size);
 void CBK_SetAniIntensities(CBKeeper *pCBK, const float *pAni);
 
 //character bones
-void CBK_SetBones(CBKeeper *pCBK, const mat4 *pBones);
-void CBK_SetBonesWithTranspose(CBKeeper *pCBK, const mat4 *pBones);
+void CBK_SetBones(CBKeeper *pCBK, const mat4 *pBones, int numBones);
+void CBK_SetBonesWithTranspose(CBKeeper *pCBK, const mat4 *pBones, int numBones);
 
 //postprocessing
 void CBK_SetInvViewPort(CBKeeper *pCBK, const vec2 port);

@@ -11,11 +11,14 @@
 
 typedef struct	Skin_t
 {
-	mat4	mInverseBindPoses[MAX_BONES];
-	mat4	mBindPoses[MAX_BONES];	
+	mat4	*mpInverseBindPoses;
 
 	mat4	mScaleMat, mInvScaleMat;	//scale to grog/quake/whateva
 										//units in meters by default
+
+	//indexes from vert bone idx to skeleton node idx
+	uint8_t	*mpJoints;
+
 	int	mNumBinds;	//num ibp/bp above
 	int	mNumShapes;	//num col shapes below
 										
@@ -31,8 +34,81 @@ typedef struct	Skin_t
 }	Skin;
 
 
+Skin	*Skin_Create(mat4 *pIBPs, uint8_t joints[], int numBinds)
+{
+#ifdef __AVX__
+	Skin	*pRet	=aligned_alloc(32, sizeof(Skin));
+	memset(pRet, 0, sizeof(Skin));
+
+	pRet->mpInverseBindPoses	=aligned_alloc(32, sizeof(mat4) * numBinds);	
+#else
+	Skin	*pRet	=aligned_alloc(16, sizeof(Skin));
+	memset(pRet, 0, sizeof(Skin));
+
+	pRet->mpInverseBindPoses	=aligned_alloc(16, sizeof(mat4) * numBinds);	
+#endif
+
+	//these are in right handed space
+	memcpy(pRet->mpInverseBindPoses, pIBPs, sizeof(mat4) * numBinds);
+
+	pRet->mNumShapes	=pRet->mNumBinds	=numBinds;
+
+	//just an index into skeleton
+	pRet->mpJoints	=malloc(sizeof(uint8_t) * numBinds);
+	memcpy(pRet->mpJoints, joints, sizeof(uint8_t) * numBinds);
+
+	glm_mat4_identity(pRet->mRootTransform);
+	glm_mat4_identity(pRet->mScaledRoot);
+	glm_mat4_identity(pRet->mScaleMat);
+	glm_mat4_identity(pRet->mInvScaleMat);
+
+	pRet->mpBoneBoxes		=malloc(sizeof(vec3) * 2 * pRet->mNumShapes);
+	pRet->mpBoneSpheres		=malloc(sizeof(vec4) * pRet->mNumShapes);
+	pRet->mpBoneCapsules	=malloc(sizeof(vec2) * pRet->mNumShapes);
+	pRet->mpBoneColShapes	=malloc(sizeof(int) * pRet->mNumShapes);
+
+	//some default shapes
+	vec3	bxMax	={	.1, .1, .1		};
+	vec3	bxMin	={	-.1, -.1, -.1	};
+	vec4	sphere	={	0, 0, 0, 0.1	};
+	vec2	cap		={	0.1, 0.3		};
+
+	for(int i=0;i < numBinds;i++)
+	{
+		pRet->mpBoneColShapes[i]	=BONE_COL_SHAPE_INVALID;
+
+		//box
+		glm_vec3_copy(bxMin, pRet->mpBoneBoxes[i * 2]);
+		glm_vec3_copy(bxMax, pRet->mpBoneBoxes[i * 2 + 1]);
+
+		//sphere
+		glm_vec4_copy(sphere, pRet->mpBoneSpheres[i]);
+
+		//capsule
+		glm_vec2_copy(cap, pRet->mpBoneCapsules[i]);
+	}
+
+	float	scaleFactor	=1.0f;	//default meters
+
+	//this flips the character into left handed space as a final step.
+	glm_scale_make(pRet->mRootTransform, (vec3){-1, 1, 1});
+
+	vec3	scaleVec	={ scaleFactor, scaleFactor, scaleFactor	};
+	vec3	scaleVecInv	={ 1.0f / scaleFactor, 1.0f / scaleFactor, 1.0f / scaleFactor	};
+
+	glm_scale_make(pRet->mScaleMat, scaleVec);
+	glm_scale_make(pRet->mInvScaleMat, scaleVecInv);
+
+	glm_mat4_mul(pRet->mScaleMat, pRet->mRootTransform, pRet->mScaledRoot);
+
+	return	pRet;
+}
+
+
 void	Skin_Destroy(Skin *pSkin)
 {
+	free(pSkin->mpInverseBindPoses);
+	free(pSkin->mpJoints);
 	free(pSkin->mpBoneBoxes);
 	free(pSkin->mpBoneSpheres);
 	free(pSkin->mpBoneCapsules);
@@ -50,22 +126,25 @@ Skin	*Skin_Read(FILE *f)
 	Skin	*pRet	=aligned_alloc(16, sizeof(Skin));
 #endif
 
-	glm_mat4_identity_array(pRet->mInverseBindPoses, MAX_BONES);
-	glm_mat4_identity_array(pRet->mBindPoses, MAX_BONES);
-
 	fread(&pRet->mNumBinds, sizeof(int), 1, f);
+
+#ifdef __AVX__
+	pRet->mpInverseBindPoses	=aligned_alloc(32, sizeof(mat4) * pRet->mNumBinds);	
+#else
+	pRet->mpInverseBindPoses	=aligned_alloc(16, sizeof(mat4) * pRet->mNumBinds);	
+#endif
 
 	for(int i=0;i < pRet->mNumBinds;i++)
 	{
 		int	idx;
 		fread(&idx, sizeof(int), 1, f);
 
-		fread(pRet->mInverseBindPoses[idx], sizeof(mat4), 1, f);
-
-//		glm_mat4_inv(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
-
-		glm_mat4_transpose_to(pRet->mInverseBindPoses[i], pRet->mBindPoses[i]);
+		fread(pRet->mpInverseBindPoses[idx], sizeof(mat4), 1, f);
 	}
+
+	//joints array
+	pRet->mpJoints	=malloc(sizeof(uint8_t) * pRet->mNumBinds);
+	fread(pRet->mpJoints, 1, pRet->mNumBinds, f);
 
 	fread(&pRet->mNumShapes, sizeof(int), 1, f);
 
@@ -104,8 +183,11 @@ void	Skin_Write(const Skin *pSkin, FILE *f)
 		//is a int dictionary in C# out of order
 		fwrite(&i, sizeof(int), 1, f);
 
-		fwrite(pSkin->mInverseBindPoses[i], sizeof(mat4), 1, f);
+		fwrite(pSkin->mpInverseBindPoses[i], sizeof(mat4), 1, f);
 	}
+
+	//joint array
+	fwrite(pSkin->mpJoints, 1, pSkin->mNumBinds, f);
 
 	fwrite(&pSkin->mNumShapes, sizeof(int), 1, f);
 
@@ -125,16 +207,21 @@ void	Skin_Write(const Skin *pSkin, FILE *f)
 
 void	Skin_FillBoneArray(const Skin *pSkin, const Skeleton *pSkel, mat4 *pBones)
 {
-	Skeleton_FillBoneArray(pSkel, pBones);
+	Skeleton_FillBoneArray(pSkel, pSkin->mpJoints, pBones, pSkin->mNumBinds);
 
-	for(int i=0;i < MAX_BONES;i++)
+	for(int i=0;i < pSkin->mNumBinds;i++)
 	{
 		//On windows side this is: bone	=ibp * bone * rootXForm * scale
 		//here it seems to be root * bone * ibp * scale
 		glm_mat4_mul(pSkin->mRootTransform, pBones[i], pBones[i]);
-		glm_mat4_mul(pBones[i], pSkin->mInverseBindPoses[i], pBones[i]);
+		glm_mat4_mul(pBones[i], pSkin->mpInverseBindPoses[i], pBones[i]);
 		glm_mat4_mul(pSkin->mScaleMat, pBones[i], pBones[i]);
 	}
+}
+
+int	Skin_GetNumBones(const Skin *pSkin)
+{
+	return	pSkin->mNumBinds;
 }
 
 int		Skin_GetBoundChoice(const Skin *pSkin, int boneIdx)
@@ -209,7 +296,7 @@ void	Skin_GetBoneByIndex(const Skin *pSkin, const Skeleton *pSkel,
 	//On windows side this is: bone	=ibp * bone * rootXForm * scale
 	//here it seems to be root * bone * ibp * scale
 	glm_mat4_mul(pSkin->mRootTransform, outMat, outMat);
-	glm_mat4_mul(outMat, pSkin->mInverseBindPoses[boneIdx], outMat);
+	glm_mat4_mul(outMat, pSkin->mpInverseBindPoses[boneIdx], outMat);
 	glm_mat4_mul(pSkin->mScaleMat, outMat, outMat);
 }
 

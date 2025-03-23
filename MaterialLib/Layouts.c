@@ -1,5 +1,5 @@
 #include	<stdint.h>
-#include	"d3d11.h"
+#include	"Layouts.h"
 #include	"utstring.h"
 #include	"../UtilityLib/DictionaryStuff.h"
 #include	"../UtilityLib/StringStuff.h"
@@ -12,8 +12,115 @@ typedef struct	ShaderBytes_t
 	int		mLen;
 }	ShaderBytes;
 
+typedef struct	Match_t
+{
+	//search criteria
+	const int	*mpElements;
+	int			mElementCount;
 
-void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
+	const DictSZ	*mpLayCounts;
+
+	//the match
+	const UT_string	*mpKey;
+}	Match;
+
+
+static void	sAddElCopy(DictSZ **ppElems, DictSZ **ppLaySizes,
+	const char *pName, int elems[], int elCount)
+{
+	//make a mallocd copy of the elems
+	int	*pElCopy	=malloc(sizeof(int) * elCount);
+	memcpy(pElCopy, elems, sizeof(int) * elCount);
+
+	//storing an int in a void * spot
+	int64_t	bigElCount	=elCount;
+
+	DictSZ_Addccp(ppElems, pName, pElCopy);
+	DictSZ_Addccp(ppLaySizes, pName, (void *)bigElCount);
+}
+
+
+void	Layouts_MakeElems(DictSZ **ppElems, DictSZ **ppLaySizes)
+{
+	//vpos
+	sAddElCopy(ppElems, ppLaySizes, "VPos", (int []){EL_POSITION}, 1);
+	
+	//VPosNorm
+	sAddElCopy(ppElems, ppLaySizes, "VPosNorm", (int []){EL_POSITION, EL_NORMAL}, 2);
+
+	//VPosTex0
+	sAddElCopy(ppElems, ppLaySizes, "VPosTex0", (int []){EL_POSITION, EL_TEXCOORD}, 2);
+
+	//VPos2Tex0
+	sAddElCopy(ppElems, ppLaySizes, "VPos2Tex0", (int []){EL_POSITION2, EL_TEXCOORD}, 2);
+
+	//VPos2Tex04
+	sAddElCopy(ppElems, ppLaySizes, "VPos2Tex04", (int []){EL_POSITION2, EL_TEXCOORD4}, 2);
+
+	//VPos2Col0
+	sAddElCopy(ppElems, ppLaySizes, "VPos2Col0", (int []){EL_POSITION2, EL_COLOR}, 2);
+
+	//VPos2Col0Tex04
+	sAddElCopy(ppElems, ppLaySizes, "VPos2Col0Tex04",
+		(int []){EL_POSITION2, EL_COLOR, EL_TEXCOORD4}, 3);
+
+	//VPosNormTex0
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormTex0",
+		(int []){EL_POSITION, EL_NORMAL, EL_TEXCOORD}, 3);
+
+	//VPosNormCol0
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormCol0",
+		(int []){EL_POSITION, EL_NORMAL, EL_COLOR}, 3);
+
+	//VPosNormTex04
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormTex04",
+		(int []){EL_POSITION, EL_NORMAL, EL_TEXCOORD4}, 3);
+
+	//VPosNormTex0Col0
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormTex0Col0",
+		(int []){EL_POSITION, EL_NORMAL, EL_TEXCOORD, EL_COLOR}, 4);
+
+	//VPos4Tex04Tex14
+	sAddElCopy(ppElems, ppLaySizes, "VPos4Tex04Tex14",
+		(int []){EL_POSITION4, EL_TEXCOORD4, EL_TEXCOORD4}, 4);
+
+	//VPosNormTex04Tex14
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormTex04Tex14",
+		(int []){EL_POSITION, EL_NORMAL, EL_TEXCOORD4, EL_TEXCOORD4}, 4);
+
+	//VPosNormTex04Tex14Tex24Col0
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormTex04Tex14Tex24Col0",
+		(int []){EL_POSITION, EL_NORMAL, EL_TEXCOORD4,
+			EL_TEXCOORD4, EL_TEXCOORD4, EL_COLOR}, 6);
+
+	//VPosNormBone
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormBone",
+		(int []){EL_POSITION, EL_NORMAL, EL_BINDICES, EL_BWEIGHTS}, 4);
+
+	//VPosNormBoneCol0
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormBoneCol0",
+		(int []){EL_POSITION, EL_NORMAL, EL_BINDICES, EL_BWEIGHTS, EL_COLOR}, 5);
+
+	//VPosNormBoneTex0
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormBoneTex0",
+		(int []){EL_POSITION, EL_NORMAL, EL_BINDICES, EL_BWEIGHTS, EL_TEXCOORD}, 5);
+
+	//VPosNormBoneTex0Tex1
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormBoneTex0Tex1",
+		(int []){EL_POSITION, EL_NORMAL, EL_BINDICES, EL_BWEIGHTS,
+			EL_TEXCOORD4, EL_TEXCOORD4}, 6);
+
+	//VPosNormTanTex0
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormTanTex0",
+		(int []){EL_POSITION, EL_NORMAL, EL_TANGENT, EL_TEXCOORD}, 4);
+
+	//VPosNormTex0Bone	newer wacky order
+	sAddElCopy(ppElems, ppLaySizes, "VPosNormTex0Bone",
+		(int []){EL_POSITION, EL_NORMAL, EL_TEXCOORD, EL_BINDICES, EL_BWEIGHTS}, 5);
+}
+
+void	Layouts_MakeLayouts(GraphicsDevice *pGD, const DictSZ *pVSCode,
+							DictSZ **ppLayouts)
 {
 	//vpos
 	D3D11_INPUT_ELEMENT_DESC	iedVPos[]	=
@@ -114,8 +221,8 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		{	"TEXCOORD",	1,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	28,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 
-	//VPosNormTex04Tex14Tex24Col04
-	D3D11_INPUT_ELEMENT_DESC	iedVPosNormTex04Tex14Tex24Col04[]	=
+	//VPosNormTex04Tex14Tex24Col0
+	D3D11_INPUT_ELEMENT_DESC	iedVPosNormTex04Tex14Tex24Col0[]	=
 	{
 		{	"POSITION",	0,	DXGI_FORMAT_R32G32B32_FLOAT,	0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
 		{	"NORMAL",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	12,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
@@ -174,6 +281,15 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		{	"TEXCOORD",	0,	DXGI_FORMAT_R16G16_FLOAT,		0,	28,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
 	};
 
+	//VPosNormTex0Bone	newer wacky order
+	D3D11_INPUT_ELEMENT_DESC	iedVPosNormTex0Bone[]	=
+	{
+		{	"POSITION",		0,	DXGI_FORMAT_R32G32B32_FLOAT,	0,	0,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"NORMAL",		0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	12,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"TEXCOORD",		0,	DXGI_FORMAT_R16G16_FLOAT,		0,	20,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"BLENDINDICES",	0,	DXGI_FORMAT_R8G8B8A8_UINT,		0,	24,	D3D11_INPUT_PER_VERTEX_DATA, 0	},
+		{	"BLENDWEIGHTS",	0,	DXGI_FORMAT_R16G16B16A16_FLOAT,	0,	28,	D3D11_INPUT_PER_VERTEX_DATA, 0	}
+	};
 
 	//VPos
 	ShaderBytes			*pCode	=DictSZ_GetValueccp(pVSCode, "WPosVS");
@@ -305,9 +421,9 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 	}
 	DictSZ_Addccp(ppLayouts, "VPosNormTex04Tex14", pLO);
 
-	//VPosNormTex04Tex14Tex24Col04
+	//VPosNormTex04Tex14Tex24Col0
 	pCode	=DictSZ_GetValueccp(pVSCode, "LightMapAnimVS");
-	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex04Tex14Tex24Col04, 6, pCode->mpBytes, pCode->mLen);
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex04Tex14Tex24Col0, 6, pCode->mpBytes, pCode->mLen);
 	if(pLO == NULL)
 	{
 		printf("Error creating layout.\n");
@@ -364,4 +480,91 @@ void	MakeLayouts(GraphicsDevice *pGD, DictSZ **ppLayouts, DictSZ *pVSCode)
 		return;
 	}
 	DictSZ_Addccp(ppLayouts, "VPosNormTanTex0", pLO);
+
+	//VPosNormTex0Bone	new and wacky
+	pCode	=DictSZ_GetValueccp(pVSCode, "SkinTexTriColVS2");
+	pLO		=GD_CreateInputLayout(pGD, iedVPosNormTex0Bone, 5, pCode->mpBytes, pCode->mLen);
+	if(pLO == NULL)
+	{
+		printf("Error creating layout.\n");
+		return;
+	}
+	DictSZ_Addccp(ppLayouts, "VPosNormTex0Bone", pLO);
+}
+
+
+static void	sForEachEDesc(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	int	*pElems	=(int *)pValue;
+	if(pElems == NULL)
+	{
+		return;
+	}
+
+	Match	*pM	=(Match *)pContext;
+	if(pM == NULL)
+	{
+		return;
+	}
+
+	int64_t	elCount	=(int64_t)DictSZ_GetValue(pM->mpLayCounts, pKey);
+
+	if(elCount != pM->mElementCount)
+	{
+		return;
+	}
+
+	for(int i=0;i < pM->mElementCount;i++)
+	{
+		if(pElems[i] != pM->mpElements[i])
+		{
+			return;	//no match
+		}
+	}
+	
+	//ensure no earlier match
+	assert(pM->mpKey == NULL);
+
+	//match!
+	pM->mpKey	=pKey;
+}
+
+
+const UT_string	*Layouts_FindMatch(
+	const DictSZ *pLayCounts, const DictSZ *pElems,
+	const int elems[], int elCount)
+{
+	Match	m	={	elems, elCount, pLayCounts, NULL	};
+
+	DictSZ_ForEach(pElems, sForEachEDesc, &m);
+
+	return	m.mpKey;
+}
+
+void	Layouts_GetGrogSizes(const int elems[], int sizes[], int elCount)
+{
+	for(int i=0;i < elCount;i++)
+	{
+		switch(elems[i])
+		{
+			case	EL_TEXCOORD:
+			case	EL_BINDICES:
+				sizes[i]	=4;
+				break;
+			case	EL_BWEIGHTS:
+			case	EL_COLOR:
+			case	EL_NORMAL:
+			case	EL_TANGENT:
+			case	EL_TEXCOORD4:
+			case	EL_POSITION2:
+				sizes[i]	=8;
+				break;
+			case	EL_POSITION4:
+				sizes[i]	=16;
+				break;
+			case	EL_POSITION:
+				sizes[i]	=12;
+				break;
+		}
+	}
 }

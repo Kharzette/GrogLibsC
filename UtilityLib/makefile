@@ -10,7 +10,7 @@ CFLAGS=-std=gnu23 -g -O0 -march=native -fpic -shared	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
 SOURCES=$(wildcard *.c)
-LIBS=-lvulkan -lSDL2
+LIBS=-lvulkan -lSDL3
 
 all: UtilityLib
 

@@ -245,7 +245,7 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 
 	fread(pRet->mLightDirection, sizeof(vec3), 1, f);
 	fread(pRet->mDanglyForce, sizeof(vec3), 1, f);
-//	fread(pRet->mLocalScale, sizeof(vec3), 1, f);
+	fread(pRet->mLocalScale, sizeof(vec3), 1, f);
 	fread(&pRet->mSpecPower, sizeof(float), 1, f);
 
 	//these can sometimes have \\ style paths from windows

@@ -6,8 +6,8 @@
 #include	<x86intrin.h>
 #include	<string.h>
 #include	<assert.h>
-#include	<SDL2/SDL.h>
-#include	<SDL2/SDL_keycode.h>
+#include	<SDL3/SDL.h>
+#include	<SDL3/SDL_keycode.h>
 #include	"utlist.h"
 #include	"Input.h"
 
@@ -80,35 +80,35 @@ void	INP_Update(Input *pInp, void *pContext)
 	SDL_Event	evt;
 	while(SDL_PollEvent(&evt))
 	{
-		if(evt.type == SDL_KEYUP)
+		if(evt.type == SDL_EVENT_KEY_UP)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
 			{
 				if(pBind->mBindType == INP_BIND_TYPE_EVENT)
 				{
-					if(pBind->mCode == evt.key.keysym.sym)
+					if(pBind->mCode == evt.key.key)
 					{
 						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 				else if(pBind->mBindType == INP_BIND_TYPE_HELD)
 				{
-					if(pBind->mCode == evt.key.keysym.sym)
+					if(pBind->mCode == evt.key.key)
 					{
 						pBind->mbActive	=false;
 					}
 				}
 				else if(pBind->mBindType == INP_BIND_TYPE_RELEASE)
 				{
-					if(pBind->mCode == evt.key.keysym.sym)
+					if(pBind->mCode == evt.key.key)
 					{
 						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 			}
 		}
-		else if(evt.type == SDL_KEYDOWN)
+		else if(evt.type == SDL_EVENT_KEY_DOWN)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -119,21 +119,21 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 				else if(pBind->mBindType == INP_BIND_TYPE_HELD)
 				{
-					if(pBind->mCode == evt.key.keysym.sym)
+					if(pBind->mCode == evt.key.key)
 					{
 						pBind->mbActive	=true;
 					}
 				}
 				else if(pBind->mBindType == INP_BIND_TYPE_PRESS)
 				{
-					if(pBind->mCode == evt.key.keysym.sym)
+					if(pBind->mCode == evt.key.key)
 					{
 						EVENTCB(pBind, &evt, pContext);
 					}
 				}
 			}
 		}
-		else if(evt.type == SDL_MOUSEBUTTONUP)
+		else if(evt.type == SDL_EVENT_MOUSE_BUTTON_UP)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -161,7 +161,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_MOUSEBUTTONDOWN)
+		else if(evt.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)
@@ -189,7 +189,7 @@ void	INP_Update(Input *pInp, void *pContext)
 				}
 			}
 		}
-		else if(evt.type == SDL_MOUSEMOTION || evt.type == SDL_MOUSEWHEEL)
+		else if(evt.type == SDL_EVENT_MOUSE_MOTION || evt.type == SDL_EVENT_MOUSE_WHEEL)
 		{
 			InputBinding	*pBind;
 			LL_FOREACH(pInp->mpBindings, pBind)

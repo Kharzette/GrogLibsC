@@ -34,3 +34,8 @@ const UT_string				*StuffKeeper_GetVSName(const StuffKeeper *pSK, const ID3D11Ve
 const UT_string				*StuffKeeper_GetPSName(const StuffKeeper *pSK, const ID3D11PixelShader *pPS);
 const UT_string				*StuffKeeper_GetSRVName(const StuffKeeper *pSK, const ID3D11ShaderResourceView *pSRV);
 StringList					*StuffKeeper_GetTextureList(const StuffKeeper *pSK);
+const UT_string				*StuffKeeper_GetVSFile(const StuffKeeper *pSK, const UT_string *pVSName);
+const UT_string				*StuffKeeper_GetPSFile(const StuffKeeper *pSK, const UT_string *pPSName);
+
+//search for an input layout match
+const UT_string	*StuffKeeper_FindMatch(const StuffKeeper *pSK, const int elems[], int elCounts);

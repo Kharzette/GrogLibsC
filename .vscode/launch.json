@@ -20,6 +20,19 @@
 		{
 			"type": "cppdbg",
 			"request": "launch",
+			"preLaunchTask": "aud make",
+			"name": "audio",
+			"program": "${workspaceFolder}/AudioLib/a.out",
+			"args": [],
+			"stopAtEntry": true,
+			"externalConsole": false,
+			"cwd": "${config:CurrentGame}",
+			"additionalSOLibSearchPath": "${config:CurrentGameLibs}",
+			"MIMode": "gdb"
+		},
+		{
+			"type": "cppdbg",
+			"request": "launch",
 			"preLaunchTask": "cglm make",
 			"name": "CGLM Tests",
 			"program": "${workspaceFolder}/cglm/build/tests",

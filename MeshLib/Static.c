@@ -29,7 +29,45 @@ typedef struct	Static_t
 }	Static;
 
 
-Static	*Static_Read(const char *szFileName)
+Static	*Static_Create(Mesh *pMeshes[], mat4 xForms[], int numMeshes)
+{
+#ifdef __AVX__
+	Static	*pRet	=aligned_alloc(32, sizeof(Static));
+#else
+	Static	*pRet	=aligned_alloc(16, sizeof(Static));
+#endif
+
+	memset(pRet, 0, sizeof(Static));
+
+	glm_mat4_identity(pRet->mTransform);
+
+	pRet->mpParts	=malloc(sizeof(MeshPart) * numMeshes);
+
+	for(int i=0;i < numMeshes;i++)
+	{
+		pRet->mpParts[i].mpPart			=pMeshes[i];
+		pRet->mpParts[i].mbVisible		=true;
+		pRet->mpParts[i].mMaterialID	=0;
+
+		utstring_new(pRet->mpParts[i].mpMaterial);
+
+		utstring_printf(pRet->mpParts[i].mpMaterial, "default");
+	}
+	pRet->mNumParts	=numMeshes;
+
+#ifdef __AVX__
+	pRet->mTransforms	=aligned_alloc(32, sizeof(mat4) * pRet->mNumParts);
+#else
+	pRet->mTransforms	=aligned_alloc(16, sizeof(mat4) * pRet->mNumParts);
+#endif
+
+	memcpy(pRet->mTransforms, xForms, sizeof(mat4) * numMeshes);
+
+	return	pRet;
+}
+
+Static	*Static_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
+					const char *szFileName, bool bEditor)
 {
 	FILE	*f	=fopen(szFileName, "rb");
 	if(f == NULL)
@@ -62,11 +100,11 @@ Static	*Static_Read(const char *szFileName)
 
 	for(int i=0;i < pRet->mNumParts;i++)
 	{
-		pRet->mpParts[i].mpPartName	=SZ_ReadString(f);
+		pRet->mpParts[i].mpPart	=Mesh_Read(pGD, pSK, f, bEditor);
 
 		fread(pRet->mTransforms[i], sizeof(mat4), 1, f);
 
-		pRet->mpParts[i].mpMatName	=SZ_ReadString(f);
+		pRet->mpParts[i].mpMaterial	=SZ_ReadString(f);
 
 		fread(&pRet->mpParts[i].mMaterialID, sizeof(int), 1, f);
 		fread(&pRet->mpParts[i].mbVisible, sizeof(bool), 1, f);
@@ -97,11 +135,11 @@ void	Static_Write(const Static *pStat, const char *szFileName)
 
 	for(int i=0;i < pStat->mNumParts;i++)
 	{
-		SZ_WriteString(f, pStat->mpParts[i].mpPartName);
+		Mesh_Write(pStat->mpParts[i].mpPart, f);
 
 		fwrite(pStat->mTransforms[i], sizeof(mat4), 1, f);
 
-		SZ_WriteString(f, pStat->mpParts[i].mpMatName);
+		SZ_WriteString(f, pStat->mpParts[i].mpMaterial);
 
 		fwrite(&pStat->mpParts[i].mMaterialID, sizeof(int), 1, f);
 		fwrite(&pStat->mpParts[i].mbVisible, sizeof(bool), 1, f);
@@ -110,20 +148,18 @@ void	Static_Write(const Static *pStat, const char *szFileName)
 	fclose(f);
 }
 
-void	Static_Draw(const Static *pStat, const DictSZ *pMeshes,
-					MaterialLib *pML, GraphicsDevice *pGD, CBKeeper *pCBK)
+void	Static_Draw(const Static *pStat, MaterialLib *pML,
+					GraphicsDevice *pGD, CBKeeper *pCBK)
 {
 	for(int i=0;i < pStat->mNumParts;i++)
 	{
-		Mesh	*pMesh	=DictSZ_GetValue(pMeshes, pStat->mpParts[i].mpPartName);
-
 		Material	*pMat	=MatLib_GetMaterial(pML,
-								utstring_body(pStat->mpParts[i].mpMatName));
+							utstring_body(pStat->mpParts[i].mpMaterial));
 
-		if(pMesh != NULL && pMat != NULL)
+		if(pMat != NULL)
 		{
 			MAT_SetWorld(pMat, pStat->mTransforms[i]);
-			Mesh_DrawMat(pMesh, pGD, pCBK, pMat);
+			Mesh_DrawMat(pStat->mpParts[i].mpPart, pGD, pCBK, pMat);
 		}
 	}
 }
@@ -139,7 +175,7 @@ StringList	*Static_GetPartList(const Static *pStat)
 
 	for(int i=0;i < pStat->mNumParts;i++)
 	{
-		SZList_AddUT(&pRet, pStat->mpParts[i].mpPartName);
+		SZList_AddUT(&pRet, Mesh_GetName(pStat->mpParts[i].mpPart));
 	}
 
 	return	pRet;
@@ -149,11 +185,12 @@ void	Static_ReNamePart(Static *pStat, const char *pOldName, const char *pNewName
 {
 	for(int i=0;i < pStat->mNumParts;i++)
 	{
-		int	res	=strcmp(utstring_body(pStat->mpParts[i].mpPartName), pOldName);
+		const UT_string	*pPartName	=Mesh_GetName(pStat->mpParts[i].mpPart);
+
+		int	res	=strcmp(utstring_body(pPartName), pOldName);
 		if(res == 0)
 		{
-			utstring_clear(pStat->mpParts[i].mpPartName);
-			utstring_printf(pStat->mpParts[i].mpPartName, "%s", pNewName);
+			Mesh_SetName(pStat->mpParts[i].mpPart, pNewName);
 		}
 	}
 }
@@ -176,8 +213,8 @@ void	Static_DeletePartIndex(Static *pStat, int idx)
 		{
 			if(i == idx)
 			{
-				utstring_done(pStat->mpParts[i].mpMatName);
-				utstring_done(pStat->mpParts[i].mpPartName);
+				utstring_done(pStat->mpParts[i].mpMaterial);
+				Mesh_Destroy(pStat->mpParts[i].mpPart);
 				continue;
 			}
 
@@ -194,8 +231,8 @@ void	Static_DeletePartIndex(Static *pStat, int idx)
 	}
 	else
 	{
-		utstring_done(pStat->mpParts[0].mpMatName);
-		utstring_done(pStat->mpParts[0].mpPartName);
+		utstring_done(pStat->mpParts[0].mpMaterial);
+		Mesh_Destroy(pStat->mpParts[0].mpPart);
 		free(pStat->mpParts);
 		pStat->mpParts	=NULL;
 	}
@@ -205,7 +242,8 @@ void	Static_DeletePart(Static *pStat, const char *szName)
 {
 	for(int i=0;i < pStat->mNumParts;i++)
 	{
-		int	res	=strcmp(utstring_body(pStat->mpParts[i].mpPartName), szName);
+		const UT_string	*pPartName	=Mesh_GetName(pStat->mpParts[i].mpPart);
+		int	res	=strcmp(utstring_body(pPartName), szName);
 		if(res == 0)
 		{
 			Static_DeletePartIndex(pStat, i);
@@ -219,8 +257,9 @@ void	Static_Destroy(Static *pStat)
 {
 	for(int i=0;i < pStat->mNumParts;i++)
 	{
-		utstring_done(pStat->mpParts[i].mpMatName);
-		utstring_done(pStat->mpParts[i].mpPartName);
+		utstring_done(pStat->mpParts[i].mpMaterial);
+
+		Mesh_Destroy(pStat->mpParts[i].mpPart);
 	}
 
 	if(pStat->mpParts != NULL)
@@ -241,19 +280,20 @@ void	Static_AssignMaterial(Static *pStat, int partIndex, const char *pMatName)
 {
 	assert(partIndex < pStat->mNumParts);
 
-	utstring_clear(pStat->mpParts[partIndex].mpMatName);
+	utstring_clear(pStat->mpParts[partIndex].mpMaterial);
 
-	utstring_printf(pStat->mpParts[partIndex].mpMatName, "%s", pMatName);
+	utstring_printf(pStat->mpParts[partIndex].mpMaterial, "%s", pMatName);
 }
 
 const char	*Static_GetMaterialForPart(const Static *pStat, const char *szPartName)
 {
 	for(int i=0;i < pStat->mNumParts;i++)
 	{
-		int	res	=strcmp(utstring_body(pStat->mpParts[i].mpPartName), szPartName);
+		const UT_string	*pPartName	=Mesh_GetName(pStat->mpParts[i].mpPart);
+		int	res	=strcmp(utstring_body(pPartName), szPartName);
 		if(res == 0)
 		{
-			return	utstring_body(pStat->mpParts[i].mpMatName);
+			return	utstring_body(pStat->mpParts[i].mpMaterial);
 		}
 	}
 	return	NULL;

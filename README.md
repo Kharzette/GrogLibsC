@@ -21,7 +21,7 @@ Game libraries using C language, often ported from my C# libraries of the same n
 
 # Building
 For awhile I had every dependency as a submodule, but that made it annoying for people.  These packages should be installed:
-- SDL2
+- SDL3
 - FAudio
 - pnglib
 

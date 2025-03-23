@@ -25,12 +25,15 @@ typedef struct	Mesh_t
 	ID3D11Buffer		*mpVerts, *mpIndexs;
 	ID3D11InputLayout	*mpLayout;
 	int					mNumVerts, mNumTriangles, mVertSize;
-	int					mTypeIndex;
+	
+	//name of the vertex type
+	UT_string	*mpVertName;
 
 	//extra editor stuff if needed
 	void		*mpVertData;
 	uint16_t	*mpIndData;
 }	Mesh;
+
 
 //C# stored types, but we just need the size
 //dumped from MeshDumpTypes
@@ -97,59 +100,93 @@ static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
 }
 
 
-Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
-					const char *szFileName, bool bEditor)
+Mesh	*Mesh_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
+	const UT_string *pName, const void *pVData, const void *pIndData,
+	const int vertElems[], int velCount,
+	int	numVerts, int numInds, int vertSize)
 {
-	Mesh	*pMesh	=malloc(sizeof(Mesh));
-	memset(pMesh, 0, sizeof(Mesh));
-
-	FILE	*f	=fopen(szFileName, "rb");
-	if(f == NULL)
+	//first make sure a vert format exists for this
+	const UT_string	*pVName	=StuffKeeper_FindMatch(pSK, vertElems, velCount);
+	if(pVName == NULL)
 	{
-		free(pMesh);
-		printf("Couldn't open file %s\n", szFileName);
+		printf("No valid vertex format in Mesh_Create()\n");
 		return	NULL;
 	}
 
+	Mesh	*pRet	=malloc(sizeof(Mesh));
+
+	memset(pRet, 0, sizeof(Mesh));
+
+	utstring_new(pRet->mpName);
+	utstring_printf(pRet->mpName, "%s", utstring_body(pName));
+
+	//make a copy of this, so freeing the mesh won't
+	//blast a pointer down in stuffkeeper somewhere
+	utstring_new(pRet->mpVertName);
+	utstring_printf(pRet->mpVertName, "%s", utstring_body(pVName));
+
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeVBDesc(&bufDesc, vertSize * numVerts);
+	pRet->mpVerts	=GD_CreateBufferWithData(pGD, &bufDesc, pVData, bufDesc.ByteWidth);
+
+	MakeIBDesc(&bufDesc, numInds * sizeof(uint16_t));
+	pRet->mpIndexs	=GD_CreateBufferWithData(pGD, &bufDesc, pIndData, bufDesc.ByteWidth);
+
+	//find a match for the vert format
+	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, utstring_body(pVName));
+
+	pRet->mNumVerts		=numVerts;
+	pRet->mNumTriangles	=numInds / 3;
+	pRet->mVertSize		=vertSize;
+
+	//keep vert and ind data since this is an editor path
+	pRet->mpVertData	=pVData;
+
+	//index data comes from the bin part of the file that
+	//will be freed so make a copy
+	pRet->mpIndData	=malloc(sizeof(uint16_t) * numInds);
+	memcpy(pRet->mpIndData, pIndData, sizeof(uint16_t) * numInds);
+
+	return	pRet;
+}
+
+Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
+					FILE *f, bool bEditor)
+{
+	assert(f != NULL);
+
+	Mesh	*pMesh	=malloc(sizeof(Mesh));
+	memset(pMesh, 0, sizeof(Mesh));
+	
 	uint32_t	magic;
 	fread(&magic, sizeof(uint32_t), 1, f);
 	if(magic != 0xb0135313)
 	{
 		fclose(f);
 		free(pMesh);
-		printf("Bad magic for Mesh_Read() %s\n", szFileName);
+		printf("Bad magic for Mesh_Read()\n");
 		return	NULL;
 	}
-
+	
 	pMesh->mpName	=SZ_ReadString(f);
 
 	fread(&pMesh->mNumVerts, sizeof(int), 1, f);
 	fread(&pMesh->mNumTriangles, sizeof(int), 1, f);
 	fread(&pMesh->mVertSize, sizeof(int), 1, f);
-	fread(&pMesh->mTypeIndex, sizeof(int), 1, f);
 
-	size_t	vertSize	=sTypeSizes[pMesh->mTypeIndex];
+	pMesh->mpVertName	=SZ_ReadString(f);
 
-	pMesh->mpLayout	=StuffKeeper_GetInputLayout(pSK, sTypeNames[pMesh->mTypeIndex]);
+	pMesh->mpLayout	=StuffKeeper_GetInputLayout(pSK, utstring_body(pMesh->mpVertName));
 
 	//add a ref
 	pMesh->mpLayout->lpVtbl->AddRef(pMesh->mpLayout);
 
-	assert(vertSize == pMesh->mVertSize);
+	void	*pVerts	=malloc(pMesh->mVertSize * pMesh->mNumVerts);
 
-	int	arrTypeIdx, arrNumVerts;
-
-	fread(&arrTypeIdx, sizeof(int), 1, f);
-	fread(&arrNumVerts, sizeof(int), 1, f);
-
-	assert(arrNumVerts == pMesh->mNumVerts);
-
-	void	*pVerts	=malloc(vertSize * arrNumVerts);
-
-	fread(pVerts, vertSize * arrNumVerts, 1, f);
+	fread(pVerts, pMesh->mVertSize * pMesh->mNumVerts, 1, f);
 
 	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, vertSize * arrNumVerts);
+	sMakeVBDesc(&bufDesc, pMesh->mVertSize * pMesh->mNumVerts);
 	pMesh->mpVerts	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
 
 	//read indexes
@@ -179,17 +216,29 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 		free(pInds);
 	}
 
+	return	pMesh;
+}
+
+Mesh	*Mesh_ReadFromFile(GraphicsDevice *pGD, StuffKeeper *pSK,
+	const char *szFileName, bool bEditor)
+{
+	FILE	*f	=fopen(szFileName, "rb");
+	if(f == NULL)
+	{
+		printf("Couldn't open file %s\n", szFileName);
+		return	NULL;
+	}
+
+	Mesh	*pMesh	=Mesh_Read(pGD, pSK, f, bEditor);
+
 	fclose(f);
 
 	return	pMesh;
 }
 
-void	Mesh_Write(const Mesh *pMesh, const char *szFileName)
+void	Mesh_Write(const Mesh *pMesh, FILE *f)
 {
-	//make sure this has editor stuff
-	assert(pMesh->mpVertData);
-
-	FILE	*f	=fopen(szFileName, "wb");
+	assert(f != NULL);
 
 	uint32_t	magic	=0xb0135313;
 	fwrite(&magic, sizeof(uint32_t), 1, f);
@@ -199,13 +248,10 @@ void	Mesh_Write(const Mesh *pMesh, const char *szFileName)
 	fwrite(&pMesh->mNumVerts, sizeof(int), 1, f);
 	fwrite(&pMesh->mNumTriangles, sizeof(int), 1, f);
 	fwrite(&pMesh->mVertSize, sizeof(int), 1, f);
-	fwrite(&pMesh->mTypeIndex, sizeof(int), 1, f);
 
-	//this is written twice, weird c# stuff
-	fwrite(&pMesh->mTypeIndex, sizeof(int), 1, f);
-	fwrite(&pMesh->mNumVerts, sizeof(int), 1, f);
+	SZ_WriteString(f, pMesh->mpVertName);
 
-	fwrite(pMesh->mpVertData, sTypeSizes[pMesh->mTypeIndex], pMesh->mNumVerts, f);
+	fwrite(pMesh->mpVertData, pMesh->mVertSize, pMesh->mNumVerts, f);
 
 	bool	bIndexed	=(pMesh->mpIndData != NULL);
 	fwrite(&bIndexed, sizeof(bool), 1, f);
@@ -216,8 +262,24 @@ void	Mesh_Write(const Mesh *pMesh, const char *szFileName)
 		fwrite(&numIndexes, sizeof(int), 1, f);
 		fwrite(pMesh->mpIndData, sizeof(uint16_t), numIndexes, f);
 	}
+}
+
+void	Mesh_WriteToFile(const Mesh *pMesh, const char *szFileName)
+{
+	//make sure this has editor stuff
+	assert(pMesh->mpVertData);
+
+	FILE	*f	=fopen(szFileName, "wb");
+
+	Mesh_Write(pMesh, f);
 
 	fclose(f);
+}
+
+
+const UT_string	*Mesh_GetName(const Mesh *pMesh)
+{
+	return	pMesh->mpName;
 }
 
 //an early draw effort, later will have material lib

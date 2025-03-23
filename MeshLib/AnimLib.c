@@ -4,7 +4,11 @@
 #include	"../UtilityLib/ListStuff.h"
 #include	"Skeleton.h"
 #include	"Anim.h"
+#include	"AnimLib.h"
 
+
+//should match CommonFunctions.hlsli
+#define	MAX_BONES			55
 
 typedef struct	AnimLib_t
 {
@@ -13,6 +17,36 @@ typedef struct	AnimLib_t
 	Skeleton	*mpSkeleton;
 }	AnimLib;
 
+typedef struct	SkeletonChecker_t
+{
+	Skeleton	*mpForeignSkeleton;
+
+	bool	mbMatch;
+
+	StringList	*mpMissingBones;
+
+}	SkeletonChecker;
+
+
+//static forward decs
+static void sCheckSkelCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void sFindMissingBonesCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void	sSetBoneRefsCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void	sAnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext);
+static void	sNukeAnimCB(void *pStuff);
+
+
+AnimLib	*AnimLib_Create(Skeleton *pSkel)
+{
+	AnimLib	*pRet	=malloc(sizeof(AnimLib));
+
+	pRet->mpSkeleton	=pSkel;
+
+	DictSZ_New(&pRet->mpAnims);
+
+	return	pRet;
+}
 
 AnimLib	*AnimLib_Read(const char *fileName)
 {
@@ -46,7 +80,7 @@ AnimLib	*AnimLib_Read(const char *fileName)
 	{
 		Anim	*pAnim	=Anim_Read(f, pRet->mpSkeleton);
 
-		UT_string	*szName	=Anim_GetName(pAnim);
+		const UT_string	*szName	=Anim_GetName(pAnim);
 
 		printf("Anim: %s\n", utstring_body(szName));
 
@@ -56,23 +90,6 @@ AnimLib	*AnimLib_Read(const char *fileName)
 	fclose(f);
 
 	return	pRet;
-}
-
-static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pContext)
-{
-	Anim	*pAnm	=(Anim *)pValue;
-	if(pAnm == NULL)
-	{
-		return;
-	}
-
-	FILE	*f	=(FILE *)pContext;
-	if(f == NULL)
-	{
-		return;
-	}
-
-	Anim_Write(pAnm, f);
 }
 
 void	AnimLib_Write(const AnimLib *pAL, const char *szFileName)
@@ -102,6 +119,7 @@ void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 {
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnimName))
 	{
+		printf("No anim %s in anim lib.\n", szAnimName);
 		return;
 	}
 
@@ -110,10 +128,26 @@ void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 	Anim_Animate(pAnim, time);
 }
 
-
-void	AnimLib_FillBoneArray(const AnimLib *pAL, mat4 *pBones)
+void	AnimLib_Blend(AnimLib *pAL, const char *szAnim1, const char *szAnim2,
+						float anTime1, float anTime2, float percentage)
 {
-	Skeleton_FillBoneArray(pAL->mpSkeleton, pBones);
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim1))
+	{
+		printf("No anim %s in anim lib blend.\n", szAnim1);
+		return;
+	}
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim2))
+	{
+		printf("No anim %s in anim lib blend.\n", szAnim2);
+		return;
+	}
+
+	Anim	*pAnim1	=DictSZ_GetValueccp(pAL->mpAnims, szAnim1);
+	Anim	*pAnim2	=DictSZ_GetValueccp(pAL->mpAnims, szAnim2);
+
+	assert(pAnim1 != pAnim2);
+
+	Anim_Blend(pAnim1, pAnim2, anTime1, anTime2, percentage);
 }
 
 
@@ -122,17 +156,114 @@ const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL)
 	return	pAL->mpSkeleton;
 }
 
-
 int	AnimLib_GetNumAnims(const AnimLib *pAL)
 {
 	return	DictSZ_Count(pAL->mpAnims);
 }
 
+StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
+{
+	StringList	*pRet	=SZList_New();
+
+	DictSZ_ForEach(pAL->mpAnims, sAnimNamesCB, &pRet);
+
+	return	pRet;
+}
+
+
+//make sure all anims point to the right bones
+void	AnimLib_SetBoneRefs(AnimLib *pAL)
+{
+	DictSZ_ForEach(pAL->mpAnims, sSetBoneRefsCB, pAL);
+}
+
+void	AnimLib_Add(AnimLib *pALib, Anim *pAnim)
+{
+	DictSZ_Add(&pALib->mpAnims, Anim_GetName(pAnim), pAnim);
+
+	AnimLib_SetBoneRefs(pALib);
+}
+
+
+//see if skeletons match exactly
+bool	AnimLib_CheckSkeleton(const AnimLib *pALib, const Skeleton *pForeignSkel)
+{
+	int	locBCnt	=DictSZ_Count(pALib->mpSkeleton->mpNameToIndex);
+	int	forBCnt	=DictSZ_Count(pForeignSkel->mpNameToIndex);
+
+	if(locBCnt != forBCnt)
+	{
+		return	false;
+	}
+
+	SkeletonChecker	sc;
+
+	sc.mbMatch				=true;
+	sc.mpForeignSkeleton	=pForeignSkel;
+	sc.mpMissingBones		=NULL;	//not used for this check
+
+	DictSZ_ForEach(pALib->mpSkeleton->mpNameToIndex, sCheckSkelCB, &sc);
+
+	return	sc.mbMatch;
+}
+
+
+//adapt anim from another skeleton
+void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, const Skeleton *pForeignSkel)
+{
+	DictSZ	*pForN2I	=pForeignSkel->mpNameToIndex;
+
+	//Probably the best way to do this is to merge the skeletons.
+	//If any bones exist in the foreign skeleton that aren't in
+	//the animlib's skeleton, merge them in at the next available
+	//index.
+	SkeletonChecker	sc;
+
+	//for this test, this is backwards
+	//the foreign skeleton is iterated and checked against the local
+	sc.mpForeignSkeleton	=pALib->mpSkeleton;
+	sc.mpMissingBones		=SZList_New();
+	sc.mbMatch				=true;
+
+	DictSZ_ForEach(pForN2I, sFindMissingBonesCB, &sc);
+
+	if(sc.mpMissingBones != NULL)
+	{
+		//found some new bones to add
+		//need to figure out where the bone is in the heirarchy
+		//then add it to the animlib skeleton in that spot
+		//then update the name to index dictionary
+		//then remap the bone indexes of the verts referencing the new bone?
+		//that's super complicated and annoying, maybe just not allow this?
+		//make people fix it in blender?
+		for(const StringList *pCur=SZList_Iterate(sc.mpMissingBones);pCur != NULL;pCur=SZList_IteratorNext(pCur))
+		{
+			const UT_string	*pCurBoneName	=SZList_IteratorValUT(pCur);
+
+			//see what the foreign index is for this bone
+			int	forIdx	=(int)DictSZ_GetValue(pForN2I, pCurBoneName);
+
+			printf("AnimLib skeleton is missing bone %s with index %d\n", utstring_body(pCurBoneName), forIdx);	
+		}
+
+		printf("Maybe start a new AnimLib with the most complex bone?\n");
+
+		//free
+		SZList_Clear(&sc.mpMissingBones);
+		return;
+	}
+
+	//no new bones, so it should add normally
+	DictSZ_Add(&pALib->mpAnims, Anim_GetName(pAnim), pAnim);
+
+	AnimLib_SetBoneRefs(pALib);
+}
 
 void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew)
 {
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szOld))
 	{
+		printf("No anim %s in anim lib ReName.\n", szOld);
 		return;
 	}
 
@@ -144,11 +275,11 @@ void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew)
 	Anim_SetNameccp(pAn, szNew);
 }
 
-
 void	AnimLib_Delete(AnimLib *pAL, const char *szAnim)
 {
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
 	{
+		printf("No anim %s in anim lib delete.\n", szAnim);
 		return;
 	}
 
@@ -159,8 +290,21 @@ void	AnimLib_Delete(AnimLib *pAL, const char *szAnim)
 	Anim_Destroy(pAn);
 }
 
+void	AnimLib_Destroy(AnimLib **ppAL)
+{
+	AnimLib	*pAL	=*ppAL;
+	DictSZ_ClearCB(&pAL->mpAnims, sNukeAnimCB);
 
-void	AnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
+	Skeleton_Destroy(pAL->mpSkeleton);
+
+	free(pAL);
+
+	*ppAL	=NULL;
+}
+
+
+//statics
+static void	sAnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
 	StringList	**ppSL	=(StringList **)pContext;
 
@@ -172,11 +316,92 @@ void	AnimNamesCB(const UT_string *pKey, const void *pValue, void *pContext)
 	SZList_AddUT(ppSL, pKey);
 }
 
-StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
+static void	sSetBoneRefsCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
-	StringList	*pRet	=SZList_New();
+	AnimLib	*pAL	=(AnimLib *)pContext;
+	if(pAL == NULL)
+	{
+		printf("Null AnimLib in SetBoneRefs!\n");
+		return;
+	}
 
-	DictSZ_ForEach(pAL->mpAnims, AnimNamesCB, &pRet);
+	Anim	*pAnim	=(Anim *)pValue;
+	if(pAnim == NULL)
+	{
+		printf("Null Anim in SetBoneRefs!\n");
+		return;
+	}
 
-	return	pRet;
+	Anim_SetBoneRefs(pAnim, pAL->mpSkeleton);
+}
+
+static void	sSaveAnimsCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	Anim	*pAnm	=(Anim *)pValue;
+	if(pAnm == NULL)
+	{
+		return;
+	}
+
+	FILE	*f	=(FILE *)pContext;
+	if(f == NULL)
+	{
+		return;
+	}
+
+	Anim_Write(pAnm, f);
+}
+
+static void sCheckSkelCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	SkeletonChecker	*pSC	=(SkeletonChecker *)pContext;
+
+	if(pSC == NULL)
+	{
+		printf("Null Skelcheck in sCheckSkelCB!\n");
+		return;
+	}
+
+	if(!DictSZ_ContainsKey(pSC->mpForeignSkeleton->mpNameToIndex, pKey))
+	{
+		printf("Foreign skeleton has no bone %s\n", utstring_body(pKey));
+		pSC->mbMatch	=false;
+	}
+	else
+	{
+		int	locIdx	=(int)pValue;
+		int	forIdx	=(int)DictSZ_GetValue(pSC->mpForeignSkeleton->mpNameToIndex, pKey);
+
+		if(locIdx != forIdx)
+		{
+			printf("Bone %s has differing index for new animation vs animation lib!\n", utstring_body(pKey));
+			pSC->mbMatch	=false;
+		}
+	}
+}
+
+static void sFindMissingBonesCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	SkeletonChecker	*pSC	=(SkeletonChecker *)pContext;
+
+	if(pSC == NULL)
+	{
+		printf("Null Skelcheck in sFindMissingBonesCB!\n");
+		return;
+	}
+
+	if(!DictSZ_ContainsKey(pSC->mpForeignSkeleton->mpNameToIndex, pKey))
+	{
+		printf("Foreign skeleton has no bone %s\n", utstring_body(pKey));
+		pSC->mbMatch	=false;
+
+		SZList_AddUT(&pSC->mpMissingBones, pKey);
+	}
+}
+
+static void	sNukeAnimCB(void *pStuff)
+{
+	Anim	*pAnim	=(Anim *)pStuff;
+
+	Anim_Destroy(pAnim);
 }

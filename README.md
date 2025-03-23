@@ -9,9 +9,6 @@ Game libraries using C language, often ported from my C# libraries of the same n
 - Very simple terrain generation / rendering
 - UI Module using [Clay](https://github.com/nicbarker/clay)
 
-# Not Working Stuff
-- Terrain raycasts
-
 # TODO
 - BSP Maps
 - Integration of a physics library of some sort (Jolt in progress)

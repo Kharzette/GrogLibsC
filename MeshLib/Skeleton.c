@@ -34,6 +34,8 @@ Skeleton	*Skeleton_Read(FILE *f)
 	pRet->mpRoot	=GSNode_Read(f);
 
 	GSNode_SetBoneIndexes(pRet->mpRoot, &curIndex);
+
+	srMakeNameDict(pRet, pRet->mpRoot);
 	
 	return	pRet;
 }

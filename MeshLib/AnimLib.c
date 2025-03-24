@@ -171,10 +171,63 @@ StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
 }
 
 
+bool	AnimLib_GetLooping(const AnimLib *pAL, const char *szAnimName)
+{
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnimName))
+	{
+		printf("No anim %s in anim lib.\n", szAnimName);
+		return	false;
+	}
+
+	Anim	*pAnim	=DictSZ_GetValueccp(pAL->mpAnims, szAnimName);
+
+	return	Anim_GetLooping(pAnim);
+}
+
+bool	AnimLib_GetPingPong(const AnimLib *pAL, const char *szAnimName)
+{
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnimName))
+	{
+		printf("No anim %s in anim lib.\n", szAnimName);
+		return	false;
+	}
+
+	Anim	*pAnim	=DictSZ_GetValueccp(pAL->mpAnims, szAnimName);
+
+	return	Anim_GetPingPong(pAnim);
+}
+
+
 //make sure all anims point to the right bones
 void	AnimLib_SetBoneRefs(AnimLib *pAL)
 {
 	DictSZ_ForEach(pAL->mpAnims, sSetBoneRefsCB, pAL);
+}
+
+void	AnimLib_SetLooping(AnimLib *pAL, const char *szAnim, bool bLooping)
+{
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
+	{
+		printf("No anim %s in anim lib.\n", szAnim);
+		return;
+	}
+
+	Anim	*pAnim	=DictSZ_GetValueccp(pAL->mpAnims, szAnim);
+
+	Anim_SetLooping(pAnim, bLooping);
+}
+
+void	AnimLib_SetPingPong(AnimLib *pAL, const char *szAnim, bool bPingPong)
+{
+	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
+	{
+		printf("No anim %s in anim lib.\n", szAnim);
+		return;
+	}
+
+	Anim	*pAnim	=DictSZ_GetValueccp(pAL->mpAnims, szAnim);
+
+	Anim_SetPingPong(pAnim, bPingPong);
 }
 
 void	AnimLib_Add(AnimLib *pALib, Anim *pAnim)

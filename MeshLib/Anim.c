@@ -80,7 +80,7 @@ void	Anim_Animate(Anim *pAnim, float time)
 {
 	for(int i=0;i < pAnim->mNumSubAnims;i++)
 	{
-		SubAnim_Animate(pAnim->mpSubAnims[i], time, true);//pAnim->mbLooping);
+		SubAnim_Animate(pAnim->mpSubAnims[i], time, pAnim->mbLooping);
 	}
 }
 
@@ -125,15 +125,37 @@ void	Anim_Blend(Anim *pAnim1, Anim *pAnim2,
 	}
 }
 
+
 const UT_string	*Anim_GetName(const Anim *pAnim)
 {
 	return	pAnim->szName;
 }
 
+bool	Anim_GetLooping(const Anim *pAnim)
+{
+	return	pAnim->mbLooping;
+}
+
+bool	Anim_GetPingPong(const Anim *pAnim)
+{
+	return	pAnim->mbPingPong;
+}
+
+
 void	Anim_SetNameccp(Anim *pAnim, const char *szNew)
 {
 	utstring_clear(pAnim->szName);
 	utstring_printf(pAnim->szName, "%s", szNew);
+}
+
+void	Anim_SetLooping(Anim *pAnim, bool bLooping)
+{
+	pAnim->mbLooping	=bLooping;
+}
+
+void	Anim_SetPingPong(Anim *pAnim, bool bPingPong)
+{
+	pAnim->mbPingPong	=bPingPong;
 }
 
 void	Anim_Destroy(Anim *pAnim)

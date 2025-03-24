@@ -20,8 +20,13 @@ int				AnimLib_GetNumAnims(const AnimLib *pAL);
 StringList		*AnimLib_GetAnimList(const AnimLib *pAL);
 bool			AnimLib_CheckSkeleton(const AnimLib *pALib, const Skeleton *pForeignSkel);
 
+bool	AnimLib_GetLooping(const AnimLib *pALib, const char *szAnimName);
+bool	AnimLib_GetPingPong(const AnimLib *pALib, const char *szAnimName);
+
 void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew);
 void	AnimLib_Delete(AnimLib *pAL, const char *szAnim);
+void	AnimLib_SetLooping(AnimLib *pAL, const char *szAnim, bool bLooping);
+void	AnimLib_SetPingPong(AnimLib *pAL, const char *szAnim, bool bPingPong);
 void	AnimLib_Add(AnimLib *pALib, Anim *pAnim);
 void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, const Skeleton *pForeignSkel);
 void	AnimLib_SetBoneRefs(AnimLib *pAL);

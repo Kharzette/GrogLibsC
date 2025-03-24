@@ -20,7 +20,11 @@ void	Anim_Blend(Anim *pAnim1, Anim *pAnim2,
 	float anTime1, float anTime2, float percentage);
 
 void	Anim_SetNameccp(Anim *pAnim, const char *szNew);
+void	Anim_SetLooping(Anim *pAnim, bool bLooping);
+void	Anim_SetPingPong(Anim *pAnim, bool bPingPong);
 void	Anim_ReMapBoneIndexes(Anim *pAnim, int boneMap[]);
 void	Anim_SetBoneRefs(Anim *pAnim, Skeleton *pSkel);
 
 const UT_string	*Anim_GetName(const Anim *pAnim);
+bool			Anim_GetLooping(const Anim *pAnim);
+bool			Anim_GetPingPong(const Anim *pAnim);

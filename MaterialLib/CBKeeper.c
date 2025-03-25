@@ -20,6 +20,7 @@
 //BSP Dynamic	b8
 //BSP Dyn Color	b9
 //Cel Shading	b10
+//Particles		b11
 #define	PEROBJECT_REG	0
 #define	PERFRAME_REG	1
 #define	PERSHADOW_REG	2
@@ -31,6 +32,7 @@
 #define	BSP_LIGHT_POS	8
 #define	BSP_LIGHT_COL	9
 #define	CEL_REG			10
+#define	PARTICLE_REG	11
 
 
 //constants that need to match shaders
@@ -160,6 +162,26 @@ typedef struct	CelStuff_t
 	vec3	mPad;
 }	CelStuff;
 
+//Particles.hlsl
+typedef struct	Emitter_t
+{
+	int	mShape, mMaxParticles, mMaxEmptySlots, mBOn;
+
+	vec4	mPositionSize;	//startsize in w
+	vec4	mStartColor;
+	vec4	mLineAxisFreq;	//frequency in w
+
+	vec4	mRVelSizeCap;	//rot vel min, rot vel max
+							//shape size, vcap
+	vec4	mColorVelMin;	//minimum color velocity
+	vec4	mColorVelMax;	//maximum color velocity
+
+	vec4	mVMinMaxLMinMax;	//velocity min, max
+								//life min, max
+	vec4	mSizeVMinMax;	//size vmin, vmax
+							//empty, empty
+}	Emitter;
+
 typedef struct	CBKeeper_t
 {
 	//Character.hlsl bone array
@@ -176,6 +198,7 @@ typedef struct	CBKeeper_t
 	ID3D11Buffer	*mpPerShadowBuf;
 	ID3D11Buffer	*mpTextModeBuf;
 	ID3D11Buffer	*mpCelBuf;
+	ID3D11Buffer	*mpEmitterBuf;
 
 	//resource pointers for update
 	ID3D11Resource	*mpPerObjectRes;
@@ -187,6 +210,7 @@ typedef struct	CBKeeper_t
 	ID3D11Resource	*mpPerShadowRes;
 	ID3D11Resource	*mpTextModeRes;
 	ID3D11Resource	*mpCelRes;
+	ID3D11Resource	*mpEmitterRes;
 
 	//CPU side
 	PerObject	*mpPerObject;
@@ -197,6 +221,7 @@ typedef struct	CBKeeper_t
 	PerShadow	*mpPerShadow;
 	TextMode	*mpTextMode;
 	CelStuff	*mpCelStuff;
+	Emitter		*mpEmitter;
 }	CBKeeper;
 
 
@@ -234,6 +259,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpTextModeBuf		=MakeConstantBuffer(pGD, sizeof(TextMode));
 	pRet->mpTwoDBuf			=MakeConstantBuffer(pGD, sizeof(TwoD));
 	pRet->mpCelBuf			=MakeConstantBuffer(pGD, sizeof(CelStuff));
+	pRet->mpEmitterBuf		=MakeConstantBuffer(pGD, sizeof(Emitter));
 
 	//grab resource pointers for each
 	pRet->mpPerObjectBuf->lpVtbl->QueryInterface(pRet->mpPerObjectBuf, &IID_ID3D11Resource, (void **)&pRet->mpPerObjectRes);
@@ -245,6 +271,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPerShadowBuf->lpVtbl->QueryInterface(pRet->mpPerShadowBuf, &IID_ID3D11Resource, (void **)&pRet->mpPerShadowRes);
 	pRet->mpTextModeBuf->lpVtbl->QueryInterface(pRet->mpTextModeBuf, &IID_ID3D11Resource, (void **)&pRet->mpTextModeRes);
 	pRet->mpCelBuf->lpVtbl->QueryInterface(pRet->mpCelBuf, &IID_ID3D11Resource, (void **)&pRet->mpCelRes);
+	pRet->mpEmitterBuf->lpVtbl->QueryInterface(pRet->mpEmitterBuf, &IID_ID3D11Resource, (void **)&pRet->mpEmitterRes);
 
 	//alloc cpu side data
 #ifdef	__AVX__
@@ -260,6 +287,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPerShadow	=malloc(sizeof(PerShadow));
 	pRet->mpTextMode	=malloc(sizeof(TextMode));
 	pRet->mpCelStuff	=malloc(sizeof(CelStuff));
+	pRet->mpEmitter		=malloc(sizeof(Emitter));
 	return	pRet;
 }
 
@@ -316,6 +344,12 @@ void	CBK_SetTextModeToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 	GD_PSSetConstantBuffer(pGD, TEXTMODE_REG, pCBK->mpTextModeBuf);
 }
 
+void	CBK_SetEmitterToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
+{
+	//particle
+	GD_CSSetConstantBuffer(pGD, PARTICLE_REG, pCBK->mpEmitterBuf);
+}
+
 
 //push changed cpu structs onto gpu
 void	CBK_UpdateFrame(CBKeeper *pCBK, GraphicsDevice *pGD)
@@ -361,6 +395,11 @@ void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD)
 void	CBK_UpdateCel(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	GD_UpdateSubResource(pGD, pCBK->mpCelRes, pCBK->mpCelStuff);
+}
+
+void	CBK_UpdateEmitter(CBKeeper *pCBK, GraphicsDevice *pGD)
+{
+	GD_UpdateSubResource(pGD, pCBK->mpEmitterRes, pCBK->mpEmitter);
 }
 
 
@@ -641,4 +680,81 @@ void	CBK_SetCelSteps(CBKeeper *pCBK, const float *pMins, const float *pMaxs,
 		pCBK->mpCelStuff->mValMax[i]	=pMaxs[i];
 		pCBK->mpCelStuff->mSnapTo[i]	=pSteps[i];
 	}
+}
+
+
+//particle stuff
+void	CBK_SetEmitterInts(CBKeeper *pCBK, int shape,
+	int maxParticles, int maxEmptySlots, bool bOn)
+{
+	pCBK->mpEmitter->mShape			=shape;
+	pCBK->mpEmitter->mMaxParticles	=maxParticles;
+	pCBK->mpEmitter->mMaxEmptySlots	=maxEmptySlots;
+	pCBK->mpEmitter->mBOn			=(bOn)? 1 : 0;
+}
+
+void	CBK_SetEmitterPosition(CBKeeper *pCBK, vec3 pos)
+{
+	glm_vec3_copy(pos, pCBK->mpEmitter->mPositionSize);
+}
+
+void	CBK_SetEmitterStartSize(CBKeeper *pCBK, float size)
+{
+	pCBK->mpEmitter->mPositionSize[3]	=size;
+}
+
+void	CBK_SetEmitterStartColor(CBKeeper *pCBK, vec4 color)
+{
+	glm_vec4_copy(color, pCBK->mpEmitter->mStartColor);
+}
+
+//for the line emitter shape
+void	CBK_SetEmitterLineAxis(CBKeeper *pCBK, vec3 line)
+{
+	glm_vec3_copy(line, pCBK->mpEmitter->mLineAxisFreq);
+}
+
+void	CBK_SetEmitterFrequency(CBKeeper *pCBK, float freq)
+{
+	pCBK->mpEmitter->mLineAxisFreq[3]	=freq;
+}
+
+void	CBK_SetEmitterRotationalVMinMax(CBKeeper *pCBK, float vMin, float vMax)
+{
+	pCBK->mpEmitter->mRVelSizeCap[0]	=vMin;
+	pCBK->mpEmitter->mRVelSizeCap[1]	=vMax;
+}
+
+void	CBK_SetEmitterShapeSize(CBKeeper *pCBK, float shapeSize)
+{
+	pCBK->mpEmitter->mRVelSizeCap[3]	=shapeSize;
+}
+
+void	CBK_SetEmitterVelocityCap(CBKeeper *pCBK, float vCap)
+{
+	pCBK->mpEmitter->mRVelSizeCap[4]	=vCap;
+}
+
+void	CBK_SetEmitterColorVMainMax(CBKeeper *pCBK, vec4 cvMin, vec4 cvMax)
+{
+	glm_vec4_copy(cvMin, pCBK->mpEmitter->mColorVelMin);
+	glm_vec4_copy(cvMax, pCBK->mpEmitter->mColorVelMax);
+}
+
+void	CBK_SetEmitterVMinMax(CBKeeper *pCBK, float vMin, float vMax)
+{
+	pCBK->mpEmitter->mVMinMaxLMinMax[0]	=vMin;
+	pCBK->mpEmitter->mVMinMaxLMinMax[1]	=vMax;
+}
+
+void	CBK_SetEmitterLifeMinMax(CBKeeper *pCBK, float lifeMin, float lifeMax)
+{
+	pCBK->mpEmitter->mVMinMaxLMinMax[2]	=lifeMin;
+	pCBK->mpEmitter->mVMinMaxLMinMax[3]	=lifeMax;
+}
+
+void	CBK_SetEmitterSizeVMinMax(CBKeeper *pCBK, float svMin, float svMax)
+{
+	pCBK->mpEmitter->mSizeVMinMax[0]	=svMin;
+	pCBK->mpEmitter->mSizeVMinMax[1]	=svMax;
 }

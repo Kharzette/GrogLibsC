@@ -84,3 +84,18 @@ void CBK_SetTextModeFontInfo(CBKeeper *pCBK, uint32_t startChar, uint32_t numCol
 //cel stuff
 void	CBK_SetCelSteps(CBKeeper *pCBK, const float *pMins, const float *pMaxs,
 						const float *pSteps, int numSteps);
+
+//particle stuff
+void	CBK_SetEmitterInts(CBKeeper *pCBK, int shape, int maxParticles, int maxEmptySlots, bool bOn);
+void	CBK_SetEmitterPosition(CBKeeper *pCBK, vec3 pos);
+void	CBK_SetEmitterStartSize(CBKeeper *pCBK, float size);
+void	CBK_SetEmitterStartColor(CBKeeper *pCBK, vec4 color);
+void	CBK_SetEmitterLineAxis(CBKeeper *pCBK, vec3 line);
+void	CBK_SetEmitterFrequency(CBKeeper *pCBK, float freq);
+void	CBK_SetEmitterRotationalVMinMax(CBKeeper *pCBK, float vMin, float vMax);
+void	CBK_SetEmitterShapeSize(CBKeeper *pCBK, float shapeSize);
+void	CBK_SetEmitterVelocityCap(CBKeeper *pCBK, float vCap);
+void	CBK_SetEmitterColorVMainMax(CBKeeper *pCBK, vec4 cvMin, vec4 cvMax);
+void	CBK_SetEmitterVMinMax(CBKeeper *pCBK, float vMin, float vMax);
+void	CBK_SetEmitterLifeMinMax(CBKeeper *pCBK, float lifeMin, float lifeMax);
+void	CBK_SetEmitterSizeVMinMax(CBKeeper *pCBK, float svMin, float svMax);

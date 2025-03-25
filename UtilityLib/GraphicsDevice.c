@@ -418,6 +418,18 @@ ID3D11PixelShader	*GD_CreatePixelShader(GraphicsDevice *pGD, const uint8_t *pCod
 	return	pRet;
 }
 
+ID3D11ComputeShader	*GD_CreateComputeShader(GraphicsDevice *pGD, const uint8_t *pCodeBytes, int codeLen)
+{
+	ID3D11ComputeShader	*pRet;
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateComputeShader(pGD->mpDevice1, pCodeBytes, codeLen, NULL, &pRet);
+	if(hr != S_OK)
+	{
+		printf("Error creating compute shader: %X\n", hr);
+		return	NULL;
+	}
+	return	pRet;
+}
+
 ID3D11ShaderResourceView	*GD_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes, DXGI_FORMAT fmt)
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC	desc;

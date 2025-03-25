@@ -44,6 +44,8 @@ extern ID3D11VertexShader	*GD_CreateVertexShader(GraphicsDevice *pGD,
 						const uint8_t	*pCodeBytes, int codeLen);
 extern ID3D11PixelShader	*GD_CreatePixelShader(GraphicsDevice *pGD,
 						const uint8_t	*pCodeBytes, int codeLen);
+extern ID3D11PixelShader	*GD_CreatePixelShader(GraphicsDevice *pGD,
+						const uint8_t	*pCodeBytes, int codeLen);
 extern ID3D11ShaderResourceView	*GD_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes, DXGI_FORMAT fmt);
 extern ID3D11InputLayout	*GD_CreateInputLayout(
 	GraphicsDevice					*pGD,

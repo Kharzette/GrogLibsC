@@ -24,18 +24,22 @@ ID3D11SamplerState			*StuffKeeper_GetSamplerState(const StuffKeeper *pSK, const 
 ID3D11Texture2D				*StuffKeeper_GetTexture2D(const StuffKeeper *pSK, const char *pName);
 ID3D11VertexShader			*StuffKeeper_GetVertexShader(const StuffKeeper *pSK, const char *pName);
 ID3D11PixelShader			*StuffKeeper_GetPixelShader(const StuffKeeper *pSK, const char *pName);
+ID3D11ComputeShader			*StuffKeeper_GetComputeShader(const StuffKeeper *pSK, const char *pName);
 ID3D11InputLayout			*StuffKeeper_GetInputLayout(const StuffKeeper *pSK, const char *pName);
 ID3D11ShaderResourceView	*StuffKeeper_GetSRV(const StuffKeeper *pSK, const char *pName);
 GrogFont					*StuffKeeper_GetFont(const StuffKeeper *pSK, const char *pName);
 ID3D11ShaderResourceView	*StuffKeeper_GetFontSRV(const StuffKeeper *pSK, const char *pName);
 const StringList			*StuffKeeper_GetVSEntryList(const StuffKeeper *pSK, const UT_string *szKey);
 const StringList			*StuffKeeper_GetPSEntryList(const StuffKeeper *pSK, const UT_string *szKey);
+const StringList			*StuffKeeper_GetCSEntryList(const StuffKeeper *pSK, const UT_string *szKey);
 const UT_string				*StuffKeeper_GetVSName(const StuffKeeper *pSK, const ID3D11VertexShader *pVS);
 const UT_string				*StuffKeeper_GetPSName(const StuffKeeper *pSK, const ID3D11PixelShader *pPS);
+const UT_string				*StuffKeeper_GetCSName(const StuffKeeper *pSK, const ID3D11ComputeShader *pPS);
 const UT_string				*StuffKeeper_GetSRVName(const StuffKeeper *pSK, const ID3D11ShaderResourceView *pSRV);
 StringList					*StuffKeeper_GetTextureList(const StuffKeeper *pSK);
 const UT_string				*StuffKeeper_GetVSFile(const StuffKeeper *pSK, const UT_string *pVSName);
 const UT_string				*StuffKeeper_GetPSFile(const StuffKeeper *pSK, const UT_string *pPSName);
+const UT_string				*StuffKeeper_GetCSFile(const StuffKeeper *pSK, const UT_string *pCSName);
 
 //search for an input layout match
 const UT_string	*StuffKeeper_FindMatch(const StuffKeeper *pSK, const int elems[], int elCounts);

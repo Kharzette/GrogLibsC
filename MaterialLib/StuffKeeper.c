@@ -27,14 +27,17 @@ typedef struct	StuffKeeper_t
 {
 	DictSZ	*mpVSEntryPoints;	//entry points for vertex
 	DictSZ	*mpPSEntryPoints;	//entry points for pixel
+	DictSZ	*mpCSEntryPoints;	//entry points for compute
 
 	DictSZ	*mpVSCode;			//VS code bytes for entry point key
 	DictSZ	*mpPSCode;			//PS code bytes for entry point key
+	DictSZ	*mpCSCode;			//CS code bytes for entry point key
 
 	DictSZ	*mpTextures;		//ID3D11Texture2D
 
 	DictSZ	*mpVShaders;		//ID3D11VertexShader
 	DictSZ	*mpPShaders;		//ID3D11PixelShader
+	DictSZ	*mpCShaders;		//ID3D11ComputeShader
 
 	DictSZ	*mpFonts;			//Font from my Font.h
 	DictSZ	*mpFontTextures;	//ID3D11Texture2D
@@ -106,6 +109,16 @@ const StringList	*StuffKeeper_GetPSEntryList(const StuffKeeper *pSK, const UT_st
 	return	DictSZ_GetValue(pSK->mpPSEntryPoints, szKey);
 }
 
+const StringList	*StuffKeeper_GetCSEntryList(const StuffKeeper *pSK, const UT_string *szKey)
+{
+	if(!DictSZ_ContainsKey(pSK->mpCSEntryPoints, szKey))
+	{
+		return	NULL;
+	}
+
+	return	DictSZ_GetValue(pSK->mpCSEntryPoints, szKey);
+}
+
 typedef struct	ShaderSearch_t
 {
 	const UT_string	*mpShader;
@@ -148,6 +161,14 @@ const UT_string	*StuffKeeper_GetPSFile(const StuffKeeper *pSK, const UT_string *
 {
 	ShaderSearch	ss	={	pPSName, NULL	};
 	DictSZ_ForEach(pSK->mpPSEntryPoints, sFindShaderFile, &ss);
+
+	return	ss.mpFile;
+}
+
+const UT_string	*StuffKeeper_GetCSFile(const StuffKeeper *pSK, const UT_string *pCSName)
+{
+	ShaderSearch	ss	={	pCSName, NULL	};
+	DictSZ_ForEach(pSK->mpCSEntryPoints, sFindShaderFile, &ss);
 
 	return	ss.mpFile;
 }
@@ -411,49 +432,62 @@ static void LoadCompiledShader(DictSZ **ppStorage, const UT_string *pPath, const
 static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 {
 	//check dirs
-	UT_string	*pCSDir;
-	utstring_new(pCSDir);
+	UT_string	*pCompiledShaderDir;
+	utstring_new(pCompiledShaderDir);
 
 	UT_string	*pVer	=SMToString(sm);
 
-	utstring_printf(pCSDir, "%s", "CompiledShaders/");
+	utstring_printf(pCompiledShaderDir, "%s", "CompiledShaders/");
 
-	if(!FileStuff_DirExists(utstring_body(pCSDir)))
+	if(!FileStuff_DirExists(utstring_body(pCompiledShaderDir)))
 	{
 		utstring_done(pVer);
-		utstring_done(pCSDir);
+		utstring_done(pCompiledShaderDir);
 		return;
 	}
 
-	utstring_concat(pCSDir, pVer);
-	if(!FileStuff_DirExists(utstring_body(pCSDir)))
+	utstring_concat(pCompiledShaderDir, pVer);
+	if(!FileStuff_DirExists(utstring_body(pCompiledShaderDir)))
 	{
 		utstring_done(pVer);
-		utstring_done(pCSDir);
+		utstring_done(pCompiledShaderDir);
 		return;
 	}
 
-	UT_string	*pVSDir, *pPSDir;
+	UT_string	*pVSDir, *pPSDir, *pCSDir;
 	utstring_new(pVSDir);
 	utstring_new(pPSDir);
+	utstring_new(pCSDir);
 
-	utstring_printf(pVSDir, "%s/VS/", utstring_body(pCSDir));
-	utstring_printf(pPSDir, "%s/PS/", utstring_body(pCSDir));
+	utstring_printf(pVSDir, "%s/VS/", utstring_body(pCompiledShaderDir));
+	utstring_printf(pPSDir, "%s/PS/", utstring_body(pCompiledShaderDir));
+	utstring_printf(pCSDir, "%s/CS/", utstring_body(pCompiledShaderDir));
 
 	if(!FileStuff_DirExists(utstring_body(pVSDir)))
 	{
 		utstring_done(pVer);
-		utstring_done(pCSDir);
+		utstring_done(pCompiledShaderDir);
 		utstring_done(pVSDir);
 		utstring_done(pPSDir);
+		utstring_done(pCSDir);
 		return;
 	}
 	if(!FileStuff_DirExists(utstring_body(pPSDir)))
 	{
 		utstring_done(pVer);
-		utstring_done(pCSDir);
+		utstring_done(pCompiledShaderDir);
 		utstring_done(pVSDir);
 		utstring_done(pPSDir);
+		utstring_done(pCSDir);
+		return;
+	}	
+	if(!FileStuff_DirExists(utstring_body(pCSDir)))
+	{
+		utstring_done(pVer);
+		utstring_done(pCompiledShaderDir);
+		utstring_done(pVSDir);
+		utstring_done(pPSDir);
+		utstring_done(pCSDir);
 		return;
 	}	
 
@@ -533,6 +567,42 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
 
 			LoadCompiledShader(&pSK->mpPSCode, pFilePath, pExtLess);
+		}
+	}
+
+	//load compute
+	pDir	=opendir(utstring_body(pCSDir));
+	for(;;)
+	{
+		struct dirent	*pDE	=readdir(pDir);
+		if(pDE == NULL)
+		{
+			break;
+		}
+
+		UT_string	*pDName;
+		utstring_new(pDName);
+		utstring_printf(pDName, "%s", pDE->d_name);
+
+		utstring_clear(pFilePath);
+
+		utstring_concat(pFilePath, pCSDir);
+		utstring_concat(pFilePath, pDName);
+
+		struct stat	fileStuff;
+		int	res	=stat(utstring_body(pFilePath), &fileStuff);
+		if(res)
+		{
+			FileStuff_PrintErrno(res);
+			continue;
+		}
+
+		//regular file?
+		if(S_ISREG(fileStuff.st_mode))
+		{
+			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
+
+			LoadCompiledShader(&pSK->mpCSCode, pFilePath, pExtLess);
 		}
 	}
 }
@@ -863,6 +933,20 @@ static void	CreatePShaderCB(const UT_string *pKey, const void *pValue, void *pCo
 	}
 }
 
+static void	CreateCShaderCB(const UT_string *pKey, const void *pValue, void *pContext)
+{
+	StuffContext	*pCon	=pContext;
+
+	const ShaderBytes	*pSB	=pValue;
+
+	ID3D11ComputeShader	*pCS	=GD_CreateComputeShader(
+									pCon->mpGD, pSB->mpBytes, pSB->mLen);
+	if(pCS != NULL)
+	{
+		DictSZ_Add(&pCon->mpSK->mpCShaders, pKey, pCS);
+	}
+}
+
 static void	CreateSRVCB(const UT_string *pKey, const void *pValue, void *pContext)
 {
 	StuffContext	*pCon	=pContext;
@@ -937,6 +1021,7 @@ static void CreateShadersFromCode(StuffKeeper *pSK, GraphicsDevice *pGD)
 	
 	DictSZ_ForEach(pSK->mpVSCode, CreateVShaderCB, &sc);
 	DictSZ_ForEach(pSK->mpPSCode, CreatePShaderCB, &sc);
+	DictSZ_ForEach(pSK->mpCSCode, CreateCShaderCB, &sc);
 }
 
 
@@ -1275,7 +1360,7 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	FILE	*f	=fopen("CompiledShaders/VSEntryPoints.txt", "r");
 	if(f == NULL)
 	{
-		printf("Couldn't open shader entry points file.\n");
+		printf("Couldn't open vertex shader entry points file.\n");
 		return	NULL;
 	}
 
@@ -1286,8 +1371,29 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	fclose(f);
 
 	f	=fopen("CompiledShaders/PSEntryPoints.txt", "r");
+	if(f == NULL)
+	{
+		printf("Couldn't open pixel shader entry points file.\n");
+		DictSZ_Clear(&pRet->mpVSEntryPoints);
+		free(pRet);
+		return	NULL;
+	}
 
 	pRet->mpPSEntryPoints	=ReadEntryPoints(f);
+
+	fclose(f);
+
+	f	=fopen("CompiledShaders/CSEntryPoints.txt", "r");
+	if(f == NULL)
+	{
+		printf("Couldn't open compute shader entry points file.\n");
+		DictSZ_Clear(&pRet->mpVSEntryPoints);
+		DictSZ_Clear(&pRet->mpPSEntryPoints);
+		free(pRet);
+		return	NULL;
+	}
+
+	pRet->mpCSEntryPoints	=ReadEntryPoints(f);
 
 	fclose(f);
 
@@ -1344,6 +1450,7 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 
 	int	numShaderData	=DictSZ_Count(pRet->mpVSCode);
 	numShaderData		+=DictSZ_Count(pRet->mpPSCode);
+	numShaderData		+=DictSZ_Count(pRet->mpCSCode);
 	int	numTex			=DictSZ_Count(pRet->mpTextures);
 	int	numVS			=DictSZ_Count(pRet->mpVShaders);
 	int	numPS			=DictSZ_Count(pRet->mpPShaders);
@@ -1386,6 +1493,11 @@ ID3D11VertexShader	*StuffKeeper_GetVertexShader(const StuffKeeper *pSK, const ch
 ID3D11PixelShader	*StuffKeeper_GetPixelShader(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpPShaders, pName);
+}
+
+ID3D11ComputeShader	*StuffKeeper_GetComputeShader(const StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpCShaders, pName);
 }
 
 ID3D11InputLayout	*StuffKeeper_GetInputLayout(const StuffKeeper *pSK, const char *pName)
@@ -1453,14 +1565,26 @@ const UT_string	*StuffKeeper_GetVSName(const StuffKeeper *pSK,
 }
 
 const UT_string	*StuffKeeper_GetPSName(const StuffKeeper *pSK,
-								const ID3D11PixelShader *pPS)
+	const ID3D11PixelShader *pPS)
 {
 	PointerSearch	ps;
 	ps.mpFoundKey	=NULL;
 	ps.mpPointer	=pPS;
-
+	
 	DictSZ_ForEach(pSK->mpPShaders, SearchPointersCB, &ps);
+	
+	return	ps.mpFoundKey;
+}
 
+const UT_string	*StuffKeeper_GetCSName(const StuffKeeper *pSK,
+	const ID3D11ComputeShader *pCS)
+{
+	PointerSearch	ps;
+	ps.mpFoundKey	=NULL;
+	ps.mpPointer	=pCS;
+	
+	DictSZ_ForEach(pSK->mpCShaders, SearchPointersCB, &ps);
+	
 	return	ps.mpFoundKey;
 }
 

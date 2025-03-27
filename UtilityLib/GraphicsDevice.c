@@ -430,7 +430,7 @@ ID3D11ComputeShader	*GD_CreateComputeShader(GraphicsDevice *pGD, const uint8_t *
 	return	pRet;
 }
 
-ID3D11ShaderResourceView	*GD_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes, DXGI_FORMAT fmt)
+ID3D11ShaderResourceView	*GD_CreateTexSRV(GraphicsDevice *pGD, ID3D11Resource *pRes, DXGI_FORMAT fmt)
 {
 	D3D11_SHADER_RESOURCE_VIEW_DESC	desc;
 	memset(&desc, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
@@ -447,7 +447,37 @@ ID3D11ShaderResourceView	*GD_CreateSRV(GraphicsDevice *pGD, ID3D11Resource *pRes
 
 	if(hr != S_OK)
 	{
+		printf("Error creating tex SRV: %X\n", hr);
+		return	NULL;
+	}
+	return	pRet;
+}
+
+ID3D11ShaderResourceView	*GD_CreateSRV(GraphicsDevice *pGD,
+	ID3D11Resource *pRes, const D3D11_SHADER_RESOURCE_VIEW_DESC *pDesc)
+{
+	ID3D11ShaderResourceView	*pRet;
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateShaderResourceView(
+		pGD->mpDevice1,
+		pRes, pDesc, &pRet);
+
+	if(hr != S_OK)
+	{
 		printf("Error creating SRV: %X\n", hr);
+		return	NULL;
+	}
+	return	pRet;
+}
+
+ID3D11UnorderedAccessView	*GD_CreateUAV(GraphicsDevice *pGD, ID3D11Resource *pRes)
+{
+	ID3D11UnorderedAccessView	*pRet;
+	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateUnorderedAccessView(pGD->mpDevice1,
+		pRes, NULL, &pRet);
+
+	if(hr != S_OK)
+	{
+		printf("Error creating UAV: %X\n", hr);
 		return	NULL;
 	}
 	return	pRet;
@@ -659,6 +689,25 @@ void GD_PSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf)
 	pGD->mpContext1->lpVtbl->PSSetConstantBuffers(pGD->mpContext1, slot, 1, &pBuf);
 }
 
+void GD_CSSetShader(GraphicsDevice *pGD, ID3D11ComputeShader *pCS)
+{
+	pGD->mpContext1->lpVtbl->CSSetShader(pGD->mpContext1, pCS, NULL, 0);
+}
+
+void GD_CSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf)
+{
+	pGD->mpContext1->lpVtbl->CSSetConstantBuffers(pGD->mpContext1, slot, 1, &pBuf);
+}
+
+void GD_CSSetUnorderedAccessViews(GraphicsDevice *pGD,
+	UINT startSlot, UINT numUAVs,
+	ID3D11UnorderedAccessView * const *ppUAVs,
+	const UINT *pUAVInitialCounts)
+{	
+	pGD->mpContext1->lpVtbl->CSSetUnorderedAccessViews(pGD->mpContext1,
+		startSlot, numUAVs, ppUAVs, pUAVInitialCounts);
+}
+
 void GD_RSSetState(GraphicsDevice *pGD, ID3D11RasterizerState *pRS)
 {
 	pGD->mpContext1->lpVtbl->RSSetState(pGD->mpContext1, pRS);
@@ -677,6 +726,16 @@ void GD_RSSetScissorRects(GraphicsDevice *pGD, UINT numRects, const D3D11_RECT *
 void GD_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV, int slot)
 {
 	pGD->mpContext1->lpVtbl->PSSetShaderResources(pGD->mpContext1, slot, 1, &pSRV);
+}
+
+void GD_CSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV, int slot)
+{
+	pGD->mpContext1->lpVtbl->CSSetShaderResources(pGD->mpContext1, slot, 1, &pSRV);
+}
+
+void GD_Dispatch(GraphicsDevice *pGD, UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ)
+{
+	pGD->mpContext1->lpVtbl->Dispatch(pGD->mpContext1, threadGroupCountX, threadGroupCountY, threadGroupCountZ);
 }
 
 void GD_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert)

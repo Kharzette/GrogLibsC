@@ -13,6 +13,7 @@ void	CBK_SetBSPToShaders(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_SetPostToShaders(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_SetPerShadowToShaders(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_SetTextModeToShaders(CBKeeper *pCBK, GraphicsDevice *pGD);
+void	CBK_SetEmitterToShaders(CBKeeper *pCBK, GraphicsDevice *pGD);
 
 //push changed cpu structs onto gpu
 void	CBK_UpdateFrame(CBKeeper *pCBK, GraphicsDevice *pGD);
@@ -24,6 +25,7 @@ void	CBK_UpdatePost(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_UpdatePerShadow(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_UpdateCel(CBKeeper *pCBK, GraphicsDevice *pGD);
+void	CBK_UpdateEmitter(CBKeeper *pCBK, GraphicsDevice *pGD);
 
 //set values in the CPU structs
 //perframe stuff

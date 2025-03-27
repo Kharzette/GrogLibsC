@@ -279,7 +279,7 @@ void	PP_MakePostTarget(PostProcess *pPP, GraphicsDevice *pGD,
 
 	ID3D11RenderTargetView	*pView	=GD_CreateRenderTargetView(pGD, (ID3D11Resource *)pTex, fmt);
 
-	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pGD,  (ID3D11Resource *)pTex, fmt);
+	ID3D11ShaderResourceView	*pSRV	=GD_CreateTexSRV(pGD,  (ID3D11Resource *)pTex, fmt);
 
 	DictSZ_Addccp(&pPP->mpPostTex2Ds, szName, pTex);
 	DictSZ_Addccp(&pPP->mpPostTargets, szName, pView);

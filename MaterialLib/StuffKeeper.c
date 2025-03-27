@@ -964,7 +964,7 @@ static void	CreateSRVCB(const UT_string *pKey, const void *pValue, void *pContex
 		return;
 	}
 
-	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pCon->mpGD, pRes, desc.Format);
+	ID3D11ShaderResourceView	*pSRV	=GD_CreateTexSRV(pCon->mpGD, pRes, desc.Format);
 	if(pSRV != NULL)
 	{
 		DictSZ_Add(&pCon->mpSK->mpSRVs, pKey, pSRV);
@@ -990,7 +990,7 @@ static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pCo
 		return;
 	}
 
-	ID3D11ShaderResourceView	*pSRV	=GD_CreateSRV(pCon->mpGD, pRes, desc.Format);
+	ID3D11ShaderResourceView	*pSRV	=GD_CreateTexSRV(pCon->mpGD, pRes, desc.Format);
 	if(pSRV != NULL)
 	{
 		DictSZ_Add(&pCon->mpSK->mpFontSRVs, pKey, pSRV);
@@ -1454,12 +1454,13 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	int	numTex			=DictSZ_Count(pRet->mpTextures);
 	int	numVS			=DictSZ_Count(pRet->mpVShaders);
 	int	numPS			=DictSZ_Count(pRet->mpPShaders);
+	int	numCS			=DictSZ_Count(pRet->mpCShaders);
 	int	numFonts		=DictSZ_Count(pRet->mpFonts);
 	int	numSRVs			=DictSZ_Count(pRet->mpSRVs);
 	int	numFontSRVs		=DictSZ_Count(pRet->mpFontSRVs);
 
-	printf("Loaded %d shader data, %d textures, %d vertex shaders, %d pixel shaders, %d fonts, %d srv, and %d font srv.\n",
-		numShaderData, numTex, numVS, numPS, numFonts, numSRVs, numFontSRVs);
+	printf("Loaded %d shader data, %d textures, %d vertex shaders, %d pixel shaders, %d compute shaders, %d fonts, %d srv, and %d font srv.\n",
+		numShaderData, numTex, numVS, numPS, numCS, numFonts, numSRVs, numFontSRVs);
 
 	return	pRet;
 }

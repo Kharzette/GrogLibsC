@@ -8,24 +8,23 @@
 #define	EMIT_SHAPE_PLANE	4
 
 
-//particle behaviour
-//velocities in units per second
-typedef struct	EmitterValues_t
-{
-	float	mRotationalVelocityMin, mRotationalVelocityMax;
-	float	mVelocityMin, mVelocityMax;
-	float	mSizeVelocityMin, mSizeVelocityMax;
-	vec4	mColorVelocityMin, mColorVelocityMax;
-	int		mLifeMin, mLifeMax;
-	float	mVelocityCap;	//a hard cap on velocity due to gravity etc
-
-}	EmitterValues;
-
-
-
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 typedef struct	StuffKeeper_t		StuffKeeper;
-typedef struct	ParticleEmitter_t	ParticleEmitter;
+typedef struct	ParticleBoss_t		ParticleBoss;
 
+ParticleBoss	*PB_Create(GraphicsDevice *pGD,
+	const StuffKeeper *pSK, CBKeeper *pCBK);
 
-ParticleEmitter	*PE_Create(GraphicsDevice *pGD, StuffKeeper *pSK);
+void	PB_Destroy(ParticleBoss **ppPB);
+
+//returns particle ID
+uint32_t	PB_CreateEmitter(ParticleBoss *pPB,
+	const char *pTexName, uint8_t shape, float startSize, vec4 startColor,
+	float emitSec, float shapeSize, vec3 lineAxis, int maxParticles,
+	float rotVelMin, float rotVelMax, vec4 colVelMin, vec4 colVelMax,
+	float sizeVelMin, float sizeVelMax, float velMin, float velMax,
+	float lifeMin, float lifeMax, vec3 pos);
+
+void	PB_EmitterActivate(ParticleBoss *pPB, uint32_t emitterID, bool bOn);
+
+void	PB_UpdateAndDraw(ParticleBoss *pPB, float secDelta);

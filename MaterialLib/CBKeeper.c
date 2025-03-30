@@ -178,8 +178,8 @@ typedef struct	Emitter_t
 
 	vec4	mVMinMaxLMinMax;	//velocity min, max
 								//life min, max
-	vec4	mSizeVMinMax;	//size vmin, vmax
-							//empty, empty
+	vec4	mSizeVMinMaxSec;	//size vmin, vmax
+								//seconds, empty
 }	Emitter;
 
 typedef struct	CBKeeper_t
@@ -727,12 +727,12 @@ void	CBK_SetEmitterRotationalVMinMax(CBKeeper *pCBK, float vMin, float vMax)
 
 void	CBK_SetEmitterShapeSize(CBKeeper *pCBK, float shapeSize)
 {
-	pCBK->mpEmitter->mRVelSizeCap[3]	=shapeSize;
+	pCBK->mpEmitter->mRVelSizeCap[2]	=shapeSize;
 }
 
 void	CBK_SetEmitterVelocityCap(CBKeeper *pCBK, float vCap)
 {
-	pCBK->mpEmitter->mRVelSizeCap[4]	=vCap;
+	pCBK->mpEmitter->mRVelSizeCap[3]	=vCap;
 }
 
 void	CBK_SetEmitterColorVMainMax(CBKeeper *pCBK, vec4 cvMin, vec4 cvMax)
@@ -755,6 +755,11 @@ void	CBK_SetEmitterLifeMinMax(CBKeeper *pCBK, float lifeMin, float lifeMax)
 
 void	CBK_SetEmitterSizeVMinMax(CBKeeper *pCBK, float svMin, float svMax)
 {
-	pCBK->mpEmitter->mSizeVMinMax[0]	=svMin;
-	pCBK->mpEmitter->mSizeVMinMax[1]	=svMax;
+	pCBK->mpEmitter->mSizeVMinMaxSec[0]	=svMin;
+	pCBK->mpEmitter->mSizeVMinMaxSec[1]	=svMax;
+}
+
+void	CBK_SetEmitterSeconds(CBKeeper *pCBK, float timeSec)
+{
+	pCBK->mpEmitter->mSizeVMinMaxSec[3]	=timeSec;
 }

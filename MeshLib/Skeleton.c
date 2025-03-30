@@ -16,7 +16,8 @@ Skeleton	*Skeleton_Create(GSNode *pRoot)
 {
 	Skeleton	*pRet	=malloc(sizeof(Skeleton));
 
-	pRet->mpRoot	=pRoot;
+	pRet->mpRoot		=pRoot;
+	pRet->mpNameToIndex	=NULL;
 
 	DictSZ_New(&pRet->mpNameToIndex);
 
@@ -34,6 +35,8 @@ Skeleton	*Skeleton_Read(FILE *f)
 	pRet->mpRoot	=GSNode_Read(f);
 
 	GSNode_SetBoneIndexes(pRet->mpRoot, &curIndex);
+
+	DictSZ_New(&pRet->mpNameToIndex);
 
 	srMakeNameDict(pRet, pRet->mpRoot);
 	

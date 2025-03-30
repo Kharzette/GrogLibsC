@@ -11,30 +11,9 @@
 #include	"ParticleBoss.h"
 
 #define	VELOCITY_CAP		500.0f
-#define	PARTICLE_SIZE		(32 + 16 + 8)	//must match Particles.hlsl
-#define	EMITTERVALUES_SIZE	(12)			//must match Particles.hlsl
-
-//lazy cpu particles
-typedef struct	ParticleBoss_t
-{
-	GraphicsDevice	*mpGD;
-	StuffKeeper		*mpSK;
-	CBKeeper		*mpCBK;
-
-	//shaders
-	ID3D11VertexShader	*mpVS;
-	ID3D11PixelShader	*mpPS;
-	ID3D11ComputeShader	*mpCS;
-
-	//particle layout
-	ID3D11InputLayout	*mpLayout;
-
-	//emitters
-	ParticleEmitter	*mpEmitters;
-
-	uint32_t	mIDNext;
-
-}	ParticleBoss;
+#define	PARTICLE_SIZE		(32 + 32 + 20)	//must match Particles.hlsl
+#define	EMITTERVALUES_SIZE	(20)			//must match Particles.hlsl
+#define	START_ID			69
 
 typedef struct	ParticleEmitter_t
 {
@@ -71,6 +50,7 @@ typedef struct	ParticleEmitter_t
 
 	bool	mbOn;
 	float	mFrequency;
+	float	mTotalSeconds;
 
 	vec3	mPosition;
 	float	mStartSize;
@@ -89,6 +69,28 @@ typedef struct	ParticleEmitter_t
 
 }	ParticleEmitter;
 
+//changed my mind, compute shader particles!
+typedef struct	ParticleBoss_t
+{
+	GraphicsDevice	*mpGD;
+	StuffKeeper		*mpSK;
+	CBKeeper		*mpCBK;
+
+	//shaders
+	ID3D11VertexShader	*mpVS;
+	ID3D11PixelShader	*mpPS;
+	ID3D11ComputeShader	*mpCS;
+
+	//particle layout
+	ID3D11InputLayout	*mpLayout;
+
+	//emitters
+	ParticleEmitter	*mpEmitters;
+
+	uint32_t	mIDNext;
+
+}	ParticleBoss;
+
 typedef struct	ParticleVert_t
 {
 	vec4		mPositionTex;
@@ -96,6 +98,7 @@ typedef struct	ParticleVert_t
 	uint16_t	mColor;
 
 }	ParticleVert;
+
 
 //static forward decs
 static void	sFreeEmitter(ParticleEmitter *pEM);
@@ -117,10 +120,10 @@ ParticleBoss	*PB_Create(GraphicsDevice *pGD,
 	pRet->mpPS	=StuffKeeper_GetPixelShader(pSK, "ParticlePS");
 	pRet->mpCS	=StuffKeeper_GetComputeShader(pSK, "ParticleEmitter");
 
-	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "ParticleVS");
+	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPos4Tex04Tex14");
 
 	pRet->mpEmitters	=NULL;
-	pRet->mIDNext		=0;
+	pRet->mIDNext		=START_ID;
 
 	return	pRet;
 }
@@ -154,8 +157,12 @@ uint32_t	PB_CreateEmitter(ParticleBoss *pPB,
 	pPE->mShapeSize		=shapeSize;
 	pPE->mbOn			=false;		//start off?
 	pPE->mFrequency		=emitSec;
+	pPE->mTotalSeconds	=1.0f;
 	pPE->mStartSize		=startSize;
 	pPE->mVelocityCap	=VELOCITY_CAP;
+
+	pPE->mMaxParticles	=maxParticles;
+	pPE->mMaxEmptySlots	=maxParticles;
 
 	//ranges
 	pPE->mRotationalVelocityMin	=rotVelMin;
@@ -213,6 +220,20 @@ void	PB_DestroyEmitter(ParticleBoss *pPB, uint32_t id)
 	sFreeEmitter(pEM);
 }
 
+void	PB_EmitterActivate(ParticleBoss *pPB, uint32_t emitterID, bool bOn)
+{
+	ParticleEmitter	*pEM	=NULL;
+
+	HASH_FIND_INT(pPB->mpEmitters, &emitterID, pEM);
+
+	if(pEM == NULL)
+	{
+		return;
+	}
+
+	pEM->mbOn	=bOn;
+}
+
 void	PB_Destroy(ParticleBoss **ppPB)
 {
 	ParticleBoss	*pPB	=*ppPB;
@@ -234,6 +255,9 @@ void	PB_UpdateAndDraw(ParticleBoss *pPB, float secDelta)
 {
 	for(ParticleEmitter *pEM=pPB->mpEmitters;pEM != NULL;pEM=pEM->hh.next)
 	{
+		//TODO: might need to fmod this to a reasonable range
+		pEM->mTotalSeconds	+=secDelta;
+
 		CBK_SetEmitterColorVMainMax(pPB->mpCBK, pEM->mColorVelocityMin, pEM->mColorVelocityMax);
 		CBK_SetEmitterFrequency(pPB->mpCBK, pEM->mFrequency);
 		CBK_SetEmitterInts(pPB->mpCBK, pEM->mShape, pEM->mMaxParticles, pEM->mMaxEmptySlots, pEM->mbOn);
@@ -247,6 +271,7 @@ void	PB_UpdateAndDraw(ParticleBoss *pPB, float secDelta)
 		CBK_SetEmitterStartSize(pPB->mpCBK, pEM->mStartSize);
 		CBK_SetEmitterVelocityCap(pPB->mpCBK, pEM->mVelocityCap);
 		CBK_SetEmitterVMinMax(pPB->mpCBK, pEM->mVelocityMin, pEM->mVelocityMax);
+		CBK_SetEmitterSeconds(pPB->mpCBK, pEM->mTotalSeconds);
 
 		CBK_UpdateEmitter(pPB->mpCBK, pPB->mpGD);
 

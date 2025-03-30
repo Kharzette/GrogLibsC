@@ -1425,8 +1425,10 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	//prepare all dictionaries for new data
 	DictSZ_New(&pRet->mpVSCode);
 	DictSZ_New(&pRet->mpPSCode);
+	DictSZ_New(&pRet->mpCSCode);
 	DictSZ_New(&pRet->mpVShaders);
 	DictSZ_New(&pRet->mpPShaders);
+	DictSZ_New(&pRet->mpCShaders);
 	DictSZ_New(&pRet->mpTextures);
 	DictSZ_New(&pRet->mpFonts);
 	DictSZ_New(&pRet->mpFontTextures);

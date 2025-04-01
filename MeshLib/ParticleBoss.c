@@ -14,6 +14,7 @@
 #define	PARTICLE_SIZE		(32 + 32 + 20)	//must match Particles.hlsl
 #define	EMITTERVALUES_SIZE	(20)			//must match Particles.hlsl
 #define	START_ID			69
+#define	THREADX				32				//must match Particles.hlsl
 
 typedef struct	ParticleEmitter_t
 {
@@ -23,13 +24,11 @@ typedef struct	ParticleEmitter_t
 	//d3d data
 	ID3D11Buffer				*mpParticleBuf;
 	ID3D11Buffer				*mpEmitterValuesBuf;
-	ID3D11Buffer				*mpFreeSlotsBuf;
 	ID3D11Buffer				*mpPartVerts;
 
 	//compute shader grinds on these
 	ID3D11UnorderedAccessView	*mpPBUAV;
 	ID3D11UnorderedAccessView	*mpEVUAV;
-	ID3D11UnorderedAccessView	*mpFSUAV;
 	ID3D11UnorderedAccessView	*mpPVUAV;
 
 	//srv for drawing
@@ -42,7 +41,6 @@ typedef struct	ParticleEmitter_t
 
 	//emitter data set to constant buffer
 	int	mMaxParticles;
-	int	mMaxEmptySlots;
 
 	int		mShape;
 	float	mShapeSize;
@@ -79,10 +77,15 @@ typedef struct	ParticleBoss_t
 	//shaders
 	ID3D11VertexShader	*mpVS;
 	ID3D11PixelShader	*mpPS;
-	ID3D11ComputeShader	*mpCS;
+	ID3D11ComputeShader	*mpCSUpdateExisting;
+	ID3D11ComputeShader	*mpCSUpdateEmitter;
+
+	//states
+	ID3D11DepthStencilState	*mpDepthNoWrite;
+	ID3D11BlendState		*mpAlphaBlend;
 
 	//particle layout
-	ID3D11InputLayout	*mpLayout;
+//	ID3D11InputLayout	*mpLayout;
 
 	//emitters
 	ParticleEmitter	*mpEmitters;
@@ -93,9 +96,9 @@ typedef struct	ParticleBoss_t
 
 typedef struct	ParticleVert_t
 {
-	vec4		mPositionTex;
-	uint16_t	mTexSizeRotBlank;
-	uint16_t	mColor;
+	vec4	mPositionTex;
+	vec4	mTexSizeRotBlank;
+	vec4	mColor;
 
 }	ParticleVert;
 
@@ -116,11 +119,17 @@ ParticleBoss	*PB_Create(GraphicsDevice *pGD,
 	pRet->mpSK	=pSK;
 	pRet->mpCBK	=pCBK;
 
-	pRet->mpVS	=StuffKeeper_GetVertexShader(pSK, "ParticleVS");
-	pRet->mpPS	=StuffKeeper_GetPixelShader(pSK, "ParticlePS");
-	pRet->mpCS	=StuffKeeper_GetComputeShader(pSK, "ParticleEmitter");
+	pRet->mpVS	=StuffKeeper_GetVertexShader(pSK, "ParticleSBVS");
+	pRet->mpPS	=StuffKeeper_GetPixelShader(pSK, "ParticleSBPS");
 
-	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPos4Tex04Tex14");
+	pRet->mpCSUpdateExisting	=StuffKeeper_GetComputeShader(pSK, "UpdateExistingParticles");
+	pRet->mpCSUpdateEmitter		=StuffKeeper_GetComputeShader(pSK, "UpdateEmitter");
+
+	//states
+	pRet->mpDepthNoWrite	=StuffKeeper_GetDepthStencilState(pSK, "DisableDepthWrite");
+	pRet->mpAlphaBlend		=StuffKeeper_GetBlendState(pSK, "AlphaBlending");
+
+//	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPos4Tex04Tex14");
 
 	pRet->mpEmitters	=NULL;
 	pRet->mIDNext		=START_ID;
@@ -162,7 +171,6 @@ uint32_t	PB_CreateEmitter(ParticleBoss *pPB,
 	pPE->mVelocityCap	=VELOCITY_CAP;
 
 	pPE->mMaxParticles	=maxParticles;
-	pPE->mMaxEmptySlots	=maxParticles;
 
 	//ranges
 	pPE->mRotationalVelocityMin	=rotVelMin;
@@ -191,10 +199,6 @@ uint32_t	PB_CreateEmitter(ParticleBoss *pPB,
 	sMakeStructuredBuffer(pPB->mpGD, EMITTERVALUES_SIZE, 1,
 		&pPE->mpEmitterValuesBuf, NULL, &pPE->mpEVUAV);
 	
-	//buffer that stores free indexes in the particle buffer
-	sMakeStructuredBuffer(pPB->mpGD, 4, maxParticles,
-		&pPE->mpFreeSlotsBuf, NULL, &pPE->mpFSUAV);
-
 	//buffer that contains verts for drawing
 	sMakeStructuredBuffer(pPB->mpGD, sizeof(ParticleVert), maxParticles * 6,
 		&pPE->mpPartVerts, &pPE->mpPVSRV, &pPE->mpPVUAV);
@@ -260,7 +264,7 @@ void	PB_UpdateAndDraw(ParticleBoss *pPB, float secDelta)
 
 		CBK_SetEmitterColorVMainMax(pPB->mpCBK, pEM->mColorVelocityMin, pEM->mColorVelocityMax);
 		CBK_SetEmitterFrequency(pPB->mpCBK, pEM->mFrequency);
-		CBK_SetEmitterInts(pPB->mpCBK, pEM->mShape, pEM->mMaxParticles, pEM->mMaxEmptySlots, pEM->mbOn);
+		CBK_SetEmitterInts(pPB->mpCBK, pEM->mShape, pEM->mMaxParticles, 0, pEM->mbOn);
 		CBK_SetEmitterLifeMinMax(pPB->mpCBK, pEM->mLifeMin, pEM->mLifeMax);
 		CBK_SetEmitterLineAxis(pPB->mpCBK, pEM->mLineAxis);
 		CBK_SetEmitterPosition(pPB->mpCBK, pEM->mPosition);
@@ -271,20 +275,41 @@ void	PB_UpdateAndDraw(ParticleBoss *pPB, float secDelta)
 		CBK_SetEmitterStartSize(pPB->mpCBK, pEM->mStartSize);
 		CBK_SetEmitterVelocityCap(pPB->mpCBK, pEM->mVelocityCap);
 		CBK_SetEmitterVMinMax(pPB->mpCBK, pEM->mVelocityMin, pEM->mVelocityMax);
-		CBK_SetEmitterSeconds(pPB->mpCBK, pEM->mTotalSeconds);
+		CBK_SetEmitterSecDelta(pPB->mpCBK, pEM->mTotalSeconds, secDelta);
 
 		CBK_UpdateEmitter(pPB->mpCBK, pPB->mpGD);
 
 		ID3D11UnorderedAccessView	*uavs[]	=
-		{	pEM->mpPBUAV, pEM->mpEVUAV, pEM->mpFSUAV, pEM->mpPVUAV	};
+		{	pEM->mpPBUAV, pEM->mpEVUAV, pEM->mpPVUAV	};
 		
-		UINT	counts[]	={	0, 0, 0, 0	};
+		UINT	counts[]	={	0, 0, 0	};
 
 		GD_CSSetUnorderedAccessViews(pPB->mpGD, 0, 3, uavs, counts);
 
-		GD_CSSetShader(pPB->mpGD, pPB->mpCS);
+		//update existing particles
+		GD_CSSetShader(pPB->mpGD, pPB->mpCSUpdateExisting);
+		GD_Dispatch(pPB->mpGD, THREADX, 1, 1);
 
+		//this should fill part verts
+		GD_CSSetShader(pPB->mpGD, pPB->mpCSUpdateEmitter);
 		GD_Dispatch(pPB->mpGD, 1, 1, 1);
+
+		GD_IASetPrimitiveTopology(pPB->mpGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		GD_IASetInputLayout(pPB->mpGD, NULL);
+
+		GD_VSSetSRV(pPB->mpGD, pEM->mpPVSRV, 2);
+
+		//set blends and such
+		GD_OMSetBlendState(pPB->mpGD, pPB->mpAlphaBlend);
+		GD_OMSetDepthStencilState(pPB->mpGD, pPB->mpDepthNoWrite);
+
+		GD_IASetVertexBuffers(pPB->mpGD, NULL, 0, 0);// pEM->mpPartVerts, sizeof(ParticleVert), 0);
+		GD_IASetIndexBuffers(pPB->mpGD, NULL, DXGI_FORMAT_UNKNOWN, 0);
+		GD_VSSetShader(pPB->mpGD, pPB->mpVS);
+		GD_PSSetShader(pPB->mpGD, pPB->mpPS);
+		GD_PSSetSRV(pPB->mpGD, pEM->mpSRV, 0);
+
+		GD_Draw(pPB->mpGD, pEM->mMaxParticles * 6, 0);
 	}
 }
 
@@ -334,6 +359,7 @@ static void	sMakeStructuredBuffer(GraphicsDevice *pGD, int structSize, int numIt
 		uavDesc.Format				=DXGI_FORMAT_UNKNOWN;
 		uavDesc.ViewDimension		=D3D11_UAV_DIMENSION_BUFFER;
 		uavDesc.Buffer.NumElements	=numItems;
+//		uavDesc.Buffer.Flags		=D3D11_BUFFER_UAV_FLAG_APPEND;
 
 		*ppUAV	=GD_CreateUAV(pGD, (ID3D11Resource *)*ppBuffer);
 	}
@@ -345,7 +371,6 @@ static void	sFreeEmitter(ParticleEmitter *pEM)
 	//UAV
 	pEM->mpPBUAV->lpVtbl->Release(pEM->mpPBUAV);
 	pEM->mpEVUAV->lpVtbl->Release(pEM->mpEVUAV);
-	pEM->mpFSUAV->lpVtbl->Release(pEM->mpFSUAV);
 	pEM->mpPVUAV->lpVtbl->Release(pEM->mpPVUAV);
 
 	//SRV (just the vert buffer)
@@ -354,7 +379,6 @@ static void	sFreeEmitter(ParticleEmitter *pEM)
 	//buffers
 	pEM->mpParticleBuf->lpVtbl->Release(pEM->mpParticleBuf);
 	pEM->mpEmitterValuesBuf->lpVtbl->Release(pEM->mpEmitterValuesBuf);
-	pEM->mpFreeSlotsBuf->lpVtbl->Release(pEM->mpFreeSlotsBuf);
 	pEM->mpPartVerts->lpVtbl->Release(pEM->mpPartVerts);
 
 	free(pEM);

@@ -103,14 +103,19 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD, PhysicsStuff *pPhys,
 			Misc_RandomDirection(fac1);
 			Misc_RandomDirection(fac2);
 
-			glm_vec3_scale(fac0, 0.33333f, fac0);
-			glm_vec3_scale(fac1, 0.33333f, fac1);
-			glm_vec3_scale(fac2, 0.33333f, fac2);
+			//boost to positive direction
+			glm_vec3_add(fac0, GLM_VEC3_ONE, fac0);
+			glm_vec3_add(fac1, GLM_VEC3_ONE, fac1);
+			glm_vec3_add(fac2, GLM_VEC3_ONE, fac2);
 
-			//set texture 0 to fully on by default for now
+			glm_vec3_scale(fac0, 0.5f * 0.33333f, fac0);
+			glm_vec3_scale(fac1, 0.5f * 0.33333f, fac1);
+			glm_vec3_scale(fac2, 0.5f * 0.33333f, fac2);
+
 			Misc_Convert4ToF16(fac0[0], fac0[1], fac0[2], fac1[0], pVerts[idx].mTexFactor0);
 			Misc_Convert4ToF16(fac1[1], fac1[2], fac2[0], fac2[1], pVerts[idx].mTexFactor1);
 #else
+			//set texture 0 to fully on by default for now
 			Misc_Convert4ToF16(0.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor0);
 			Misc_Convert4ToF16(0.0f, 0.0f, 0.0f, 1.0f, pVerts[idx].mTexFactor1);
 #endif

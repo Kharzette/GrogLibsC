@@ -101,4 +101,4 @@ void	CBK_SetEmitterColorVMainMax(CBKeeper *pCBK, vec4 cvMin, vec4 cvMax);
 void	CBK_SetEmitterVMinMax(CBKeeper *pCBK, float vMin, float vMax);
 void	CBK_SetEmitterLifeMinMax(CBKeeper *pCBK, float lifeMin, float lifeMax);
 void	CBK_SetEmitterSizeVMinMax(CBKeeper *pCBK, float svMin, float svMax);
-void	CBK_SetEmitterSeconds(CBKeeper *pCBK, float timeSec);
+void	CBK_SetEmitterSecDelta(CBKeeper *pCBK, float timeSec, float deltaSec);

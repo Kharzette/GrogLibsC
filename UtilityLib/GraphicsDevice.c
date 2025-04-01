@@ -723,6 +723,11 @@ void GD_RSSetScissorRects(GraphicsDevice *pGD, UINT numRects, const D3D11_RECT *
 	pGD->mpContext1->lpVtbl->RSSetScissorRects(pGD->mpContext1, numRects, pRects);
 }
 
+void GD_VSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV, int slot)
+{
+	pGD->mpContext1->lpVtbl->VSSetShaderResources(pGD->mpContext1, slot, 1, &pSRV);
+}
+
 void GD_PSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV, int slot)
 {
 	pGD->mpContext1->lpVtbl->PSSetShaderResources(pGD->mpContext1, slot, 1, &pSRV);

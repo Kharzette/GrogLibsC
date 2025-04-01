@@ -759,7 +759,8 @@ void	CBK_SetEmitterSizeVMinMax(CBKeeper *pCBK, float svMin, float svMax)
 	pCBK->mpEmitter->mSizeVMinMaxSec[1]	=svMax;
 }
 
-void	CBK_SetEmitterSeconds(CBKeeper *pCBK, float timeSec)
+void	CBK_SetEmitterSecDelta(CBKeeper *pCBK, float timeSec, float deltaSec)
 {
-	pCBK->mpEmitter->mSizeVMinMaxSec[3]	=timeSec;
+	pCBK->mpEmitter->mSizeVMinMaxSec[2]	=timeSec;
+	pCBK->mpEmitter->mSizeVMinMaxSec[3]	=deltaSec;
 }

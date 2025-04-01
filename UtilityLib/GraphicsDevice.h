@@ -81,6 +81,7 @@ extern void	GD_SetWindowBordered(GraphicsDevice *pGD, bool bOn);
 
 extern void GD_VSSetShader(GraphicsDevice *pGD, ID3D11VertexShader *pVS);
 extern void GD_VSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf);
+extern void GD_VSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV, int slot);
 
 extern void GD_PSSetShader(GraphicsDevice *pGD, ID3D11PixelShader *pPS);
 extern void GD_PSSetConstantBuffer(GraphicsDevice *pGD, int slot, ID3D11Buffer *pBuf);

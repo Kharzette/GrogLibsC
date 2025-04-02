@@ -50,7 +50,8 @@ extern ID3D11ShaderResourceView	*GD_CreateTexSRV(GraphicsDevice *pGD, ID3D11Reso
 extern ID3D11ShaderResourceView	*GD_CreateSRV(
 	GraphicsDevice *pGD, ID3D11Resource *pRes,
 	const D3D11_SHADER_RESOURCE_VIEW_DESC *pDesc);
-extern ID3D11UnorderedAccessView	*GD_CreateUAV(GraphicsDevice *pGD, ID3D11Resource *pRes);
+extern ID3D11UnorderedAccessView	*GD_CreateUAV(GraphicsDevice *pGD,
+		ID3D11Resource *pRes, const D3D11_UNORDERED_ACCESS_VIEW_DESC *pDesc);
 extern ID3D11InputLayout	*GD_CreateInputLayout(
 	GraphicsDevice					*pGD,
 	const D3D11_INPUT_ELEMENT_DESC	*pIEDs,
@@ -71,6 +72,7 @@ extern ID3D11DepthStencilState	*GD_CreateDepthStencilState(
 //do stuff
 extern void GD_Dispatch(GraphicsDevice *pGD, UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ);
 extern void GD_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert);
+extern void GD_DrawInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf, UINT offset);
 extern void GD_DrawIndexed(GraphicsDevice *pGD,
 	uint32_t indexCount, uint32_t startIndex, uint32_t baseVert);
 extern void GD_Present(GraphicsDevice *pGD);

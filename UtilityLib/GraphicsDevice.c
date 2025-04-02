@@ -469,11 +469,12 @@ ID3D11ShaderResourceView	*GD_CreateSRV(GraphicsDevice *pGD,
 	return	pRet;
 }
 
-ID3D11UnorderedAccessView	*GD_CreateUAV(GraphicsDevice *pGD, ID3D11Resource *pRes)
+ID3D11UnorderedAccessView	*GD_CreateUAV(GraphicsDevice *pGD,
+	ID3D11Resource *pRes, const D3D11_UNORDERED_ACCESS_VIEW_DESC *pDesc)
 {
 	ID3D11UnorderedAccessView	*pRet;
 	HRESULT	hr	=pGD->mpDevice1->lpVtbl->CreateUnorderedAccessView(pGD->mpDevice1,
-		pRes, NULL, &pRet);
+		pRes, pDesc, &pRet);
 
 	if(hr != S_OK)
 	{
@@ -746,6 +747,11 @@ void GD_Dispatch(GraphicsDevice *pGD, UINT threadGroupCountX, UINT threadGroupCo
 void GD_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert)
 {
 	pGD->mpContext1->lpVtbl->Draw(pGD->mpContext1, vertCount, startVert);
+}
+
+void GD_DrawInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf, UINT offset)
+{
+	pGD->mpContext1->lpVtbl->DrawInstancedIndirect(pGD->mpContext1, pArgsBuf, offset);
 }
 
 void	GD_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot)

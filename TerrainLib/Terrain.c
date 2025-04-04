@@ -48,11 +48,15 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD, PhysicsStuff *pPhys,
 	uint32_t	w, h, wp1, hp1;
 	int			rowPitch, i;
 
+	BYTE	**pRows	=SK_LoadTextureBytes(pPath, &rowPitch, &w, &h);
+	if(pRows == NULL)
+	{
+		return	NULL;
+	}
+	
 	Terrain	*pRet	=malloc(sizeof(Terrain));
 
 	memset(pRet, 0, sizeof(Terrain));
-
-	BYTE	**pRows	=SK_LoadTextureBytes(pPath, &rowPitch, &w, &h);
 
 	//a note on height texture sizes...
 	//Most textures will be power of two, and thusly will be split evenly

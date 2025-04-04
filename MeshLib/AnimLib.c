@@ -117,6 +117,8 @@ void	AnimLib_Write(const AnimLib *pAL, const char *szFileName)
 
 void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 {
+	assert(pAL);
+
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnimName))
 	{
 		printf("No anim %s in anim lib.\n", szAnimName);
@@ -131,6 +133,8 @@ void	AnimLib_Animate(AnimLib *pAL, const char *szAnimName, float time)
 void	AnimLib_Blend(AnimLib *pAL, const char *szAnim1, const char *szAnim2,
 						float anTime1, float anTime2, float percentage)
 {
+	assert(pAL);
+
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim1))
 	{
 		printf("No anim %s in anim lib blend.\n", szAnim1);
@@ -153,16 +157,22 @@ void	AnimLib_Blend(AnimLib *pAL, const char *szAnim1, const char *szAnim2,
 
 const Skeleton	*AnimLib_GetSkeleton(const AnimLib *pAL)
 {
+	assert(pAL);
+
 	return	pAL->mpSkeleton;
 }
 
 int	AnimLib_GetNumAnims(const AnimLib *pAL)
 {
+	assert(pAL);
+
 	return	DictSZ_Count(pAL->mpAnims);
 }
 
 StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
 {
+	assert(pAL);
+
 	StringList	*pRet	=SZList_New();
 
 	DictSZ_ForEach(pAL->mpAnims, sAnimNamesCB, &pRet);
@@ -173,6 +183,8 @@ StringList	*AnimLib_GetAnimList(const AnimLib *pAL)
 
 bool	AnimLib_GetLooping(const AnimLib *pAL, const char *szAnimName)
 {
+	assert(pAL);
+
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnimName))
 	{
 		printf("No anim %s in anim lib.\n", szAnimName);
@@ -186,6 +198,8 @@ bool	AnimLib_GetLooping(const AnimLib *pAL, const char *szAnimName)
 
 bool	AnimLib_GetPingPong(const AnimLib *pAL, const char *szAnimName)
 {
+	assert(pAL);
+
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnimName))
 	{
 		printf("No anim %s in anim lib.\n", szAnimName);
@@ -201,11 +215,15 @@ bool	AnimLib_GetPingPong(const AnimLib *pAL, const char *szAnimName)
 //make sure all anims point to the right bones
 void	AnimLib_SetBoneRefs(AnimLib *pAL)
 {
+	assert(pAL);
+
 	DictSZ_ForEach(pAL->mpAnims, sSetBoneRefsCB, pAL);
 }
 
 void	AnimLib_SetLooping(AnimLib *pAL, const char *szAnim, bool bLooping)
 {
+	assert(pAL);
+
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
 	{
 		printf("No anim %s in anim lib.\n", szAnim);
@@ -219,6 +237,8 @@ void	AnimLib_SetLooping(AnimLib *pAL, const char *szAnim, bool bLooping)
 
 void	AnimLib_SetPingPong(AnimLib *pAL, const char *szAnim, bool bPingPong)
 {
+	assert(pAL);
+
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
 	{
 		printf("No anim %s in anim lib.\n", szAnim);
@@ -232,6 +252,8 @@ void	AnimLib_SetPingPong(AnimLib *pAL, const char *szAnim, bool bPingPong)
 
 void	AnimLib_Add(AnimLib *pALib, Anim *pAnim)
 {
+	assert(pALib);
+
 	DictSZ_Add(&pALib->mpAnims, Anim_GetName(pAnim), pAnim);
 
 	AnimLib_SetBoneRefs(pALib);
@@ -241,6 +263,8 @@ void	AnimLib_Add(AnimLib *pALib, Anim *pAnim)
 //see if skeletons match exactly
 bool	AnimLib_CheckSkeleton(const AnimLib *pALib, const Skeleton *pForeignSkel)
 {
+	assert(pALib);
+
 	int	locBCnt	=DictSZ_Count(pALib->mpSkeleton->mpNameToIndex);
 	int	forBCnt	=DictSZ_Count(pForeignSkel->mpNameToIndex);
 
@@ -264,6 +288,8 @@ bool	AnimLib_CheckSkeleton(const AnimLib *pALib, const Skeleton *pForeignSkel)
 //adapt anim from another skeleton
 void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, const Skeleton *pForeignSkel)
 {
+	assert(pALib);
+
 	DictSZ	*pForN2I	=pForeignSkel->mpNameToIndex;
 
 	//Probably the best way to do this is to merge the skeletons.
@@ -314,6 +340,8 @@ void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, const Skeleton *pForeignSke
 
 void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew)
 {
+	assert(pAL);
+
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szOld))
 	{
 		printf("No anim %s in anim lib ReName.\n", szOld);
@@ -330,6 +358,8 @@ void	AnimLib_ReName(AnimLib *pAL, const char *szOld, const char *szNew)
 
 void	AnimLib_Delete(AnimLib *pAL, const char *szAnim)
 {
+	assert(pAL);
+	
 	if(!DictSZ_ContainsKeyccp(pAL->mpAnims, szAnim))
 	{
 		printf("No anim %s in anim lib delete.\n", szAnim);

@@ -1097,7 +1097,7 @@ static void sCheckLOS(const TestStuff *pTS)
 
 			Misc_SRGBToLinear255(spCol, spCol);
 
-			Clay_String	los	={	strlen(sLOSStrings[i]), sLOSStrings[i]	};
+			Clay_String	los	={	false, strlen(sLOSStrings[i]), sLOSStrings[i]	};
 
 			CLAY_TEXT(los, CLAY_TEXT_CONFIG({ .fontSize = 26, .textColor = { spCol[0], spCol[1], spCol[2], spCol[3] } }));
 		}

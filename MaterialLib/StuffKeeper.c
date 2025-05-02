@@ -608,7 +608,7 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 }
 
 
-static void	PreMultAndLinearRGB(uint8_t **pRows, int width, int height)
+static void	sLinearRGB(uint8_t **pRows, int width, int height)
 {
 	float	oo255	=1.0f / 255.0f;
 
@@ -638,7 +638,7 @@ static void	PreMultAndLinearRGB(uint8_t **pRows, int width, int height)
 	}
 }
 
-static void	PreMultAndLinearRGBA(uint8_t **pRows, int width, int height)
+static void	sPreMultAndLinearRGBA(uint8_t **pRows, int width, int height)
 {
 	float	oo255	=1.0f / 255.0f;
 
@@ -677,6 +677,7 @@ static void	PreMultAndLinearRGBA(uint8_t **pRows, int width, int height)
 
 
 //returns premultiplied linear bytes
+//except when there's a raw file for alpha data
 BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
 							uint32_t *pOutWidth, uint32_t *pOutHeight)
 {
@@ -685,6 +686,16 @@ BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
 	{
 		return	NULL;
 	}
+
+	//see if there is a raw file to go with it
+	UT_string	*pNoExt	=SZ_StripExtension(pPath);
+
+	//printf concats
+	utstring_printf(pNoExt, ".raw");
+
+	FILE	*fRaw	=fopen(utstring_body(pNoExt), "rb");
+
+	utstring_done(pNoExt);
 
 	png_structp	pPng	=png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 	if(pPng == NULL)
@@ -750,6 +761,11 @@ BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
 
 	*pOutRowPitch	=png_get_rowbytes(pPng, pInfo);
 
+	if(fRaw != NULL)
+	{
+		assert(colType == PNG_COLOR_TYPE_RGB);
+	}
+
 	png_bytep	*pRows	=malloc(sizeof(png_bytep) * *pOutHeight);
 	for(int y=0;y < *pOutHeight;y++)
 	{
@@ -762,15 +778,15 @@ BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
 
 	if(colType == PNG_COLOR_TYPE_RGB)
 	{
-		PreMultAndLinearRGB(pRows, *pOutWidth, *pOutHeight);
+		sLinearRGB(pRows, *pOutWidth, *pOutHeight);
 	}
 	else if(colType == PNG_COLOR_TYPE_RGBA)
 	{
-		PreMultAndLinearRGBA(pRows, *pOutWidth, *pOutHeight);
+		sPreMultAndLinearRGBA(pRows, *pOutWidth, *pOutHeight);
 	}
 	else if(colType == PNG_COLOR_TYPE_PALETTE)
 	{
-		PreMultAndLinearRGB(pRows, *pOutWidth, *pOutHeight);
+		sLinearRGB(pRows, *pOutWidth, *pOutHeight);
 	}
 	else
 	{
@@ -787,7 +803,41 @@ BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
 
 	png_destroy_read_struct(&pPng, &pInfo, NULL);
 
-	return	pRows;
+	if(fRaw == NULL)
+	{
+		return	pRows;
+	}
+
+	png_bytep	*pRows2	=malloc(sizeof(png_bytep) * *pOutHeight);
+	for(int y=0;y < *pOutHeight;y++)
+	{
+		pRows2[y]	=malloc(4 * *pOutWidth);
+	}
+
+	for(int y=0;y < *pOutHeight;y++)
+	{
+		for(int x=0;x < *pOutWidth;x++)
+		{
+			pRows2[y][x * 4]		=pRows[y][x * 3];
+			pRows2[y][(x * 4) + 1]	=pRows[y][(x * 3) + 1];
+			pRows2[y][(x * 4) + 2]	=pRows[y][(x * 3) + 2];
+
+			fread(&pRows2[y][(x * 4) + 3], 1, 1, fRaw);
+
+			//skip 2 bytes
+			uint16_t	tmp;
+			fread(&tmp, 2, 1, fRaw);
+		}
+
+		free(pRows[y]);
+	}
+
+	free(pRows);
+
+	//alpha channel now there
+	*pOutRowPitch	=4 * *pOutWidth;
+
+	return	pRows2;
 }
 
 

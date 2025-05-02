@@ -18,7 +18,7 @@
 //TextMode		b6
 //TwoD			b7
 //BSP Dynamic	b8
-//BSP Dyn Color	b9
+//Custom Colors	b9
 //Cel Shading	b10
 //Particles		b11
 #define	PEROBJECT_REG	0
@@ -30,7 +30,7 @@
 #define	TEXTMODE_REG	6
 #define	TWOD_REG		7
 #define	BSP_LIGHT_POS	8
-#define	BSP_LIGHT_COL	9
+#define	CUSTOM_COLOURS	9
 #define	CEL_REG			10
 #define	PARTICLE_REG	11
 
@@ -44,6 +44,7 @@
 #define	RADIUS				7
 #endif
 #define	KERNEL_SIZE			(RADIUS * 2 + 1)
+#define	NUM_CUSTOM_COLOURS	8
 
 
 //CommonFunctions.hlsli
@@ -107,6 +108,13 @@ typedef struct BSP_t
 	//Should be float16 TODO
 	float	mpAniIntensities[NUM_ANI_INTENSITIES];
 }	BSP;
+
+//Trilight.hlsl
+typedef struct	CustomColours_t
+{
+	vec4	mCColours[NUM_CUSTOM_COLOURS];
+
+}	CustomColours;
 
 //post.hlsl
 typedef struct Post_t
@@ -197,6 +205,7 @@ typedef struct	CBKeeper_t
 	ID3D11Buffer	*mpPostBuf;
 	ID3D11Buffer	*mpPerShadowBuf;
 	ID3D11Buffer	*mpTextModeBuf;
+	ID3D11Buffer	*mpCColourBuf;
 	ID3D11Buffer	*mpCelBuf;
 	ID3D11Buffer	*mpEmitterBuf;
 
@@ -209,19 +218,21 @@ typedef struct	CBKeeper_t
 	ID3D11Resource	*mpPostRes;
 	ID3D11Resource	*mpPerShadowRes;
 	ID3D11Resource	*mpTextModeRes;
+	ID3D11Resource	*mpCColourRes;
 	ID3D11Resource	*mpCelRes;
 	ID3D11Resource	*mpEmitterRes;
 
 	//CPU side
-	PerObject	*mpPerObject;
-	PerFrame	*mpPerFrame;
-	TwoD		*mpTwoD;
-	BSP			*mpBSP;
-	Post		*mpPost;
-	PerShadow	*mpPerShadow;
-	TextMode	*mpTextMode;
-	CelStuff	*mpCelStuff;
-	Emitter		*mpEmitter;
+	PerObject		*mpPerObject;
+	PerFrame		*mpPerFrame;
+	TwoD			*mpTwoD;
+	BSP				*mpBSP;
+	Post			*mpPost;
+	PerShadow		*mpPerShadow;
+	TextMode		*mpTextMode;
+	CustomColours	*mpCColours;
+	CelStuff		*mpCelStuff;
+	Emitter			*mpEmitter;
 }	CBKeeper;
 
 
@@ -258,6 +269,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPostBuf			=MakeConstantBuffer(pGD, sizeof(Post));
 	pRet->mpTextModeBuf		=MakeConstantBuffer(pGD, sizeof(TextMode));
 	pRet->mpTwoDBuf			=MakeConstantBuffer(pGD, sizeof(TwoD));
+	pRet->mpCColourBuf		=MakeConstantBuffer(pGD, sizeof(CustomColours));
 	pRet->mpCelBuf			=MakeConstantBuffer(pGD, sizeof(CelStuff));
 	pRet->mpEmitterBuf		=MakeConstantBuffer(pGD, sizeof(Emitter));
 
@@ -270,6 +282,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPostBuf->lpVtbl->QueryInterface(pRet->mpPostBuf, &IID_ID3D11Resource, (void **)&pRet->mpPostRes);
 	pRet->mpPerShadowBuf->lpVtbl->QueryInterface(pRet->mpPerShadowBuf, &IID_ID3D11Resource, (void **)&pRet->mpPerShadowRes);
 	pRet->mpTextModeBuf->lpVtbl->QueryInterface(pRet->mpTextModeBuf, &IID_ID3D11Resource, (void **)&pRet->mpTextModeRes);
+	pRet->mpCColourBuf->lpVtbl->QueryInterface(pRet->mpCColourBuf, &IID_ID3D11Resource, (void **)&pRet->mpCColourRes);
 	pRet->mpCelBuf->lpVtbl->QueryInterface(pRet->mpCelBuf, &IID_ID3D11Resource, (void **)&pRet->mpCelRes);
 	pRet->mpEmitterBuf->lpVtbl->QueryInterface(pRet->mpEmitterBuf, &IID_ID3D11Resource, (void **)&pRet->mpEmitterRes);
 
@@ -286,6 +299,7 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpPost		=malloc(sizeof(Post));
 	pRet->mpPerShadow	=malloc(sizeof(PerShadow));
 	pRet->mpTextMode	=malloc(sizeof(TextMode));
+	pRet->mpCColours	=malloc(sizeof(CustomColours));
 	pRet->mpCelStuff	=malloc(sizeof(CelStuff));
 	pRet->mpEmitter		=malloc(sizeof(Emitter));
 	return	pRet;
@@ -300,6 +314,8 @@ void	CBK_SetCommonCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD)
 	GD_PSSetConstantBuffer(pGD, PEROBJECT_REG, pCBK->mpPerObjectBuf);
 	GD_VSSetConstantBuffer(pGD, PERFRAME_REG, pCBK->mpPerFrameBuf);
 	GD_PSSetConstantBuffer(pGD, PERFRAME_REG, pCBK->mpPerFrameBuf);
+	GD_VSSetConstantBuffer(pGD, CUSTOM_COLOURS, pCBK->mpCColourBuf);
+	GD_PSSetConstantBuffer(pGD, CUSTOM_COLOURS, pCBK->mpCColourBuf);
 	GD_VSSetConstantBuffer(pGD, CEL_REG, pCBK->mpCelBuf);
 	GD_PSSetConstantBuffer(pGD, CEL_REG, pCBK->mpCelBuf);
 }
@@ -390,6 +406,11 @@ void	CBK_UpdatePerShadow(CBKeeper *pCBK, GraphicsDevice *pGD)
 void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	GD_UpdateSubResource(pGD, pCBK->mpTextModeRes, pCBK->mpTextMode);
+}
+
+void	CBK_UpdateCustomColours(CBKeeper *pCBK, GraphicsDevice *pGD)
+{
+	GD_UpdateSubResource(pGD, pCBK->mpCColourRes, pCBK->mpCColours);
 }
 
 void	CBK_UpdateCel(CBKeeper *pCBK, GraphicsDevice *pGD)
@@ -659,6 +680,16 @@ void CBK_SetTextModeFontInfo(CBKeeper *pCBK, uint32_t startChar, uint32_t numCol
 	pCBK->mpTextMode->mNumColumns	=numColumns;
 	pCBK->mpTextMode->mCharWidth	=charWidth;
 	pCBK->mpTextMode->mCharHeight	=charHeight;
+}
+
+
+//custom colours
+void	CBK_SetCustomColours(CBKeeper *pCBK, vec4 colours[])
+{
+	for(int i=0;i < NUM_CUSTOM_COLOURS;i++)
+	{
+		glm_vec4_copy(colours[i], pCBK->mpCColours->mCColours[i]);
+	}
 }
 
 

@@ -24,6 +24,7 @@ void	CBK_UpdateBSP(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_UpdatePost(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_UpdatePerShadow(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_UpdateTextMode(CBKeeper *pCBK, GraphicsDevice *pGD);
+void	CBK_UpdateCustomColours(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_UpdateCel(CBKeeper *pCBK, GraphicsDevice *pGD);
 void	CBK_UpdateEmitter(CBKeeper *pCBK, GraphicsDevice *pGD);
 
@@ -82,6 +83,9 @@ void CBK_SetPerShadowLightPos(CBKeeper *pCBK, const vec3 pos);
 //Text Mode
 void CBK_SetTextModeScreenSize(CBKeeper *pCBK, uint32_t width, uint32_t height, uint32_t cwidth, uint32_t cheight);
 void CBK_SetTextModeFontInfo(CBKeeper *pCBK, uint32_t startChar, uint32_t numColumns, uint32_t charWidth, uint32_t charHeight);
+
+//custom colours
+void	CBK_SetCustomColours(CBKeeper *pCBK, vec4 colours[]);
 
 //cel stuff
 void	CBK_SetCelSteps(CBKeeper *pCBK, const float *pMins, const float *pMaxs,

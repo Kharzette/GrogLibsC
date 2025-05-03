@@ -1,8 +1,8 @@
 #include	"d3d11.h"
 #include	"UIStuff.h"
 #include	<assert.h>
-#include	"CBKeeper.h"
-#include	"StuffKeeper.h"
+#include	"../MaterialLib/CBKeeper.h"
+#include	"../MaterialLib/StuffKeeper.h"
 #include	"GrogFont.h"
 #include	"uthash.h"
 #include	"../UtilityLib/GraphicsDevice.h"

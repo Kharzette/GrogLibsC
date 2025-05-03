@@ -606,7 +606,7 @@ void	Audio_Destroy(Audio **ppAud)
 
 	SoundEffectDestroyAll();
 
-	FAudioVoice_DestroyVoice(pAud->mpFAMV);
+	//FAudioVoice_DestroyVoice(pAud->mpFAMV);
 
 	FAudio_Release(pAud->mpFA);
 

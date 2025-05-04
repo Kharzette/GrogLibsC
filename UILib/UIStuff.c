@@ -1,5 +1,8 @@
 #include	"d3d11.h"
 #include	"UIStuff.h"
+#include	<dirent.h>
+#include	<errno.h>
+#include	<sys/stat.h>
 #include	<assert.h>
 #include	"../MaterialLib/CBKeeper.h"
 #include	"../MaterialLib/StuffKeeper.h"
@@ -7,6 +10,8 @@
 #include	"uthash.h"
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../UtilityLib/MiscStuff.h"
+#include	"../UtilityLib/StringStuff.h"
+#include	"../UtilityLib/FileStuff.h"
 
 
 //clay uses uint16 ids for fonts
@@ -884,7 +889,17 @@ void	UI_AddFont(UIStuff *pUI, const char *szFontName, uint16_t id)
 
 	UIFonts	*pF;
 
-	//check if already in the list
+	//make sure font not already added under a different ID
+	for(pF = pUI->mpFonts;pF != NULL;pF=pF->hh.next)
+	{
+		if(pF->mpFont == pFont)
+		{
+			printf("Already added font %s!\n", szFontName);
+			return;
+		}
+	}
+
+	//check if id already in the list
 	HASH_FIND_INT(pUI->mpFonts, &key, pF);
 	if(pF == NULL)
 	{
@@ -896,6 +911,10 @@ void	UI_AddFont(UIStuff *pUI, const char *szFontName, uint16_t id)
 
 		HASH_ADD_INT(pUI->mpFonts, id, pF);
 	}
+	else
+	{
+		printf("Already added font %s!\n", szFontName);
+	}
 }
 
 static GrogFont	*sGetFont(const UIStuff *pUI, uint16_t fontID)
@@ -905,6 +924,10 @@ static GrogFont	*sGetFont(const UIStuff *pUI, uint16_t fontID)
 	int	key	=(int)fontID;
 
 	HASH_FIND_INT(pUI->mpFonts, &key, pF);
+	if(pF == NULL)
+	{
+		return	NULL;
+	}
 
 	return	pF->mpFont;
 }
@@ -1080,4 +1103,93 @@ void	UI_ClayColorToVec4(Clay_Color in, vec4 out)
 	out[1]	=in.g * oo255;
 	out[2]	=in.b * oo255;
 	out[3]	=in.a * oo255;
+}
+
+
+//font helper stuff
+void	UI_AddAllFonts(UIStuff *pUI)
+{
+	//check default fonts dir for fonts
+	DIR	*pDir	=opendir("Fonts");
+	if(pDir == NULL)
+	{
+		printf("No fonts dir!");
+	}
+	else
+	{
+		//lazy
+		char	pathBuf[256];
+		int		count	=0;
+		for(;;)
+		{
+			struct dirent	*pEnt	=readdir(pDir);
+
+			if(pEnt == NULL)
+			{
+				break;
+			}
+
+			struct stat	fileStuff;
+
+			strncpy(pathBuf, "Fonts", 255);
+			strncat(pathBuf, "/", 255);
+			strncat(pathBuf, pEnt->d_name, 255);
+
+			int	res	=stat(pathBuf, &fileStuff);
+			if(res)
+			{
+				FileStuff_PrintErrno(res);
+				continue;
+			}
+
+			//regular file?
+			if(S_ISREG(fileStuff.st_mode))
+			{
+				UT_string	*pFName	=SZ_StripExtension(pEnt->d_name);
+
+				UI_AddFont(pUI, utstring_body(pFName), count);
+				count++;
+
+				utstring_free(pFName);
+			}
+		}
+	}
+}
+
+//returns -1 if font not found
+int	UI_GetFontSize(const UIStuff *pUI, uint16_t id)
+{
+	GrogFont	*pFont	=sGetFont(pUI, id);
+	if(pFont == NULL)
+	{
+		return	-1;
+	}
+
+	return	GFont_GetCharacterHeight(pFont);
+}
+
+uint16_t	UI_GetNearestFontSize(const UIStuff *pUI, int size)
+{
+	UIFonts	*pF;
+
+	int	bestID		=-1;
+	int	bestDiff	=INT32_MAX;
+	for(pF = pUI->mpFonts;pF != NULL;pF = pF->hh.next)
+	{
+		int	h	=GFont_GetCharacterHeight(pF->mpFont);
+
+		int	diff	=abs(size - h);
+		if(diff == 0)
+		{
+			return	pF->id;
+		}
+
+		if(diff < bestDiff)
+		{
+			bestDiff	=diff;
+			bestID		=pF->id;
+		}
+	}
+
+	return	bestID;
 }

@@ -34,6 +34,11 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 void	UI_DrawRRHollow(UIStuff *pUI, const UIRect r, float hullSize,
 						float roundNess, int segments, const vec4 color);
 
+//font helper stuff
+void		UI_AddAllFonts(UIStuff *pUI);
+uint16_t	UI_GetNearestFontSize(const UIStuff *pUI, int size);
+int			UI_GetFontSize(const UIStuff *pUI, uint16_t id);
+
 //clay specific stuff
 void	UI_AddFont(UIStuff *pUI, const char *szFontName, uint16_t id);
 void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands);

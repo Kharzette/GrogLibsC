@@ -8,6 +8,12 @@ typedef struct	EasyMenu_t
 	int	mNumEntries;
 	int	mFontSize;
 	int	mFontID;
+	int	mSelectedIndex;
+
+	Clay_Color	mTextColour;
+	Clay_Color	mBGColour;
+	Clay_Color	mSelTextColour;
+	Clay_Color	mSelBGColour;
 
 	char	**mppMenuText;
 	void	**mppContexts;
@@ -21,7 +27,9 @@ typedef struct	EasyMenu_t
 static void	sDrawMenuItem(const EasyMenu *pEM, int index);
 
 
-EasyMenu	*EasyMenu_Create(int fontSize, int fontID, int numEntries)
+EasyMenu	*EasyMenu_Create(int fontSize, int fontID, int numEntries,
+	Clay_Color textCol, Clay_Color bgCol,
+	Clay_Color selTextCol, Clay_Color selBGCol)
 {
 	EasyMenu	*pRet	=malloc(sizeof(EasyMenu));
 
@@ -30,6 +38,11 @@ EasyMenu	*EasyMenu_Create(int fontSize, int fontID, int numEntries)
 	pRet->mFontSize		=fontSize;
 	pRet->mFontID		=fontID;
 	pRet->mNumEntries	=numEntries;
+
+	pRet->mBGColour			=bgCol;
+	pRet->mTextColour		=textCol;
+	pRet->mSelBGColour		=selBGCol;
+	pRet->mSelTextColour	=selTextCol;
 
 	pRet->mppMenuText	=malloc(sizeof(char *) * numEntries);
 	pRet->mppContexts	=malloc(sizeof(void *) * numEntries);
@@ -96,6 +109,37 @@ void	EasyMenu_AddEntry(EasyMenu *pEM, int idx, const char *pText,
 	pEM->mppContexts[idx]	=pContext;
 }
 
+void	EasyMenu_SelectDown(EasyMenu *pEM)
+{
+	pEM->mSelectedIndex++;
+
+	if(pEM->mSelectedIndex >= pEM->mNumEntries)
+	{
+		pEM->mSelectedIndex	=0;
+	}
+}
+
+void	EasyMenu_SelectUp(EasyMenu *pEM)
+{
+	pEM->mSelectedIndex--;
+
+	if(pEM->mSelectedIndex <= 0)
+	{
+		pEM->mSelectedIndex	=(pEM->mNumEntries - 1);
+	}
+}
+
+int	EasyMenu_SelectChoice(EasyMenu *pEM)
+{
+	int	i	=pEM->mSelectedIndex;
+
+	//call callback
+	pEM->mpCBs[i](i, pEM->mppContexts[i]);
+
+	return	i;
+}
+
+
 void	EasyMenu_Draw(const EasyMenu *pEM)
 {
 	assert(pEM);
@@ -137,14 +181,14 @@ static void	sDrawMenuItem(const EasyMenu *pEM, int index)
 			.color = {80, 80, 80, 255},
 			.width	=CLAY_BORDER_ALL(2)
 		},
-		.backgroundColor	={150, 150, 155, 55	}
+		.backgroundColor	=(index == pEM->mSelectedIndex)? pEM->mSelBGColour : pEM->mBGColour
 	})
 	{
 		CLAY_TEXT(mmText, CLAY_TEXT_CONFIG(
 		{
 			.fontSize	=pEM->mFontSize,
 			.fontId		=pEM->mFontID,
-			.textColor	={0, 70, 70, 155}
+			.textColor	=(index == pEM->mSelectedIndex)? pEM->mSelTextColour : pEM->mTextColour 
 		}));
 	}	
 }

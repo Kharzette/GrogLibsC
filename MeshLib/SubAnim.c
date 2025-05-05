@@ -28,7 +28,7 @@ typedef struct	SubAnim_t
 //static forward decs
 static void	sAddKeyAtTime(SubAnim *pSA, float t);
 static void	sFillGaps(SubAnim *pSAT, SubAnim *pSAS, SubAnim *pSAR);
-static void	sAnimateKey(SubAnim *pSA, float time, bool bLooping, KeyFrame *pDest);
+static void	sAnimateKey(SubAnim *pSA, float time, bool bLooping, bool bPingPong, KeyFrame *pDest);
 
 
 SubAnim	*SubAnim_Create(const float *pTimes, KeyFrame *pKeys,
@@ -112,14 +112,14 @@ void	SubAnim_Write(const SubAnim *pSA, FILE *f)
 	fwrite(&pSA->mTotalTime, sizeof(float), 1, f);
 }
 
-void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping)
+void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping, bool bPingPong)
 {	
 	if(pSA->mpBone == NULL)
 	{
 		return;
 	}
 
-	sAnimateKey(pSA, time, bLooping, pSA->mpBone);
+	sAnimateKey(pSA, time, bLooping, bPingPong, pSA->mpBone);
 }
 
 void	SubAnim_Blend(SubAnim *pSA0, SubAnim *pSA1,
@@ -136,8 +136,8 @@ void	SubAnim_Blend(SubAnim *pSA0, SubAnim *pSA1,
 	KeyFrame	blend0, blend1;
 
 	//animate into temp keys
-	sAnimateKey(pSA0, time0, true, &blend0);
-	sAnimateKey(pSA1, time1, true, &blend1);
+	sAnimateKey(pSA0, time0, true, false, &blend0);
+	sAnimateKey(pSA1, time1, true, false, &blend1);
 
 	//lerp into original bone
 	KeyFrame_Lerp(&blend0, &blend1, percentage, pSA0->mpBone);
@@ -227,7 +227,7 @@ static void	sAddKeyAtTime(SubAnim *pSA, float t)
 	}
 
 	//animate to time t
-	SubAnim_Animate(pSA, t, true);
+	SubAnim_Animate(pSA, t, true, false);
 
 	//make new times and keys storage
 	float		*pNewT	=malloc(sizeof(float) * (pSA->mNumKeys + 1));
@@ -349,7 +349,9 @@ static void	sFillGaps(SubAnim *pSAT,
 	}
 }
 
-void	sAnimateKey(SubAnim *pSA, float time, bool bLooping, KeyFrame *pDest)
+void	sAnimateKey(SubAnim *pSA, float time,
+	bool bLooping, bool bPingPong,
+	KeyFrame *pDest)
 {	
 	if(pDest == NULL)
 	{
@@ -357,14 +359,27 @@ void	sAnimateKey(SubAnim *pSA, float time, bool bLooping, KeyFrame *pDest)
 	}
 
 	//make sure the time is in range
-	float	animTime;
+	float	animTime	=time;
+
+	//for pingpong the time range is doubled
+	//but if in the second half reversed
+	if(bPingPong)
+	{
+		float	gack	=time / pSA->mTotalTime;
+		float	fGack	=floorf(gack);
+		int		iGack	=(int)fGack;
+
+		animTime	=fmodf(time, pSA->mTotalTime);
+
+		if(iGack & 1)
+		{
+			animTime	=pSA->mTotalTime - animTime;
+		}
+	}
+
 	if(bLooping)
 	{
 		animTime	=fmodf(time, pSA->mTotalTime);
-	}
-	else
-	{
-		animTime	=time;
 	}
 
 	if(animTime < pSA->mpTimes[0])

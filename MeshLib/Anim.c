@@ -31,6 +31,7 @@ Anim	*Anim_Create(const UT_string *pName, SubAnim **ppSubs, int numSubs)
 
 	pRet->mNumSubAnims	=numSubs;
 
+	//defaults
 	pRet->mbLooping		=true;
 	pRet->mbPingPong	=false;
 
@@ -80,7 +81,8 @@ void	Anim_Animate(Anim *pAnim, float time)
 {
 	for(int i=0;i < pAnim->mNumSubAnims;i++)
 	{
-		SubAnim_Animate(pAnim->mpSubAnims[i], time, pAnim->mbLooping);
+		SubAnim_Animate(pAnim->mpSubAnims[i], time,
+			pAnim->mbLooping, pAnim->mbPingPong);
 	}
 }
 

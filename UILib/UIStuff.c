@@ -1039,7 +1039,7 @@ void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
 				if(pCrrd->cornerRadius.topLeft > 0)
 				{
 					//TODO: find some formulae for roundness and segments
-					float	radius	=(pCrrd->cornerRadius.topLeft * 2) / (float)((boundingBox.width > boundingBox.height) ? boundingBox.height : boundingBox.width);
+//					float	radius	=(pCrrd->cornerRadius.topLeft * 2) / (float)((boundingBox.width > boundingBox.height) ? boundingBox.height : boundingBox.width);
 					UI_DrawRectRounded(pUI, (UIRect) { boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height }, 0.75f, 3, color);
 				}
 				else

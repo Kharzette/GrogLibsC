@@ -19,7 +19,7 @@ typedef struct	AnimLib_t
 
 typedef struct	SkeletonChecker_t
 {
-	Skeleton	*mpForeignSkeleton;
+	const Skeleton	*mpForeignSkeleton;
 
 	bool	mbMatch;
 
@@ -320,9 +320,9 @@ void	AnimLib_AddForeign(AnimLib *pALib, Anim *pAnim, const Skeleton *pForeignSke
 			const UT_string	*pCurBoneName	=SZList_IteratorValUT(pCur);
 
 			//see what the foreign index is for this bone
-			int	forIdx	=(int)DictSZ_GetValue(pForN2I, pCurBoneName);
+			int64_t	forIdx	=(int64_t)DictSZ_GetValue(pForN2I, pCurBoneName);
 
-			printf("AnimLib skeleton is missing bone %s with index %d\n", utstring_body(pCurBoneName), forIdx);	
+			printf("AnimLib skeleton is missing bone %s with index %ld\n", utstring_body(pCurBoneName), forIdx);	
 		}
 
 		printf("Maybe start a new AnimLib with the most complex bone?\n");
@@ -452,8 +452,8 @@ static void sCheckSkelCB(const UT_string *pKey, const void *pValue, void *pConte
 	}
 	else
 	{
-		int	locIdx	=(int)pValue;
-		int	forIdx	=(int)DictSZ_GetValue(pSC->mpForeignSkeleton->mpNameToIndex, pKey);
+		int64_t	locIdx	=(int64_t)pValue;
+		int64_t	forIdx	=(int64_t)DictSZ_GetValue(pSC->mpForeignSkeleton->mpNameToIndex, pKey);
 
 		if(locIdx != forIdx)
 		{

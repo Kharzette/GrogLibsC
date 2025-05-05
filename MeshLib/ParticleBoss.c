@@ -69,7 +69,6 @@ typedef struct	ParticleEmitter_t
 typedef struct	ParticleBoss_t
 {
 	GraphicsDevice	*mpGD;
-	StuffKeeper		*mpSK;
 	CBKeeper		*mpCBK;
 
 	//shaders
@@ -104,7 +103,6 @@ ParticleBoss	*PB_Create(GraphicsDevice *pGD,
 	ParticleBoss	*pRet	=malloc(sizeof(ParticleBoss));
 
 	pRet->mpGD	=pGD;
-	pRet->mpSK	=pSK;
 	pRet->mpCBK	=pCBK;
 
 	pRet->mpVS	=StuffKeeper_GetVertexShader(pSK, "ParticleSBVS");
@@ -124,14 +122,14 @@ ParticleBoss	*PB_Create(GraphicsDevice *pGD,
 }
 
 //returns particle ID
-uint32_t	PB_CreateEmitter(ParticleBoss *pPB,
+uint32_t	PB_CreateEmitter(ParticleBoss *pPB, const StuffKeeper *pSK,
 	const char *pTexName, uint8_t shape, float startSize, vec4 startColor,
 	float emitSec, float shapeSize, vec3 lineAxis, int maxParticles,
 	float rotVelMin, float rotVelMax, vec4 colVelMin, vec4 colVelMax,
 	float sizeVelMin, float sizeVelMax, float velMin, float velMax,
 	float lifeMin, float lifeMax, vec3 pos)
 {
-	ID3D11ShaderResourceView	*pSRV	=StuffKeeper_GetSRV(pPB->mpSK, pTexName);
+	ID3D11ShaderResourceView	*pSRV	=StuffKeeper_GetSRV(pSK, pTexName);
 	if(pSRV == NULL)
 	{
 		return	0;

@@ -211,6 +211,7 @@ StringList	*Character_GetPartList(const Character *pChar)
 	return	pRet;
 }
 
+//this will be replaced by jolt stuff
 bool	Character_RayIntersectBones(const Character *pChar, const vec3 startPos, const vec3 endPos,
 									int *pHitIndex, vec3 hitPos, vec3 hitNorm)
 {
@@ -239,7 +240,7 @@ bool	Character_RayIntersectBones(const Character *pChar, const vec3 startPos, co
 		}
 	}
 
-
+	return	false;
 }
 
 void	Character_ReNamePart(Character *pChar, const char *pOldName, const char *pNewName)

@@ -18,7 +18,7 @@ ParticleBoss	*PB_Create(GraphicsDevice *pGD,
 void	PB_Destroy(ParticleBoss **ppPB);
 
 //returns particle ID
-uint32_t	PB_CreateEmitter(ParticleBoss *pPB,
+uint32_t	PB_CreateEmitter(ParticleBoss *pPB, const StuffKeeper *pSK,
 	const char *pTexName, uint8_t shape, float startSize, vec4 startColor,
 	float emitSec, float shapeSize, vec3 lineAxis, int maxParticles,
 	float rotVelMin, float rotVelMax, vec4 colVelMin, vec4 colVelMax,

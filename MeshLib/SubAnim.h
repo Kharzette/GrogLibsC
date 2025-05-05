@@ -22,3 +22,5 @@ void	SubAnim_SetBone(SubAnim *pSA, KeyFrame *pBoneRef, int boneIdx);
 SubAnim	*SubAnim_Merge(SubAnim *pSAT, SubAnim *pSAS, SubAnim *pSAR);
 void	SubAnim_ReMapBoneIndex(SubAnim *pSA, int boneMap[]);
 void	SubAnim_SetBoneRef(SubAnim *pSA, Skeleton *pSkel);
+void	SubAnim_Blend(SubAnim *pSA0, SubAnim *pSA1,
+				float time0, float time1, float percentage);

@@ -123,7 +123,7 @@ void	EasyMenu_SelectUp(EasyMenu *pEM)
 {
 	pEM->mSelectedIndex--;
 
-	if(pEM->mSelectedIndex <= 0)
+	if(pEM->mSelectedIndex < 0)
 	{
 		pEM->mSelectedIndex	=(pEM->mNumEntries - 1);
 	}

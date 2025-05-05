@@ -122,6 +122,27 @@ void	SubAnim_Animate(SubAnim *pSA, float time, bool bLooping)
 	sAnimateKey(pSA, time, bLooping, pSA->mpBone);
 }
 
+void	SubAnim_Blend(SubAnim *pSA0, SubAnim *pSA1,
+	float time0, float time1, float percentage)
+{	
+	if(pSA0->mpBone == NULL)
+	{
+		return;
+	}
+
+	assert(pSA0->mpBone == pSA1->mpBone);
+	assert(pSA0->mBoneIndex == pSA1->mBoneIndex);
+
+	KeyFrame	blend0, blend1;
+
+	//animate into temp keys
+	sAnimateKey(pSA0, time0, true, &blend0);
+	sAnimateKey(pSA1, time1, true, &blend1);
+
+	//lerp into original bone
+	KeyFrame_Lerp(&blend0, &blend1, percentage, pSA0->mpBone);
+}
+
 void	SubAnim_Destroy(SubAnim *pSA)
 {
 	free(pSA->mpKeys);

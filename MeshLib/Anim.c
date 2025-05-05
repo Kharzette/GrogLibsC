@@ -94,34 +94,7 @@ void	Anim_Blend(Anim *pAnim1, Anim *pAnim2,
 		SubAnim	*pSA1	=pAnim1->mpSubAnims[i];
 		SubAnim	*pSA2	=pAnim2->mpSubAnims[i];
 
-		//save the subanim's referenced bone
-		const KeyFrame	*pBone1	=SubAnim_GetBone(pSA1);
-		const KeyFrame	*pBone2	=SubAnim_GetBone(pSA2);
-
-		assert(pBone1 == pBone2);
-
-		int	idx1	=SubAnim_GetBoneIndex(pSA1);
-		int	idx2	=SubAnim_GetBoneIndex(pSA2);
-
-		assert(idx1 == idx2);
-
-		KeyFrame	blendKey1;
-		KeyFrame	blendKey2;
-
-		//set blend key temporarily
-		SubAnim_SetBone(pSA1, &blendKey1, idx1);
-		SubAnim_SetBone(pSA2, &blendKey2, idx2);
-
-		//animate to the blend keys
-		SubAnim_Animate(pSA1, anTime1, true);
-		SubAnim_Animate(pSA2, anTime2, true);
-
-		//blend to original bone reference
-		KeyFrame_Lerp(&blendKey1, &blendKey2, percentage, pBone1);
-
-		//put the bones back
-		SubAnim_SetBone(pSA1, pBone1, idx1);
-		SubAnim_SetBone(pSA2, pBone2, idx2);
+		SubAnim_Blend(pSA1, pSA2, anTime1, anTime2, percentage);
 	}
 }
 

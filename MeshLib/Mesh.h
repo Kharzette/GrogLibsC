@@ -10,7 +10,7 @@ typedef struct	CBKeeper_t			CBKeeper;
 
 //new gltf way
 Mesh	*Mesh_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
-	const UT_string *pName, const void *pVData, const void *pIndData,
+	const UT_string *pName, void *pVData, const void *pIndData,
 	const int vertElems[], int velCount,
 	int	numVerts, int numInds, int vertSize);
 

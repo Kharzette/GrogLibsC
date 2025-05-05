@@ -161,7 +161,7 @@ void	Skeleton_FillBoneArray(const Skeleton *pSkel,
 static void	srMakeNameDict(Skeleton *pSkel, GSNode *pNode)
 {
 	printf("srMakeNameDict: Adding to name dictionary %s index %d\n", utstring_body(pNode->szName), pNode->mIndex);
-	DictSZ_Add(&pSkel->mpNameToIndex, pNode->szName, (void *)pNode->mIndex);
+	DictSZ_Add(&pSkel->mpNameToIndex, pNode->szName, (void *)((int64_t)pNode->mIndex));
 
 	for(int i=0;i < pNode->mNumChildren;i++)
 	{

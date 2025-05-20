@@ -271,7 +271,10 @@ void	Static_Destroy(Static *pStat)
 		free(pStat->mTransforms);
 	}
 
-	MeshBound_Destroy(pStat->mpBound);
+	if(pStat->mpBound != NULL)
+	{
+		MeshBound_Destroy(pStat->mpBound);
+	}
 
 	free(pStat);
 }

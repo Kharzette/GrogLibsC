@@ -375,7 +375,7 @@ void PP_DrawStage(PostProcess *pPP, GraphicsDevice *pGD, CBKeeper *pCBK)
 	GD_IASetVertexBuffers(pGD, pPP->mpQuadVB, sizeof(VPosTex), 0);
 	GD_IASetIndexBuffers(pGD, pPP->mpQuadIB, DXGI_FORMAT_R16_UINT, 0);
 
-	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pPP->mpSK, "VPos"));
+//	GD_IASetInputLayout(pGD, StuffKeeper_GetInputLayout(pPP->mpSK, "VPos"));
 	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pPP->mpSK, "SimpleQuadVS"));
 	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pPP->mpSK, "BloomCombinePS"));
 

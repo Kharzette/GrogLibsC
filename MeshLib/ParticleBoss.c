@@ -293,7 +293,6 @@ void	PB_UpdateAndDraw(ParticleBoss *pPB, float secDelta)
 		GD_Dispatch(pPB->mpGD, 1, 1, 1);
 
 		GD_IASetPrimitiveTopology(pPB->mpGD, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		GD_IASetInputLayout(pPB->mpGD, NULL);
 
 		//set blends and such
 		GD_OMSetBlendState(pPB->mpGD, pPB->mpAlphaBlend);

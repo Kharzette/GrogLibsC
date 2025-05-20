@@ -14,61 +14,24 @@
 #include	"PlaneMath.h"
 
 
-typedef struct	VPosNorm_t
+typedef struct	VPosNormCol_t
 {
-	vec3		Position;
-	uint16_t	Normal[4];	//16 bit float4
-}	VPosNorm;
-
-typedef struct	VPosNormCol0_t
-{
-	vec3		Position;
-	uint16_t	Normal[4];	//16 bit float4
-	uint16_t	Color0[4];	//16 bit float4
-}	VPosNormCol0;
+	vec4		PositionU;		//U in w
+	uint32_t	NormVCol[4];	//packed norm and col in F16
+}	VPosNormCol;
 
 static const	vec3	UnitX	={	1.0f, 0.0f, 0.0f	};
 static const	vec3	UnitY	={	0.0f, 1.0f, 0.0f	};
 static const	vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
 static const	vec3	One		={	1.0f, 1.0f, 1.0f	};
 
-static void	MulAdd2DestS(const vec2 a, const float b, const vec2 c, vec2 dest)
-{
-	dest[0]	=c[0] + (a[0] * b);
-	dest[1]	=c[1] + (a[1] * b);
-}
-
-static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
-{
-	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
-
-	pDesc->BindFlags			=D3D11_BIND_VERTEX_BUFFER;
-	pDesc->ByteWidth			=byteSize;
-	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_NONE;
-	pDesc->MiscFlags			=0;
-	pDesc->StructureByteStride	=0;
-	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
-}
-
-static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
-{
-	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
-
-	pDesc->BindFlags			=D3D11_BIND_INDEX_BUFFER;
-	pDesc->ByteWidth			=byteSize;
-	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_NONE;
-	pDesc->MiscFlags			=0;
-	pDesc->StructureByteStride	=0;
-	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
-}
-
-//make a vec out of stealing xyz from 3 different vectors
-static void	ThreeXYZ(const vec3 x, const vec3 y, const vec3 z, vec3 dest)
-{
-	dest[0]	=x[0];
-	dest[1]	=y[1];
-	dest[2]	=z[2];
-}
+//static forward decs
+static void	sThreeXYZ(const vec3 x, const vec3 y, const vec3 z, vec3 dest);
+static void	sMakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize);
+static void	sMulAdd2DestS(const vec2 a, const float b, const vec2 c, vec2 dest);
+static void	sMakeStructuredBuffer(GraphicsDevice *pGD,
+	int structSize, int numItems, void *pVData,
+	ID3D11Buffer **ppBuffer, ID3D11ShaderResourceView **ppSRV);
 
 
 void	PF_DestroyPO(PrimObject **ppObj)
@@ -76,6 +39,7 @@ void	PF_DestroyPO(PrimObject **ppObj)
 	//release buffers
 	(*ppObj)->mpIB->lpVtbl->Release((*ppObj)->mpIB);
 	(*ppObj)->mpVB->lpVtbl->Release((*ppObj)->mpVB);
+	(*ppObj)->mpVBSRV->lpVtbl->Release((*ppObj)->mpVBSRV);
 
 	//free mem
 	free(*ppObj);
@@ -88,21 +52,21 @@ PrimObject	*PF_CreateCubeFromBounds(const vec3 min, const vec3 max, GraphicsDevi
 {
 	vec3	corners[8];
 
-	ThreeXYZ(max, min, max, corners[0]);
-	ThreeXYZ(min, min, max, corners[1]);
-	ThreeXYZ(max, min, min, corners[2]);
-	ThreeXYZ(min, min, min, corners[3]);
-	ThreeXYZ(max, max, max, corners[4]);
-	ThreeXYZ(min, max, max, corners[5]);
-	ThreeXYZ(max, max, min, corners[6]);
-	ThreeXYZ(min, max, min, corners[7]);
+	sThreeXYZ(max, min, max, corners[0]);
+	sThreeXYZ(min, min, max, corners[1]);
+	sThreeXYZ(max, min, min, corners[2]);
+	sThreeXYZ(min, min, min, corners[3]);
+	sThreeXYZ(max, max, max, corners[4]);
+	sThreeXYZ(min, max, max, corners[5]);
+	sThreeXYZ(max, max, min, corners[6]);
+	sThreeXYZ(min, max, min, corners[7]);
 
 	return	PF_CreateCubeFromCorners(corners, false, pGD);
 }
 
 PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, bool bFlipped, GraphicsDevice *pGD)
 {
-	VPosNorm	vpn[24];
+	VPosNormCol	vpn[24];
 
 	//cube corners
 	vec3	lowerTopRight, lowerTopLeft, lowerBotRight, lowerBotLeft;
@@ -119,71 +83,73 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, bool bFlipped, Graphi
 
 	//cube sides
 	//top
-	glm_vec3_copy(upperTopLeft,		vpn[0].Position);
-	glm_vec3_copy(upperTopRight,	vpn[1].Position);
-	glm_vec3_copy(upperBotRight,	vpn[2].Position);
-	glm_vec3_copy(upperBotLeft,		vpn[3].Position);
+	glm_vec3_copy(upperTopLeft,		vpn[0].PositionU);
+	glm_vec3_copy(upperTopRight,	vpn[1].PositionU);
+	glm_vec3_copy(upperBotRight,	vpn[2].PositionU);
+	glm_vec3_copy(upperBotLeft,		vpn[3].PositionU);
 
 	//bottom (note reversal)
-	glm_vec3_copy(lowerTopLeft,		vpn[7].Position);
-	glm_vec3_copy(lowerTopRight,	vpn[6].Position);
-	glm_vec3_copy(lowerBotRight,	vpn[5].Position);
-	glm_vec3_copy(lowerBotLeft,		vpn[4].Position);
+	glm_vec3_copy(lowerTopLeft,		vpn[7].PositionU);
+	glm_vec3_copy(lowerTopRight,	vpn[6].PositionU);
+	glm_vec3_copy(lowerBotRight,	vpn[5].PositionU);
+	glm_vec3_copy(lowerBotLeft,		vpn[4].PositionU);
 
 	//top z side
-	glm_vec3_copy(upperTopLeft,		vpn[11].Position);
-	glm_vec3_copy(upperTopRight,	vpn[10].Position);
-	glm_vec3_copy(lowerTopRight,	vpn[9].Position);
-	glm_vec3_copy(lowerTopLeft,		vpn[8].Position);
+	glm_vec3_copy(upperTopLeft,		vpn[11].PositionU);
+	glm_vec3_copy(upperTopRight,	vpn[10].PositionU);
+	glm_vec3_copy(lowerTopRight,	vpn[9].PositionU);
+	glm_vec3_copy(lowerTopLeft,		vpn[8].PositionU);
 
 	//bottom z side
-	glm_vec3_copy(upperBotLeft,		vpn[12].Position);
-	glm_vec3_copy(upperBotRight,	vpn[13].Position);
-	glm_vec3_copy(lowerBotRight,	vpn[14].Position);
-	glm_vec3_copy(lowerBotLeft,		vpn[15].Position);
+	glm_vec3_copy(upperBotLeft,		vpn[12].PositionU);
+	glm_vec3_copy(upperBotRight,	vpn[13].PositionU);
+	glm_vec3_copy(lowerBotRight,	vpn[14].PositionU);
+	glm_vec3_copy(lowerBotLeft,		vpn[15].PositionU);
 
 	//-x side
-	glm_vec3_copy(upperTopLeft,		vpn[16].Position);
-	glm_vec3_copy(upperBotLeft,		vpn[17].Position);
-	glm_vec3_copy(lowerBotLeft,		vpn[18].Position);
-	glm_vec3_copy(lowerTopLeft,		vpn[19].Position);
+	glm_vec3_copy(upperTopLeft,		vpn[16].PositionU);
+	glm_vec3_copy(upperBotLeft,		vpn[17].PositionU);
+	glm_vec3_copy(lowerBotLeft,		vpn[18].PositionU);
+	glm_vec3_copy(lowerTopLeft,		vpn[19].PositionU);
 
 	//+x side
-	glm_vec3_copy(upperTopRight,	vpn[23].Position);
-	glm_vec3_copy(upperBotRight,	vpn[22].Position);
-	glm_vec3_copy(lowerBotRight,	vpn[21].Position);
-	glm_vec3_copy(lowerTopRight,	vpn[20].Position);
+	glm_vec3_copy(upperTopRight,	vpn[23].PositionU);
+	glm_vec3_copy(upperBotRight,	vpn[22].PositionU);
+	glm_vec3_copy(lowerBotRight,	vpn[21].PositionU);
+	glm_vec3_copy(lowerTopRight,	vpn[20].PositionU);
+
+	vec4	colWhite	={	1,1,1,1	};
 
 	//normals
-	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpn[0].Normal);
-	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpn[1].Normal);
-	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpn[2].Normal);
-	Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpn[3].Normal);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, colWhite, vpn[0].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, colWhite, vpn[1].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, colWhite, vpn[2].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, colWhite, vpn[3].NormVCol);
 
-	Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpn[4].Normal);
-	Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpn[5].Normal);
-	Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpn[6].Normal);
-	Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpn[7].Normal);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, colWhite, vpn[4].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, colWhite, vpn[5].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, colWhite, vpn[6].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, colWhite, vpn[7].NormVCol);
 
-	Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpn[8].Normal);
-	Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpn[9].Normal);
-	Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpn[10].Normal);
-	Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpn[11].Normal);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, colWhite, vpn[8].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, colWhite, vpn[9].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, colWhite, vpn[10].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, colWhite, vpn[11].NormVCol);
 
-	Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpn[12].Normal);
-	Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpn[13].Normal);
-	Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpn[14].Normal);
-	Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpn[15].Normal);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, colWhite, vpn[12].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, colWhite, vpn[13].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, colWhite, vpn[14].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, colWhite, vpn[15].NormVCol);
 
-	Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpn[16].Normal);
-	Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpn[17].Normal);
-	Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpn[18].Normal);
-	Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpn[19].Normal);
+	Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, colWhite, vpn[16].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, colWhite, vpn[17].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, colWhite, vpn[18].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, colWhite, vpn[19].NormVCol);
 
-	Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpn[20].Normal);
-	Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpn[21].Normal);
-	Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpn[22].Normal);
-	Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpn[23].Normal);
+	Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, colWhite, vpn[20].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, colWhite, vpn[21].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, colWhite, vpn[22].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, colWhite, vpn[23].NormVCol);
 
 	//indexes
 	uint16_t	idx, indexes[36];
@@ -216,16 +182,15 @@ PrimObject	*PF_CreateCubeFromCorners(const vec3 *pCorners, bool bFlipped, Graphi
 	pObj->mVertCount	=24;
 	pObj->mIndexCount	=36;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), 24, vpn,
+		&pObj->mpVB, &pObj->mpVBSRV);
 
 	//make index buffer
-	MakeIBDesc(&bufDesc, 36 * 2);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, 36 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
 
-	pObj->mVertSize	=sizeof(VPosNorm);
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
 }
@@ -262,8 +227,8 @@ PrimObject	*PF_CreateCube(float size, bool bFlipped, GraphicsDevice *pGD)
 
 PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, int numBounds, GraphicsDevice *pGD)
 {
-	VPosNormCol0	*vpnc	=malloc(sizeof(VPosNormCol0) * 24 * numBounds);
-	uint32_t		*inds	=malloc(sizeof(uint32_t) * 36 * numBounds);
+	VPosNormCol	*vpnc	=malloc(sizeof(VPosNormCol) * 24 * numBounds);
+	uint32_t	*inds	=malloc(sizeof(uint32_t) * 36 * numBounds);
 
 	for(int i=0;i < numBounds;i++)
 	{
@@ -324,76 +289,71 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 
 		//cube sides
 		//top
-		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 0].Position);
-		glm_vec3_copy(upperTopRight,	vpnc[ofs + 1].Position);
-		glm_vec3_copy(upperBotRight,	vpnc[ofs + 2].Position);
-		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 3].Position);
+		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 0].PositionU);
+		glm_vec3_copy(upperTopRight,	vpnc[ofs + 1].PositionU);
+		glm_vec3_copy(upperBotRight,	vpnc[ofs + 2].PositionU);
+		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 3].PositionU);
 
 		//bottom (note reversal)
-		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 7].Position);
-		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 6].Position);
-		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 5].Position);
-		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 4].Position);
+		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 7].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 6].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 5].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 4].PositionU);
 
 		//top z side
-		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 11].Position);
-		glm_vec3_copy(upperTopRight,	vpnc[ofs + 10].Position);
-		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 9].Position);
-		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 8].Position);
+		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 11].PositionU);
+		glm_vec3_copy(upperTopRight,	vpnc[ofs + 10].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 9].PositionU);
+		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 8].PositionU);
 
 		//bottom z side
-		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 12].Position);
-		glm_vec3_copy(upperBotRight,	vpnc[ofs + 13].Position);
-		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 14].Position);
-		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 15].Position);
+		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 12].PositionU);
+		glm_vec3_copy(upperBotRight,	vpnc[ofs + 13].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 14].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 15].PositionU);
 
 		//-x side
-		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 16].Position);
-		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 17].Position);
-		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 18].Position);
-		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 19].Position);
+		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 16].PositionU);
+		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 17].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 18].PositionU);
+		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 19].PositionU);
 
 		//+x side
-		glm_vec3_copy(upperTopRight,	vpnc[ofs + 23].Position);
-		glm_vec3_copy(upperBotRight,	vpnc[ofs + 22].Position);
-		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 21].Position);
-		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 20].Position);
+		glm_vec3_copy(upperTopRight,	vpnc[ofs + 23].PositionU);
+		glm_vec3_copy(upperBotRight,	vpnc[ofs + 22].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 21].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 20].PositionU);
 		
 		//normals
-		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnc[ofs + 0].Normal);
-		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnc[ofs + 1].Normal);
-		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnc[ofs + 2].Normal);
-		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpnc[ofs + 3].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpnc[0].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpnc[1].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpnc[2].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpnc[3].NormVCol);
 
-		Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnc[ofs + 4].Normal);
-		Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnc[ofs + 5].Normal);
-		Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnc[ofs + 6].Normal);
-		Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpnc[ofs + 7].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpnc[4].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpnc[5].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpnc[6].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpnc[7].NormVCol);
 
-		Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnc[ofs + 8].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnc[ofs + 9].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnc[ofs + 10].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpnc[ofs + 11].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpnc[8].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpnc[9].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpnc[10].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpnc[11].NormVCol);
 
-		Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnc[ofs + 12].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnc[ofs + 13].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnc[ofs + 14].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpnc[ofs + 15].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpnc[12].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpnc[13].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpnc[14].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpnc[15].NormVCol);
 
-		Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnc[ofs + 16].Normal);
-		Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnc[ofs + 17].Normal);
-		Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnc[ofs + 18].Normal);
-		Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpnc[ofs + 19].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpnc[16].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpnc[17].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpnc[18].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpnc[19].NormVCol);
 
-		Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnc[ofs + 20].Normal);
-		Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnc[ofs + 21].Normal);
-		Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnc[ofs + 22].Normal);
-		Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpnc[ofs + 23].Normal);
-
-		for(int j=0;j < 24;j++)
-		{
-			Misc_ConvertVec4ToF16(col, vpnc[ofs + j].Color0);
-		}
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpnc[20].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpnc[21].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpnc[22].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpnc[23].NormVCol);
 
 		//indexes
 		uint32_t	idx	=ofs;
@@ -418,19 +378,18 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 	pObj->mVertCount	=24 * numBounds;
 	pObj->mIndexCount	=36 * numBounds;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNormCol0) * 24 * numBounds);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnc, bufDesc.ByteWidth);
-
 	//make index buffer
-	MakeIBDesc(&bufDesc, 36 * 4 * numBounds);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, 36 * 4 * numBounds);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, inds, bufDesc.ByteWidth);
+
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), 24 * numBounds,
+							vpnc, &pObj->mpVB, &pObj->mpVBSRV);
 
 	free(vpnc);
 	free(inds);
 
-	pObj->mVertSize	=sizeof(VPosNormCol0);
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
 }
@@ -438,7 +397,7 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 								float size, GraphicsDevice *pGD)
 {
-	VPosNorm	*vpn	=malloc(sizeof(VPosNorm) * 24 * numCubes);
+	VPosNormCol	*vpn	=malloc(sizeof(VPosNormCol) * 24 * numCubes);
 	uint32_t	*inds	=malloc(sizeof(uint32_t) * 36 * numCubes);
 
 	vec3	sizeVec;
@@ -448,6 +407,9 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 	{
 		int		ofs	=i * 24;
 		vec3	mins, maxs;
+		vec4	col;
+
+		Misc_RandomColour(col);
 
 		glm_vec3_sub(pCubeCenters[i], sizeVec, mins);
 		glm_vec3_add(pCubeCenters[i], sizeVec, maxs);
@@ -500,71 +462,71 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 
 		//cube sides
 		//top
-		glm_vec3_copy(upperTopLeft,		vpn[ofs + 0].Position);
-		glm_vec3_copy(upperTopRight,	vpn[ofs + 1].Position);
-		glm_vec3_copy(upperBotRight,	vpn[ofs + 2].Position);
-		glm_vec3_copy(upperBotLeft,		vpn[ofs + 3].Position);
+		glm_vec3_copy(upperTopLeft,		vpn[ofs + 0].PositionU);
+		glm_vec3_copy(upperTopRight,	vpn[ofs + 1].PositionU);
+		glm_vec3_copy(upperBotRight,	vpn[ofs + 2].PositionU);
+		glm_vec3_copy(upperBotLeft,		vpn[ofs + 3].PositionU);
 
 		//bottom (note reversal)
-		glm_vec3_copy(lowerTopLeft,		vpn[ofs + 7].Position);
-		glm_vec3_copy(lowerTopRight,	vpn[ofs + 6].Position);
-		glm_vec3_copy(lowerBotRight,	vpn[ofs + 5].Position);
-		glm_vec3_copy(lowerBotLeft,		vpn[ofs + 4].Position);
+		glm_vec3_copy(lowerTopLeft,		vpn[ofs + 7].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpn[ofs + 6].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpn[ofs + 5].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpn[ofs + 4].PositionU);
 
 		//top z side
-		glm_vec3_copy(upperTopLeft,		vpn[ofs + 11].Position);
-		glm_vec3_copy(upperTopRight,	vpn[ofs + 10].Position);
-		glm_vec3_copy(lowerTopRight,	vpn[ofs + 9].Position);
-		glm_vec3_copy(lowerTopLeft,		vpn[ofs + 8].Position);
+		glm_vec3_copy(upperTopLeft,		vpn[ofs + 11].PositionU);
+		glm_vec3_copy(upperTopRight,	vpn[ofs + 10].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpn[ofs + 9].PositionU);
+		glm_vec3_copy(lowerTopLeft,		vpn[ofs + 8].PositionU);
 
 		//bottom z side
-		glm_vec3_copy(upperBotLeft,		vpn[ofs + 12].Position);
-		glm_vec3_copy(upperBotRight,	vpn[ofs + 13].Position);
-		glm_vec3_copy(lowerBotRight,	vpn[ofs + 14].Position);
-		glm_vec3_copy(lowerBotLeft,		vpn[ofs + 15].Position);
+		glm_vec3_copy(upperBotLeft,		vpn[ofs + 12].PositionU);
+		glm_vec3_copy(upperBotRight,	vpn[ofs + 13].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpn[ofs + 14].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpn[ofs + 15].PositionU);
 
 		//-x side
-		glm_vec3_copy(upperTopLeft,		vpn[ofs + 16].Position);
-		glm_vec3_copy(upperBotLeft,		vpn[ofs + 17].Position);
-		glm_vec3_copy(lowerBotLeft,		vpn[ofs + 18].Position);
-		glm_vec3_copy(lowerTopLeft,		vpn[ofs + 19].Position);
+		glm_vec3_copy(upperTopLeft,		vpn[ofs + 16].PositionU);
+		glm_vec3_copy(upperBotLeft,		vpn[ofs + 17].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpn[ofs + 18].PositionU);
+		glm_vec3_copy(lowerTopLeft,		vpn[ofs + 19].PositionU);
 
 		//+x side
-		glm_vec3_copy(upperTopRight,	vpn[ofs + 23].Position);
-		glm_vec3_copy(upperBotRight,	vpn[ofs + 22].Position);
-		glm_vec3_copy(lowerBotRight,	vpn[ofs + 21].Position);
-		glm_vec3_copy(lowerTopRight,	vpn[ofs + 20].Position);
+		glm_vec3_copy(upperTopRight,	vpn[ofs + 23].PositionU);
+		glm_vec3_copy(upperBotRight,	vpn[ofs + 22].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpn[ofs + 21].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpn[ofs + 20].PositionU);
 		
 		//normals
-		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpn[ofs + 0].Normal);
-		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpn[ofs + 1].Normal);
-		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpn[ofs + 2].Normal);
-		Misc_Convert4ToF16(0.0f, 1.0f, 0.0f, 1.0f, vpn[ofs + 3].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[0].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[1].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[2].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[3].NormVCol);
 
-		Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpn[ofs + 4].Normal);
-		Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpn[ofs + 5].Normal);
-		Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpn[ofs + 6].Normal);
-		Misc_Convert4ToF16(0.0f, -1.0f, 0.0f, 1.0f, vpn[ofs + 7].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[4].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[5].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[6].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[7].NormVCol);
 
-		Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpn[ofs + 8].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpn[ofs + 9].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpn[ofs + 10].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, 1.0f, 1.0f, vpn[ofs + 11].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[8].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[9].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[10].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[11].NormVCol);
 
-		Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpn[ofs + 12].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpn[ofs + 13].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpn[ofs + 14].Normal);
-		Misc_Convert4ToF16(0.0f, 0.0f, -1.0f, 1.0f, vpn[ofs + 15].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[12].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[13].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[14].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[15].NormVCol);
 
-		Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpn[ofs + 16].Normal);
-		Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpn[ofs + 17].Normal);
-		Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpn[ofs + 18].Normal);
-		Misc_Convert4ToF16(-1.0f, 0.0f, 0.0f, 1.0f, vpn[ofs + 19].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[16].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[17].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[18].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[19].NormVCol);
 
-		Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpn[ofs + 20].Normal);
-		Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpn[ofs + 21].Normal);
-		Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpn[ofs + 22].Normal);
-		Misc_Convert4ToF16(1.0f, 0.0f, 0.0f, 1.0f, vpn[ofs + 23].Normal);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[20].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[21].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[22].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[23].NormVCol);
 
 		//indexes
 		uint32_t	idx	=ofs;
@@ -589,19 +551,18 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 	pObj->mVertCount	=24 * numCubes;
 	pObj->mIndexCount	=36 * numCubes;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24 * numCubes);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
-
 	//make index buffer
-	MakeIBDesc(&bufDesc, 36 * 4 * numCubes);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, 36 * 4 * numCubes);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, inds, bufDesc.ByteWidth);
+
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), 24 * numCubes, vpn,
+							&pObj->mpVB, &pObj->mpVBSRV);
 
 	free(vpn);
 	free(inds);
 
-	pObj->mVertSize	=sizeof(VPosNorm);
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
 }
@@ -609,8 +570,8 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4 *pColours,
 								int numRays, float rayWidth, GraphicsDevice *pGD)
 {
-	VPosNormCol0	*vpnc	=malloc(sizeof(VPosNormCol0) * 24 * numRays);
-	uint32_t		*inds	=malloc(sizeof(uint32_t) * 36 * numRays);
+	VPosNormCol	*vpnc	=malloc(sizeof(VPosNormCol) * 24 * numRays);
+	uint32_t	*inds	=malloc(sizeof(uint32_t) * 36 * numRays);
 
 	//these will be the full extent, passing
 	//through the colliding object
@@ -679,83 +640,77 @@ PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4
 
 		//cube sides
 		//top (Z+)
-		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 0].Position);
-		glm_vec3_copy(upperTopRight,	vpnc[ofs + 1].Position);
-		glm_vec3_copy(upperBotRight,	vpnc[ofs + 2].Position);
-		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 3].Position);
+		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 0].PositionU);
+		glm_vec3_copy(upperTopRight,	vpnc[ofs + 1].PositionU);
+		glm_vec3_copy(upperBotRight,	vpnc[ofs + 2].PositionU);
+		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 3].PositionU);
 
 		//bottom (note reversal) (Z-)
-		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 7].Position);
-		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 6].Position);
-		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 5].Position);
-		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 4].Position);
+		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 7].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 6].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 5].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 4].PositionU);
 
 		//top Y side (Y+)
-		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 11].Position);
-		glm_vec3_copy(upperTopRight,	vpnc[ofs + 10].Position);
-		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 9].Position);
-		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 8].Position);
+		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 11].PositionU);
+		glm_vec3_copy(upperTopRight,	vpnc[ofs + 10].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 9].PositionU);
+		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 8].PositionU);
 
 		//bottom Y side (Y-)
-		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 12].Position);
-		glm_vec3_copy(upperBotRight,	vpnc[ofs + 13].Position);
-		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 14].Position);
-		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 15].Position);
+		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 12].PositionU);
+		glm_vec3_copy(upperBotRight,	vpnc[ofs + 13].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 14].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 15].PositionU);
 
 		//-x side
-		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 16].Position);
-		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 17].Position);
-		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 18].Position);
-		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 19].Position);
+		glm_vec3_copy(upperTopLeft,		vpnc[ofs + 16].PositionU);
+		glm_vec3_copy(upperBotLeft,		vpnc[ofs + 17].PositionU);
+		glm_vec3_copy(lowerBotLeft,		vpnc[ofs + 18].PositionU);
+		glm_vec3_copy(lowerTopLeft,		vpnc[ofs + 19].PositionU);
 
 		//+x side
-		glm_vec3_copy(upperTopRight,	vpnc[ofs + 23].Position);
-		glm_vec3_copy(upperBotRight,	vpnc[ofs + 22].Position);
-		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 21].Position);
-		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 20].Position);
+		glm_vec3_copy(upperTopRight,	vpnc[ofs + 23].PositionU);
+		glm_vec3_copy(upperBotRight,	vpnc[ofs + 22].PositionU);
+		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 21].PositionU);
+		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 20].PositionU);
 		
 		//normals
 		//top (Z+)
-		Misc_ConvertVec3ToF16(rayZ, vpnc[ofs + 0].Normal);
-		Misc_ConvertVec3ToF16(rayZ, vpnc[ofs + 1].Normal);
-		Misc_ConvertVec3ToF16(rayZ, vpnc[ofs + 2].Normal);
-		Misc_ConvertVec3ToF16(rayZ, vpnc[ofs + 3].Normal);
+		Misc_InterleaveVec34ToF16(rayZ, pColours[i], vpnc[ofs + 0].NormVCol);
+		Misc_InterleaveVec34ToF16(rayZ, pColours[i], vpnc[ofs + 1].NormVCol);
+		Misc_InterleaveVec34ToF16(rayZ, pColours[i], vpnc[ofs + 2].NormVCol);
+		Misc_InterleaveVec34ToF16(rayZ, pColours[i], vpnc[ofs + 3].NormVCol);
 
 		//bottom (Z-)
-		Misc_ConvertVec3ToF16(rayNegZ, vpnc[ofs + 4].Normal);
-		Misc_ConvertVec3ToF16(rayNegZ, vpnc[ofs + 5].Normal);
-		Misc_ConvertVec3ToF16(rayNegZ, vpnc[ofs + 6].Normal);
-		Misc_ConvertVec3ToF16(rayNegZ, vpnc[ofs + 7].Normal);
+		Misc_InterleaveVec34ToF16(rayNegZ, pColours[i], vpnc[ofs + 4].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegZ, pColours[i], vpnc[ofs + 5].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegZ, pColours[i], vpnc[ofs + 6].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegZ, pColours[i], vpnc[ofs + 7].NormVCol);
 
 		//top Y side (Y+)
-		Misc_ConvertVec3ToF16(rayY, vpnc[ofs + 8].Normal);
-		Misc_ConvertVec3ToF16(rayY, vpnc[ofs + 9].Normal);
-		Misc_ConvertVec3ToF16(rayY, vpnc[ofs + 10].Normal);
-		Misc_ConvertVec3ToF16(rayY, vpnc[ofs + 11].Normal);
+		Misc_InterleaveVec34ToF16(rayY, pColours[i], vpnc[ofs + 8].NormVCol);
+		Misc_InterleaveVec34ToF16(rayY, pColours[i], vpnc[ofs + 9].NormVCol);
+		Misc_InterleaveVec34ToF16(rayY, pColours[i], vpnc[ofs + 10].NormVCol);
+		Misc_InterleaveVec34ToF16(rayY, pColours[i], vpnc[ofs + 11].NormVCol);
 
 		//bottom Y side (Y-)
-		Misc_ConvertVec3ToF16(rayNegY, vpnc[ofs + 12].Normal);
-		Misc_ConvertVec3ToF16(rayNegY, vpnc[ofs + 13].Normal);
-		Misc_ConvertVec3ToF16(rayNegY, vpnc[ofs + 14].Normal);
-		Misc_ConvertVec3ToF16(rayNegY, vpnc[ofs + 15].Normal);
+		Misc_InterleaveVec34ToF16(rayNegY, pColours[i], vpnc[ofs + 12].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegY, pColours[i], vpnc[ofs + 13].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegY, pColours[i], vpnc[ofs + 14].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegY, pColours[i], vpnc[ofs + 15].NormVCol);
 
 		//-x side
-		Misc_ConvertVec3ToF16(rayNegX, vpnc[ofs + 16].Normal);
-		Misc_ConvertVec3ToF16(rayNegX, vpnc[ofs + 17].Normal);
-		Misc_ConvertVec3ToF16(rayNegX, vpnc[ofs + 18].Normal);
-		Misc_ConvertVec3ToF16(rayNegX, vpnc[ofs + 19].Normal);
+		Misc_InterleaveVec34ToF16(rayNegX, pColours[i], vpnc[ofs + 16].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegX, pColours[i], vpnc[ofs + 17].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegX, pColours[i], vpnc[ofs + 18].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegX, pColours[i], vpnc[ofs + 19].NormVCol);
 
 		//+x side
-		Misc_ConvertVec3ToF16(rayX, vpnc[ofs + 20].Normal);
-		Misc_ConvertVec3ToF16(rayX, vpnc[ofs + 21].Normal);
-		Misc_ConvertVec3ToF16(rayX, vpnc[ofs + 22].Normal);
-		Misc_ConvertVec3ToF16(rayX, vpnc[ofs + 23].Normal);
-
-		//vert colours
-		for(int j=0;j < 24;j++)
-		{
-			Misc_ConvertVec4ToF16(pColours[i], vpnc[ofs + j].Color0);
-		}
+		Misc_InterleaveVec34ToF16(rayX, pColours[i], vpnc[ofs + 20].NormVCol);
+		Misc_InterleaveVec34ToF16(rayX, pColours[i], vpnc[ofs + 21].NormVCol);
+		Misc_InterleaveVec34ToF16(rayX, pColours[i], vpnc[ofs + 22].NormVCol);
+		Misc_InterleaveVec34ToF16(rayX, pColours[i], vpnc[ofs + 23].NormVCol);
 
 		//indexes
 		uint32_t	idx	=ofs;
@@ -780,19 +735,18 @@ PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4
 	pObj->mVertCount	=24 * numRays;
 	pObj->mIndexCount	=36 * numRays;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNormCol0) * 24 * numRays);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnc, bufDesc.ByteWidth);
-
 	//make index buffer
-	MakeIBDesc(&bufDesc, 36 * 4 * numRays);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, 36 * 4 * numRays);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, inds, bufDesc.ByteWidth);
+
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), 24 * numRays,
+							vpnc, &pObj->mpVB, &pObj->mpVBSRV);
 
 	free(vpnc);
 	free(inds);
 
-	pObj->mVertSize	=sizeof(VPosNormCol0);
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
 }
@@ -820,7 +774,7 @@ PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD)
 	vec3	botLowerRight	={	-1.0f,	-1.0f,	-1.0f	};
 
 	//verts
-	VPosNorm	vpn[24];
+	VPosNormCol	vpn[24];
 
 	glm_vec3_scale(UnitY, 2 * sizeY, topPoint);
 	glm_vec3_zero(bottomPoint);
@@ -840,84 +794,86 @@ PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD)
 	glm_vec2_scale(One, 0.5f, topPointTex);
 	glm_vec2_scale(One, 0.5f, bottomPointTex);
 	glm_vec2_scale(UnitX, 0.5f, topTex);
-	MulAdd2DestS(UnitX, 0.5f, UnitY, bottomTex);
+	sMulAdd2DestS(UnitX, 0.5f, UnitY, bottomTex);
 	glm_vec2_scale(UnitY, 0.5f, leftTex);
-	MulAdd2DestS(UnitY, 0.5f, UnitX, rightTex);
+	sMulAdd2DestS(UnitY, 0.5f, UnitX, rightTex);
+
+	vec4	colWhite	={	1,1,1,1	};
 
 	//need to have a lot of duplicates since each
 	//vertex will contain a copy of the face normal
 	//as we want this to be flat shaded
-	Misc_ConvertVec3ToF16(topUpperLeft, vpn[0].Normal);
-	Misc_ConvertVec3ToF16(topUpperLeft, vpn[1].Normal);
-	Misc_ConvertVec3ToF16(topUpperLeft, vpn[2].Normal);
+	Misc_InterleaveVec34ToF16(topUpperLeft, colWhite, vpn[0].NormVCol);
+	Misc_InterleaveVec34ToF16(topUpperLeft, colWhite, vpn[1].NormVCol);
+	Misc_InterleaveVec34ToF16(topUpperLeft, colWhite, vpn[2].NormVCol);
 
-	Misc_ConvertVec3ToF16(topUpperRight, vpn[3].Normal);
-	Misc_ConvertVec3ToF16(topUpperRight, vpn[4].Normal);
-	Misc_ConvertVec3ToF16(topUpperRight, vpn[5].Normal);
+	Misc_InterleaveVec34ToF16(topUpperRight, colWhite, vpn[3].NormVCol);
+	Misc_InterleaveVec34ToF16(topUpperRight, colWhite, vpn[4].NormVCol);
+	Misc_InterleaveVec34ToF16(topUpperRight, colWhite, vpn[5].NormVCol);
 
-	Misc_ConvertVec3ToF16(topLowerLeft, vpn[6].Normal);
-	Misc_ConvertVec3ToF16(topLowerLeft, vpn[7].Normal);
-	Misc_ConvertVec3ToF16(topLowerLeft, vpn[8].Normal);
+	Misc_InterleaveVec34ToF16(topLowerLeft, colWhite, vpn[6].NormVCol);
+	Misc_InterleaveVec34ToF16(topLowerLeft, colWhite, vpn[7].NormVCol);
+	Misc_InterleaveVec34ToF16(topLowerLeft, colWhite, vpn[8].NormVCol);
 
-	Misc_ConvertVec3ToF16(topLowerRight, vpn[9].Normal);
-	Misc_ConvertVec3ToF16(topLowerRight, vpn[10].Normal);
-	Misc_ConvertVec3ToF16(topLowerRight, vpn[11].Normal);
+	Misc_InterleaveVec34ToF16(topLowerRight, colWhite, vpn[9].NormVCol);
+	Misc_InterleaveVec34ToF16(topLowerRight, colWhite, vpn[10].NormVCol);
+	Misc_InterleaveVec34ToF16(topLowerRight, colWhite, vpn[11].NormVCol);
 
-	Misc_ConvertVec3ToF16(botUpperLeft, vpn[12].Normal);
-	Misc_ConvertVec3ToF16(botUpperLeft, vpn[13].Normal);
-	Misc_ConvertVec3ToF16(botUpperLeft, vpn[14].Normal);
+	Misc_InterleaveVec34ToF16(botUpperLeft, colWhite, vpn[12].NormVCol);
+	Misc_InterleaveVec34ToF16(botUpperLeft, colWhite, vpn[13].NormVCol);
+	Misc_InterleaveVec34ToF16(botUpperLeft, colWhite, vpn[14].NormVCol);
 
-	Misc_ConvertVec3ToF16(botUpperRight, vpn[15].Normal);
-	Misc_ConvertVec3ToF16(botUpperRight, vpn[16].Normal);
-	Misc_ConvertVec3ToF16(botUpperRight, vpn[17].Normal);
+	Misc_InterleaveVec34ToF16(botUpperRight, colWhite, vpn[15].NormVCol);
+	Misc_InterleaveVec34ToF16(botUpperRight, colWhite, vpn[16].NormVCol);
+	Misc_InterleaveVec34ToF16(botUpperRight, colWhite, vpn[17].NormVCol);
 
-	Misc_ConvertVec3ToF16(botLowerLeft, vpn[18].Normal);
-	Misc_ConvertVec3ToF16(botLowerLeft, vpn[19].Normal);
-	Misc_ConvertVec3ToF16(botLowerLeft, vpn[20].Normal);
+	Misc_InterleaveVec34ToF16(botLowerLeft, colWhite, vpn[18].NormVCol);
+	Misc_InterleaveVec34ToF16(botLowerLeft, colWhite, vpn[19].NormVCol);
+	Misc_InterleaveVec34ToF16(botLowerLeft, colWhite, vpn[20].NormVCol);
 
-	Misc_ConvertVec3ToF16(botLowerRight, vpn[21].Normal);
-	Misc_ConvertVec3ToF16(botLowerRight, vpn[22].Normal);
-	Misc_ConvertVec3ToF16(botLowerRight, vpn[23].Normal);
+	Misc_InterleaveVec34ToF16(botLowerRight, colWhite, vpn[21].NormVCol);
+	Misc_InterleaveVec34ToF16(botLowerRight, colWhite, vpn[22].NormVCol);
+	Misc_InterleaveVec34ToF16(botLowerRight, colWhite, vpn[23].NormVCol);
 
 	//top upper left face
-	glm_vec3_copy(topPoint, vpn[0].Position);
-	glm_vec3_copy(left, vpn[1].Position);
-	glm_vec3_copy(top, vpn[2].Position);
+	glm_vec3_copy(topPoint, vpn[0].PositionU);
+	glm_vec3_copy(left, vpn[1].PositionU);
+	glm_vec3_copy(top, vpn[2].PositionU);
 
 	//top upper right face
-	glm_vec3_copy(topPoint, vpn[3].Position);
-	glm_vec3_copy(top, vpn[4].Position);
-	glm_vec3_copy(right, vpn[5].Position);
+	glm_vec3_copy(topPoint, vpn[3].PositionU);
+	glm_vec3_copy(top, vpn[4].PositionU);
+	glm_vec3_copy(right, vpn[5].PositionU);
 
 	//top lower left face
-	glm_vec3_copy(topPoint, vpn[6].Position);
-	glm_vec3_copy(bottom, vpn[7].Position);
-	glm_vec3_copy(left, vpn[8].Position);
+	glm_vec3_copy(topPoint, vpn[6].PositionU);
+	glm_vec3_copy(bottom, vpn[7].PositionU);
+	glm_vec3_copy(left, vpn[8].PositionU);
 
 	//top lower right face
-	glm_vec3_copy(topPoint, vpn[9].Position);
-	glm_vec3_copy(right, vpn[10].Position);
-	glm_vec3_copy(bottom, vpn[11].Position);
+	glm_vec3_copy(topPoint, vpn[9].PositionU);
+	glm_vec3_copy(right, vpn[10].PositionU);
+	glm_vec3_copy(bottom, vpn[11].PositionU);
 
 	//bottom upper left face
-	glm_vec3_copy(bottomPoint, vpn[12].Position);
-	glm_vec3_copy(top, vpn[13].Position);
-	glm_vec3_copy(left, vpn[14].Position);
+	glm_vec3_copy(bottomPoint, vpn[12].PositionU);
+	glm_vec3_copy(top, vpn[13].PositionU);
+	glm_vec3_copy(left, vpn[14].PositionU);
 
 	//bottom upper right face
-	glm_vec3_copy(bottomPoint, vpn[15].Position);
-	glm_vec3_copy(right, vpn[16].Position);
-	glm_vec3_copy(top, vpn[17].Position);
+	glm_vec3_copy(bottomPoint, vpn[15].PositionU);
+	glm_vec3_copy(right, vpn[16].PositionU);
+	glm_vec3_copy(top, vpn[17].PositionU);
 
 	//bottom lower left face
-	glm_vec3_copy(bottomPoint, vpn[18].Position);
-	glm_vec3_copy(left, vpn[19].Position);
-	glm_vec3_copy(bottom, vpn[20].Position);
+	glm_vec3_copy(bottomPoint, vpn[18].PositionU);
+	glm_vec3_copy(left, vpn[19].PositionU);
+	glm_vec3_copy(bottom, vpn[20].PositionU);
 
 	//bottom lower right face
-	glm_vec3_copy(bottomPoint, vpn[21].Position);
-	glm_vec3_copy(bottom, vpn[22].Position);
-	glm_vec3_copy(right, vpn[23].Position);
+	glm_vec3_copy(bottomPoint, vpn[21].PositionU);
+	glm_vec3_copy(bottom, vpn[22].PositionU);
+	glm_vec3_copy(right, vpn[23].PositionU);
 
 	//just reference in order, no verts shared
 	uint16_t	idx, indexes[24];
@@ -932,16 +888,15 @@ PrimObject	*PF_CreatePrism(float size, float sizeY, GraphicsDevice *pGD)
 	pObj->mVertCount	=24;
 	pObj->mIndexCount	=24;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 24);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
-
 	//make index buffer
-	MakeIBDesc(&bufDesc, 24 * 2);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, 24 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
 
-	pObj->mVertSize	=sizeof(VPosNorm);
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), 24, vpn,
+							&pObj->mpVB, &pObj->mpVBSRV);
+
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
 }
@@ -968,14 +923,8 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	glm_vec3_normalize(topLowerLeft);
 	glm_vec3_normalize(topLowerRight);
 
-	//all normals are backwards for some strange reason I need to look into
-	glm_vec3_inv(topUpperLeft);
-	glm_vec3_inv(topUpperRight);
-	glm_vec3_inv(topLowerLeft);
-	glm_vec3_inv(topLowerRight);
-
 	//verts
-	VPosNorm	vpnt[18];
+	VPosNormCol	vpnt[18];
 
 	glm_vec3_zero(topPoint);
 
@@ -994,64 +943,65 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	glm_vec2_scale(One, 0.5f, topPointTex);
 	glm_vec2_scale(One, 0.5f, bottomPointTex);
 	glm_vec2_scale(UnitX, 0.5f, topTex);
-	MulAdd2DestS(UnitX, 0.5f, UnitY, bottomTex);
+	sMulAdd2DestS(UnitX, 0.5f, UnitY, bottomTex);
 	glm_vec2_scale(UnitY, 0.5f, leftTex);
-	MulAdd2DestS(UnitY, 0.5f, UnitX, rightTex);
+	sMulAdd2DestS(UnitY, 0.5f, UnitX, rightTex);
+
+	vec4	colWhite	={	1,1,1,1	};
 
 	//need to have a lot of duplicates since each
 	//vertex will contain a copy of the face normal
 	//as we want this to be flat shaded
-	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[0].Normal);
-	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[1].Normal);
-	Misc_ConvertVec3ToF16(topUpperLeft, vpnt[2].Normal);
+	Misc_InterleaveVec34ToF16(topUpperLeft, colWhite, vpnt[0].NormVCol);
+	Misc_InterleaveVec34ToF16(topUpperLeft, colWhite, vpnt[1].NormVCol);
+	Misc_InterleaveVec34ToF16(topUpperLeft, colWhite, vpnt[2].NormVCol);
 
-	Misc_ConvertVec3ToF16(topUpperRight, vpnt[3].Normal);
-	Misc_ConvertVec3ToF16(topUpperRight, vpnt[4].Normal);
-	Misc_ConvertVec3ToF16(topUpperRight, vpnt[5].Normal);
+	Misc_InterleaveVec34ToF16(topUpperRight, colWhite, vpnt[3].NormVCol);
+	Misc_InterleaveVec34ToF16(topUpperRight, colWhite, vpnt[4].NormVCol);
+	Misc_InterleaveVec34ToF16(topUpperRight, colWhite, vpnt[5].NormVCol);
 
-	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[6].Normal);
-	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[7].Normal);
-	Misc_ConvertVec3ToF16(topLowerLeft, vpnt[8].Normal);
+	Misc_InterleaveVec34ToF16(topLowerLeft, colWhite, vpnt[6].NormVCol);
+	Misc_InterleaveVec34ToF16(topLowerLeft, colWhite, vpnt[7].NormVCol);
+	Misc_InterleaveVec34ToF16(topLowerLeft, colWhite, vpnt[8].NormVCol);
 
-	Misc_ConvertVec3ToF16(topLowerRight, vpnt[9].Normal);
-	Misc_ConvertVec3ToF16(topLowerRight, vpnt[10].Normal);
-	Misc_ConvertVec3ToF16(topLowerRight, vpnt[11].Normal);
+	Misc_InterleaveVec34ToF16(topLowerRight, colWhite, vpnt[9].NormVCol);
+	Misc_InterleaveVec34ToF16(topLowerRight, colWhite, vpnt[10].NormVCol);
+	Misc_InterleaveVec34ToF16(topLowerRight, colWhite, vpnt[11].NormVCol);
 
-	//bottom face
-	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[12].Normal);
-	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[13].Normal);
-	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[14].Normal);
-	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[15].Normal);
-	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[16].Normal);
-	Misc_Convert4ToF16(0, 1, 0, 1, vpnt[17].Normal);
-
+	Misc_InterleaveVec4ToF16((vec4){0, 1, 0, 1}, colWhite, vpnt[12].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){0, 1, 0, 1}, colWhite, vpnt[13].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){0, 1, 0, 1}, colWhite, vpnt[14].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){0, 1, 0, 1}, colWhite, vpnt[15].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){0, 1, 0, 1}, colWhite, vpnt[16].NormVCol);
+	Misc_InterleaveVec4ToF16((vec4){0, 1, 0, 1}, colWhite, vpnt[17].NormVCol);
+	
 	//top upper left face
-	glm_vec3_copy(topPoint, vpnt[0].Position);
-	glm_vec3_copy(left, vpnt[2].Position);
-	glm_vec3_copy(top, vpnt[1].Position);
+	glm_vec3_copy(topPoint, vpnt[0].PositionU);
+	glm_vec3_copy(left, vpnt[2].PositionU);
+	glm_vec3_copy(top, vpnt[1].PositionU);
 
 	//top upper right face
-	glm_vec3_copy(topPoint, vpnt[3].Position);
-	glm_vec3_copy(top, vpnt[5].Position);
-	glm_vec3_copy(right, vpnt[4].Position);
+	glm_vec3_copy(topPoint, vpnt[3].PositionU);
+	glm_vec3_copy(top, vpnt[5].PositionU);
+	glm_vec3_copy(right, vpnt[4].PositionU);
 
 	//top lower left face
-	glm_vec3_copy(topPoint, vpnt[6].Position);
-	glm_vec3_copy(bottom, vpnt[8].Position);
-	glm_vec3_copy(left, vpnt[7].Position);
+	glm_vec3_copy(topPoint, vpnt[6].PositionU);
+	glm_vec3_copy(bottom, vpnt[8].PositionU);
+	glm_vec3_copy(left, vpnt[7].PositionU);
 
 	//top lower right face
-	glm_vec3_copy(topPoint, vpnt[9].Position);
-	glm_vec3_copy(right, vpnt[11].Position);
-	glm_vec3_copy(bottom, vpnt[10].Position);
+	glm_vec3_copy(topPoint, vpnt[9].PositionU);
+	glm_vec3_copy(right, vpnt[11].PositionU);
+	glm_vec3_copy(bottom, vpnt[10].PositionU);
 
 	//bottom face (2 triangles)
-	glm_vec3_copy(top, vpnt[12].Position);
-	glm_vec3_copy(bottom, vpnt[14].Position);
-	glm_vec3_copy(right, vpnt[13].Position);
-	glm_vec3_copy(top, vpnt[15].Position);
-	glm_vec3_copy(left, vpnt[17].Position);
-	glm_vec3_copy(bottom, vpnt[16].Position);
+	glm_vec3_copy(top, vpnt[12].PositionU);
+	glm_vec3_copy(bottom, vpnt[14].PositionU);
+	glm_vec3_copy(right, vpnt[13].PositionU);
+	glm_vec3_copy(top, vpnt[15].PositionU);
+	glm_vec3_copy(left, vpnt[17].PositionU);
+	glm_vec3_copy(bottom, vpnt[16].PositionU);
 
 	//just reference in order, no verts shared
 	uint16_t	idx, indexes[18];
@@ -1066,16 +1016,15 @@ PrimObject	*PF_CreateHalfPrism(float size, float sizeY, GraphicsDevice *pGD)
 	pObj->mVertCount	=18;
 	pObj->mIndexCount	=18;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 18);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpnt, bufDesc.ByteWidth);
-
 	//make index buffer
-	MakeIBDesc(&bufDesc, 18 * 2);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, 18 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, indexes, bufDesc.ByteWidth);
 
-	pObj->mVertSize	=sizeof(VPosNorm);
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), 18, vpnt,
+							&pObj->mpVB, &pObj->mpVBSRV);
+
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
 }
@@ -1198,8 +1147,10 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDe
 		}
 	}
 
+	vec4	colWhite	={	1,1,1,1	};
+
 	//alloc verts
-	VPosNorm	*vpn	=malloc(sizeof(VPosNorm) * vertCount * 2);
+	VPosNormCol	*vpn	=malloc(sizeof(VPosNormCol) * vertCount * 2);
 
 	//copy in hemisphere
 	for(int i=0;i < vertCount;i++)
@@ -1208,10 +1159,10 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDe
 
 		glm_vec3_normalize_to(pPoints[i], norm);
 
-		glm_vec3_copy(center, vpn[i].Position);
-		glm_vec3_muladds(norm, radius, vpn[i].Position);
+		glm_vec3_copy(center, vpn[i].PositionU);
+		glm_vec3_muladds(norm, radius, vpn[i].PositionU);
 
-		Misc_ConvertVec3ToF16(norm, vpn[i].Normal);
+		Misc_InterleaveVec34ToF16(norm, colWhite, vpn[i].NormVCol);
 	}
 
 	//dupe for other half
@@ -1222,10 +1173,11 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDe
 
 		glm_vec3_normalize_to(pPoints[i - ofs], norm);
 
-		glm_vec3_copy(center, vpn[i].Position);
-		glm_vec3_muladds(norm, -radius, vpn[i].Position);
+		glm_vec3_copy(center, vpn[i].PositionU);
+		glm_vec3_muladds(norm, -radius, vpn[i].PositionU);
 
-		Misc_Convert4ToF16(-norm[0], -norm[1], -norm[2], 1.0f, vpn[i].Normal);
+		glm_vec3_flipsign(norm);
+		Misc_InterleaveVec34ToF16(norm, colWhite, vpn[i].NormVCol);
 	}
 
 	//index other half, flip winding
@@ -1251,21 +1203,20 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDe
 	pObj->mVertCount	=vertCount;
 	pObj->mIndexCount	=indCount * 2;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * vertCount * 2);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
-
 	//make index buffer
-	MakeIBDesc(&bufDesc, indCount * 2 * 2);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, indCount * 2 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);
+
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), vertCount, vpn,
+							&pObj->mpVB, &pObj->mpVBSRV);
 
 	//free temp buffers
 	free(pPoints);
 	free(pInds);
 	free(vpn);
 
-	pObj->mVertSize	=sizeof(VPosNorm);
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
 }
@@ -1291,6 +1242,8 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 			vertCount++;
 		}
 	}
+
+	vec4	colWhite	={	1,1,1,1	};
 
 	//alloc some points
 	vec3	*pPoints	=malloc(sizeof(vec3) * vertCount * 2);
@@ -1484,7 +1437,7 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 	pInds[curIdx++]	=55;	//wrap
 
 	//alloc verts
-	VPosNorm	*vpn	=malloc(sizeof(VPosNorm) * vertCount * 2);
+	VPosNormCol	*vpn	=malloc(sizeof(VPosNormCol) * vertCount * 2);
 
 	//copy in hemisphere
 	for(int i=0;i < vertCount;i++)
@@ -1493,10 +1446,10 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 
 		glm_vec3_normalize_to(pPoints[i], norm);
 
-		glm_vec3_zero(vpn[i].Position);
-		glm_vec3_muladds(norm, radius, vpn[i].Position);
+		glm_vec3_zero(vpn[i].PositionU);
+		glm_vec3_muladds(norm, radius, vpn[i].PositionU);
 
-		Misc_ConvertVec3ToF16(norm, vpn[i].Normal);
+		Misc_InterleaveVec34ToF16(norm, colWhite, vpn[i].NormVCol);
 	}
 
 	//dupe for other half
@@ -1507,11 +1460,12 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 
 		glm_vec3_normalize_to(pPoints[i - ofs], norm);
 
-		glm_vec3_zero(vpn[i].Position);
-		glm_vec3_muladds(norm, -radius, vpn[i].Position);
-		glm_vec3_muladds(UnitY, len, vpn[i].Position);
+		glm_vec3_zero(vpn[i].PositionU);
+		glm_vec3_muladds(norm, -radius, vpn[i].PositionU);
+		glm_vec3_muladds(UnitY, len, vpn[i].PositionU);
 
-		Misc_Convert4ToF16(-norm[0], -norm[1], -norm[2], 1.0f, vpn[i].Normal);
+		glm_vec3_flipsign(norm);
+		Misc_InterleaveVec34ToF16(norm, colWhite, vpn[i].NormVCol);
 	}
 
 	//index other half, flip winding
@@ -1528,21 +1482,20 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 	pObj->mVertCount	=vertCount * 2;
 	pObj->mIndexCount	=indCount * 2;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * vertCount * 2);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, vpn, bufDesc.ByteWidth);
-
 	//make index buffer
-	MakeIBDesc(&bufDesc, indCount * 2 * 2);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, indCount * 2 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);
+
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), 2 * vertCount, vpn,
+							&pObj->mpVB, &pObj->mpVBSRV);
 
 	//free temp buffers
 	free(pPoints);
 	free(pInds);
 	free(vpn);
 
-	pObj->mVertSize	=sizeof(VPosNorm);
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
 }
@@ -1550,17 +1503,19 @@ PrimObject	*PF_CreateCapsule(float radius, float len, GraphicsDevice *pGD)
 //a single triangle
 PrimObject	*PF_CreateTri(const vec3 tri[3], GraphicsDevice *pGD)
 {
-	VPosNorm	verts[3];
+	VPosNormCol	verts[3];
 	uint16_t	inds[3];
+	vec4		colWhite	={	1,1,1,1	};
 
 	vec4	plane;
 	PM_FromTri(tri[0], tri[1], tri[2], plane);
 
 	for(int i=0;i < 3;i++)
 	{
-		glm_vec3_copy(tri[i], verts[i].Position);
+		glm_vec3_copy(tri[i], verts[i].PositionU);
 
-		Misc_ConvertVec4ToF16(plane, verts[i].Normal);
+//		glm_vec4_copy(plane, verts[i].NormalV);
+		Misc_InterleaveVec4ToF16(plane, colWhite, verts[i].NormVCol);
 
 		inds[i]	=i;
 	}
@@ -1571,16 +1526,77 @@ PrimObject	*PF_CreateTri(const vec3 tri[3], GraphicsDevice *pGD)
 	pObj->mVertCount	=3;
 	pObj->mIndexCount	=3;
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(VPosNorm) * 3);
-	pObj->mpVB	=GD_CreateBufferWithData(pGD, &bufDesc, verts, bufDesc.ByteWidth);
-
 	//make index buffer
-	MakeIBDesc(&bufDesc, 3 * 2);
+	D3D11_BUFFER_DESC	bufDesc;
+	sMakeIBDesc(&bufDesc, 3 * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, inds, bufDesc.ByteWidth);
 
-	pObj->mVertSize	=sizeof(VPosNorm);
+	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), 3, verts,
+							&pObj->mpVB, &pObj->mpVBSRV);
+
+	pObj->mVertSize	=sizeof(VPosNormCol);
 
 	return	pObj;
+}
+
+
+//statics
+static void	sMakeStructuredBuffer(GraphicsDevice *pGD,
+	int structSize, int numItems, void *pVData,
+	ID3D11Buffer **ppBuffer, ID3D11ShaderResourceView **ppSRV)
+{
+	//buffer is not optional here
+	assert(ppBuffer != NULL);
+
+	D3D11_BUFFER_DESC	bufDesc;
+	memset(&bufDesc, 0, sizeof(D3D11_BUFFER_DESC));
+
+	//particle buffer
+	bufDesc.BindFlags			=D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	bufDesc.ByteWidth			=structSize * numItems;
+	bufDesc.CPUAccessFlags		=0;
+	bufDesc.MiscFlags			=D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	bufDesc.StructureByteStride	=structSize;
+	bufDesc.Usage				=D3D11_USAGE_DEFAULT;
+
+	*ppBuffer	=GD_CreateBufferWithData(pGD, &bufDesc,
+					pVData, structSize * numItems);
+
+	if(ppSRV != NULL)
+	{
+		D3D11_SHADER_RESOURCE_VIEW_DESC	srvDesc;
+		memset(&srvDesc, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
+
+		srvDesc.Format				=DXGI_FORMAT_UNKNOWN;
+		srvDesc.ViewDimension		=D3D11_SRV_DIMENSION_BUFFER;
+		srvDesc.Buffer.ElementWidth	=numItems;
+
+		*ppSRV	=GD_CreateSRV(pGD, (ID3D11Resource *)*ppBuffer, &srvDesc);
+	}
+}
+
+static void	sMulAdd2DestS(const vec2 a, const float b, const vec2 c, vec2 dest)
+{
+	dest[0]	=c[0] + (a[0] * b);
+	dest[1]	=c[1] + (a[1] * b);
+}
+
+static void	sMakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
+{
+	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
+
+	pDesc->BindFlags			=D3D11_BIND_INDEX_BUFFER;
+	pDesc->ByteWidth			=byteSize;
+	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_NONE;
+	pDesc->MiscFlags			=0;
+	pDesc->StructureByteStride	=0;
+	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
+}
+
+//make a vec out of stealing xyz from 3 different vectors
+static void	sThreeXYZ(const vec3 x, const vec3 y, const vec3 z, vec3 dest)
+{
+	dest[0]	=x[0];
+	dest[1]	=y[1];
+	dest[2]	=z[2];
 }

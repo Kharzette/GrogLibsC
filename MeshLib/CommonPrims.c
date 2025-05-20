@@ -15,9 +15,8 @@ typedef struct	AxisXYZ_t
 
 	float	mLength, mWidth;
 
-	ID3D11InputLayout	*mpLayout;
 	ID3D11VertexShader	*mpVS;
-	ID3D11PixelShader	*mpPS;
+	ID3D11PixelShader	*mpPS;	
 
 }	AxisXYZ;
 
@@ -32,7 +31,6 @@ typedef struct	LightRay_t
 
 	vec3	mPosition;
 
-	ID3D11InputLayout	*mpLayout;
 	ID3D11VertexShader	*mpVS;
 	ID3D11PixelShader	*mpPS;
 
@@ -70,9 +68,8 @@ AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD, const Stu
 
 	glm_mat4_identity(pRet->mWorld);
 
-	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNorm");
-	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosVS");
-	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosTexColIdxVS");
+	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriPS");
 
 	return	pRet;
 }
@@ -109,9 +106,8 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD, cons
 
 	glm_rotate(pRet->mPointyOffset, -GLM_PI_2, UnitX);
 
-	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNorm");
-	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosVS");
-	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriSolidSpecPS");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosTexColIdxVS");
+	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriPS");
 
 	return	pRet;
 }
@@ -120,11 +116,11 @@ void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 						const vec3 location, CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//set gpu stuff
-	GD_IASetVertexBuffers(pGD, pRay->mpAxis->mpVB, pRay->mpAxis->mVertSize, 0);
+//	GD_IASetVertexBuffers(pGD, pRay->mpAxis->mpVB, pRay->mpAxis->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pRay->mpAxis->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetSRV(pGD, pRay->mpAxis->mpVBSRV, 0);
 	GD_VSSetShader(pGD, pRay->mpVS);
 	GD_PSSetShader(pGD, pRay->mpPS);
-	GD_IASetInputLayout(pGD, pRay->mpLayout);
 
 	//get a good side perp vec
 	vec3	lightX, lightY, lightZ;
@@ -157,8 +153,9 @@ void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 	GD_DrawIndexed(pGD, pRay->mpAxis->mIndexCount, 0, 0);
 
 	//set pointy end VB/IB
-	GD_IASetVertexBuffers(pGD, pRay->mpPointyEnd->mpVB, pRay->mpPointyEnd->mVertSize, 0);
+//	GD_IASetVertexBuffers(pGD, pRay->mpPointyEnd->mpVB, pRay->mpPointyEnd->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pRay->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetSRV(pGD, pRay->mpPointyEnd->mpVBSRV, 0);
 
 	mat4	pointy;
 	glm_mat4_mul(pRay->mWorld, pRay->mPointyOffset, pointy);
@@ -175,11 +172,11 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 					CBKeeper *pCBK, GraphicsDevice *pGD)
 {
 	//set X VB/IB
-	GD_IASetVertexBuffers(pGD, pAxis->mpX->mpVB, pAxis->mpX->mVertSize, 0);
+//	GD_IASetVertexBuffers(pGD, pAxis->mpX->mpVB, pAxis->mpX->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpX->mpIB, DXGI_FORMAT_R16_UINT, 0);
 	GD_VSSetShader(pGD, pAxis->mpVS);
 	GD_PSSetShader(pGD, pAxis->mpPS);
-	GD_IASetInputLayout(pGD, pAxis->mpLayout);
+	GD_VSSetSRV(pGD, pAxis->mpX->mpVBSRV, 0);
 
 	//materialish stuff
 	CBK_SetSolidColour(pCBK, xCol);
@@ -201,8 +198,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpX->mIndexCount, 0, 0);
 
 	//set pointy end VB/IB for X
-	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
+//	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetSRV(pGD, pAxis->mpPointyEnd->mpVBSRV, 0);
 
 	mat4	pointyRot;
 	glm_rotate_make(pointyRot, GLM_PI_2, UnitZ);
@@ -223,8 +221,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpPointyEnd->mIndexCount, 0, 0);
 
 	//set Y VB/IB
-	GD_IASetVertexBuffers(pGD, pAxis->mpY->mpVB, pAxis->mpY->mVertSize, 0);
+//	GD_IASetVertexBuffers(pGD, pAxis->mpY->mpVB, pAxis->mpY->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpY->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetSRV(pGD, pAxis->mpY->mpVBSRV, 0);
 
 	//materialish stuff
 	CBK_SetSolidColour(pCBK, yCol);
@@ -234,8 +233,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpY->mIndexCount, 0, 0);
 
 	//set pointy end VB/IB for Y
-	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
+//	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetSRV(pGD, pAxis->mpPointyEnd->mpVBSRV, 0);
 
 	pointyPos[0]	=0.0f;
 	pointyPos[1]	=pAxis->mLength + (pAxis->mWidth * 4.0f);
@@ -253,8 +253,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpPointyEnd->mIndexCount, 0, 0);
 
 	//set Z VB/IB
-	GD_IASetVertexBuffers(pGD, pAxis->mpZ->mpVB, pAxis->mpZ->mVertSize, 0);
+//	GD_IASetVertexBuffers(pGD, pAxis->mpZ->mpVB, pAxis->mpZ->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpZ->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetSRV(pGD, pAxis->mpZ->mpVBSRV, 0);
 
 	//materialish stuff
 	CBK_SetSolidColour(pCBK, zCol);
@@ -264,8 +265,9 @@ void	CP_DrawAxis(AxisXYZ *pAxis, const vec3 lightDir,
 	GD_DrawIndexed(pGD, pAxis->mpZ->mIndexCount, 0, 0);
 
 	//set pointy end VB/IB for Z
-	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
+//	GD_IASetVertexBuffers(pGD, pAxis->mpPointyEnd->mpVB, pAxis->mpPointyEnd->mVertSize, 0);
 	GD_IASetIndexBuffers(pGD, pAxis->mpPointyEnd->mpIB, DXGI_FORMAT_R16_UINT, 0);
+	GD_VSSetSRV(pGD, pAxis->mpPointyEnd->mpVBSRV, 0);
 
 	pointyPos[0]	=0.0f;
 	pointyPos[1]	=0.0f;

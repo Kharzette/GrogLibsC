@@ -44,7 +44,7 @@
 #define	RADIUS				7
 #endif
 #define	KERNEL_SIZE			(RADIUS * 2 + 1)
-#define	NUM_CUSTOM_COLOURS	8
+#define	NUM_CUSTOM_COLOURS	16
 
 
 //CommonFunctions.hlsli

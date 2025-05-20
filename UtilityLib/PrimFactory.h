@@ -8,10 +8,11 @@ typedef struct	ConvexVolume_t	ConvexVolume;
 
 typedef struct	PrimObject_t
 {
-	ID3D11Buffer	*mpVB, *mpIB;	//vert and index buffers
-	int				mVertCount;		//num verts
-	int				mIndexCount;	//num indexes
-	int				mVertSize;		//size in bytes of vert format in use
+	ID3D11Buffer				*mpVB, *mpIB;	//vert and index buffers
+	ID3D11ShaderResourceView	*mpVBSRV;		//vs srv
+	int							mVertCount;		//num verts
+	int							mIndexCount;	//num indexes
+	int							mVertSize;		//size in bytes of vert format in use
 }	PrimObject;
 
 //a single triangle

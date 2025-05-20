@@ -18,6 +18,11 @@ static const vec3	UnitZ	={	0.0f, 0.0f, 1.0f	};
 
 //for converting colours
 __attribute_maybe_unused__
+__attribute__((aligned(16)))	static const float	wordRecip[4]	=
+{
+	1.0f / 65535.0f, 1.0f / 65535.0f, 1.0f / 65535.0f, 1.0f / 65535.0f
+};
+__attribute_maybe_unused__
 __attribute__((aligned(16)))	static const float	byteRecip[4]	=
 {
 	1.0f / 255.0f, 1.0f / 255.0f, 1.0f / 255.0f, 1.0f / 255.0f
@@ -83,6 +88,47 @@ void	Misc_ConvertVec4ToF16(const vec4 vec, uint16_t *pDest)
 	__m128i	converted	=Convert4F32ToF16m128i(vec[0], vec[1], vec[2], vec[3]);
 
 	memcpy(pDest, &converted, 8);
+}
+
+void	Misc_InterleaveVec4ToF16(const vec4 vec0, const vec4 vec1, uint32_t *pDest)
+{
+	__m128i	conv0, conv1;
+	
+	Misc_ConvertVec4ToF16(vec0, (uint16_t *)&conv0);
+	Misc_ConvertVec4ToF16(vec1, (uint16_t *)&conv1);
+
+	conv0	=_mm_unpacklo_epi16(conv0, conv1);
+
+	memcpy(pDest, &conv0, 16);
+}
+
+void	Misc_InterleaveVec34ToF16(const vec3 vec0, const vec4 vec1, uint32_t *pDest)
+{
+	__m128i	conv0, conv1;
+	
+	Misc_ConvertVec3ToF16(vec0, (uint16_t *)&conv0);
+	Misc_ConvertVec4ToF16(vec1, (uint16_t *)&conv1);
+
+	conv0	=_mm_unpacklo_epi16(conv0, conv1);
+
+	memcpy(pDest, &conv0, 16);
+}
+
+void	Misc_InterleaveVec3IdxToF16(const vec3 vec0, const vec3 vec1, uint16_t idx, uint32_t *pDest)
+{
+	__m128i	conv0, conv1;
+	
+	Misc_ConvertVec3ToF16(vec0, (uint16_t *)&conv0);
+	Misc_ConvertVec3ToF16(vec1, (uint16_t *)&conv1);
+
+	uint64_t	bigIdx	=idx;
+
+	conv1	&=0x0000FFFFFFFFFFFF;
+	conv1	|=(bigIdx << 48);
+
+	conv0	=_mm_unpacklo_epi16(conv0, conv1);
+
+	memcpy(pDest, &conv0, 16);
 }
 
 void	Misc_SSE_ReciprocalVec3(const vec3 vector, vec3 recip)
@@ -166,6 +212,25 @@ void	Misc_RGBAToVec4(uint32_t col, vec4 ret)
 	ret[3]	=(col & 0xFF000000) >> 24;
 
 	glm_vec4_mul(ret, byteRecip, ret);
+}
+
+void	Misc_RGBA16ToVec4(uint64_t col, vec4 ret)
+{
+	ret[0]	=col & 0xFFFF;
+	ret[1]	=(col & 0xFFFF0000) >> 16;
+	ret[2]	=(col & 0xFFFF00000000) >> 32;
+	ret[3]	=(col & 0xFFFF000000000000) >> 48;
+
+	glm_vec4_mul(ret, wordRecip, ret);
+}
+
+void	Misc_RGBA16ToVec3(uint64_t col, vec3 ret)
+{
+	ret[0]	=col & 0xFFFF;
+	ret[1]	=(col & 0xFFFF0000) >> 16;
+	ret[2]	=(col & 0xFFFF00000000) >> 32;
+
+	glm_vec3_mul(ret, wordRecip, ret);
 }
 
 void	Misc_LinearToSRGB(const vec4 vLin, vec4 vSRGB)

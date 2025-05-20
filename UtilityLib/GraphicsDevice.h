@@ -73,6 +73,7 @@ extern ID3D11DepthStencilState	*GD_CreateDepthStencilState(
 extern void GD_Dispatch(GraphicsDevice *pGD, UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ);
 extern void GD_Draw(GraphicsDevice *pGD, uint32_t vertCount, uint32_t startVert);
 extern void GD_DrawInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf, UINT offset);
+extern void GD_DrawIndexedInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf, UINT offset);
 extern void GD_DrawIndexed(GraphicsDevice *pGD,
 	uint32_t indexCount, uint32_t startIndex, uint32_t baseVert);
 extern void GD_Present(GraphicsDevice *pGD);

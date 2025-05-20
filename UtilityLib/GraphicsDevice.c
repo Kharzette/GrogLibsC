@@ -754,6 +754,11 @@ void GD_DrawInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf, UINT 
 	pGD->mpContext1->lpVtbl->DrawInstancedIndirect(pGD->mpContext1, pArgsBuf, offset);
 }
 
+void GD_DrawIndexedInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf, UINT offset)
+{
+	pGD->mpContext1->lpVtbl->DrawIndexedInstancedIndirect(pGD->mpContext1, pArgsBuf, offset);
+}
+
 void	GD_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot)
 {
 	pGD->mpContext1->lpVtbl->PSSetSamplers(pGD->mpContext1, slot, 1, &pSamp);

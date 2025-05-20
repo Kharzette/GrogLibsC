@@ -18,6 +18,9 @@ extern void	Misc_Convert2ToF16(float f0, float f1, uint16_t *pDest);
 extern void	Misc_ConvertVec3ToF16(const vec3 vec, uint16_t *pDest);
 extern void	Misc_ConvertVec4ToF16(const vec4 vec, uint16_t *pDest);
 extern void	Misc_ConvertVec2ToF16(const vec2 vec, uint16_t *pDest);
+extern void	Misc_InterleaveVec4ToF16(const vec4 vec0, const vec4 vec1, uint32_t *pDest);
+extern void	Misc_InterleaveVec34ToF16(const vec3 vec0, const vec4 vec1, uint32_t *pDest);
+extern void	Misc_InterleaveVec3IdxToF16(const vec3 vec0, const vec3 vec1, uint16_t idx, uint32_t *pDest);
 extern void	Misc_ConvertFlippedUVVec2ToF16(const vec2 vec, uint16_t *pDest);
 extern void	Misc_SSE_ReciprocalVec3(const vec3 vector, vec3 recip);
 extern int	Misc_SSE_RoundFToI(float val);
@@ -25,6 +28,8 @@ extern uint32_t	Misc_SSE_Vec3ToRGBA(const vec3 v);
 extern uint32_t	Misc_SSE_Vec4ToRGBA(const vec4 v);
 extern void	Misc_RGBAToVec3(uint32_t col, vec3 ret);
 extern void	Misc_RGBAToVec4(uint32_t col, vec4 ret);
+extern void	Misc_RGBA16ToVec4(uint64_t col, vec4 ret);
+extern void	Misc_RGBA16ToVec3(uint64_t col, vec3 ret);
 
 //bound stuff
 extern void		Misc_ClearBounds(vec3 min, vec3 max);

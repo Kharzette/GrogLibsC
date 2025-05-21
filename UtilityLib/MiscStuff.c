@@ -114,17 +114,30 @@ void	Misc_InterleaveVec34ToF16(const vec3 vec0, const vec4 vec1, uint32_t *pDest
 	memcpy(pDest, &conv0, 16);
 }
 
-void	Misc_InterleaveVec3IdxToF16(const vec3 vec0, const vec3 vec1, uint16_t idx, uint32_t *pDest)
+void	Misc_InterleaveVec4IdxToF16(const vec4 vec0, const vec3 vec1, uint16_t idx, uint32_t *pDest)
 {
 	__m128i	conv0, conv1;
 	
-	Misc_ConvertVec3ToF16(vec0, (uint16_t *)&conv0);
+	Misc_ConvertVec4ToF16(vec0, (uint16_t *)&conv0);
 	Misc_ConvertVec3ToF16(vec1, (uint16_t *)&conv1);
 
 	uint64_t	bigIdx	=idx;
 
 	conv1	&=0x0000FFFFFFFFFFFF;
 	conv1	|=(bigIdx << 48);
+
+	conv0	=_mm_unpacklo_epi16(conv0, conv1);
+
+	memcpy(pDest, &conv0, 16);
+}
+
+void	Misc_InterleaveBone(const vec4 weights, const uint8_t inds[4], uint16_t idx, uint32_t *pDest)
+{
+	__m128i	conv0, conv1;
+	
+	Misc_ConvertVec4ToF16(weights, (uint16_t *)&conv0);
+
+	conv1	=_mm_set_epi16(0,0,0,0, inds[3], inds[2], inds[1], inds[0]);
 
 	conv0	=_mm_unpacklo_epi16(conv0, conv1);
 

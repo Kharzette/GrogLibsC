@@ -26,5 +26,6 @@ uint32_t	PB_CreateEmitter(ParticleBoss *pPB, const StuffKeeper *pSK,
 	float lifeMin, float lifeMax, vec3 pos);
 
 void	PB_EmitterActivate(ParticleBoss *pPB, uint32_t emitterID, bool bOn);
+void	PB_SetEmitterPosition(ParticleBoss *pPB, uint32_t emitterID, vec3 pos);
 
 void	PB_UpdateAndDraw(ParticleBoss *pPB, float secDelta);

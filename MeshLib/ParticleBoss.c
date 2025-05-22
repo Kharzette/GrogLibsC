@@ -22,8 +22,8 @@ typedef struct	ParticleEmitter_t
 	uint32_t	mID;
 
 	//d3d data
-	ID3D11Buffer				*mpParticleBuf;
-	ID3D11Buffer				*mpEmitterValuesBuf;
+	ID3D11Buffer	*mpParticleBuf;
+	ID3D11Buffer	*mpEmitterValuesBuf;
 
 	//compute shader grinds on these
 	ID3D11UnorderedAccessView	*mpPBUAV;
@@ -234,6 +234,20 @@ void	PB_EmitterActivate(ParticleBoss *pPB, uint32_t emitterID, bool bOn)
 	}
 
 	pEM->mbOn	=bOn;
+}
+
+void	PB_SetEmitterPosition(ParticleBoss *pPB, uint32_t emitterID, vec3 pos)
+{
+	ParticleEmitter	*pEM	=NULL;
+
+	HASH_FIND_INT(pPB->mpEmitters, &emitterID, pEM);
+
+	if(pEM == NULL)
+	{
+		return;
+	}
+
+	glm_vec3_copy(pos, pEM->mPosition);
 }
 
 void	PB_Destroy(ParticleBoss **ppPB)

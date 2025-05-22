@@ -9,6 +9,7 @@
 #include	"../UtilityLib/GraphicsDevice.h"
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"../MaterialLib/Material.h"
+#include	"Helpers.h"
 
 
 //scale factors, collada always in meterish scale
@@ -36,12 +37,6 @@ typedef struct	Mesh_t
 	void		*mpVertData;
 	uint16_t	*mpIndData;
 }	Mesh;
-
-//static forward decs
-static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize);
-static void	sMakeStructuredBuffer(GraphicsDevice *pGD,
-	int structSize, int numItems, void *pVData,
-	ID3D11Buffer **ppBuffer, ID3D11ShaderResourceView **ppSRV);
 
 
 Mesh	*Mesh_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
@@ -72,7 +67,7 @@ Mesh	*Mesh_Create(GraphicsDevice *pGD, const StuffKeeper *pSK,
 	pRet->mNumTriangles	=numInds / 3;
 	pRet->mVertSize		=vertSize;
 
-	sMakeStructuredBuffer(pGD, vertSize, numVerts, pVData,
+	MakeStructuredBuffer(pGD, vertSize, numVerts, pVData,
 		&pRet->mpVerts, &pRet->mpSBSRV);
 
 	//keep vert and ind data since this is an editor path
@@ -116,7 +111,7 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 
 	fread(pVerts, pMesh->mVertSize * pMesh->mNumVerts, 1, f);
 
-	sMakeStructuredBuffer(pGD, pMesh->mVertSize, pMesh->mNumVerts,
+	MakeStructuredBuffer(pGD, pMesh->mVertSize, pMesh->mNumVerts,
 		pVerts, &pMesh->mpVerts, &pMesh->mpSBSRV);
 
 	//read indexes
@@ -265,52 +260,4 @@ void	Mesh_Destroy(Mesh *pMesh, GraphicsDevice *pGD)
 	}
 
 	free(pMesh);
-}
-
-
-//statics
-static void	sMakeStructuredBuffer(GraphicsDevice *pGD,
-	int structSize, int numItems, void *pVData,
-	ID3D11Buffer **ppBuffer, ID3D11ShaderResourceView **ppSRV)
-{
-	//buffer is not optional here
-	assert(ppBuffer != NULL);
-
-	D3D11_BUFFER_DESC	bufDesc;
-	memset(&bufDesc, 0, sizeof(D3D11_BUFFER_DESC));
-
-	//particle buffer
-	bufDesc.BindFlags			=D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	bufDesc.ByteWidth			=structSize * numItems;
-	bufDesc.CPUAccessFlags		=0;
-	bufDesc.MiscFlags			=D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-	bufDesc.StructureByteStride	=structSize;
-	bufDesc.Usage				=D3D11_USAGE_DEFAULT;
-
-	*ppBuffer	=GD_CreateBufferWithData(pGD, &bufDesc,
-					pVData, structSize * numItems);
-
-	if(ppSRV != NULL)
-	{
-		D3D11_SHADER_RESOURCE_VIEW_DESC	srvDesc;
-		memset(&srvDesc, 0, sizeof(D3D11_SHADER_RESOURCE_VIEW_DESC));
-
-		srvDesc.Format				=DXGI_FORMAT_UNKNOWN;
-		srvDesc.ViewDimension		=D3D11_SRV_DIMENSION_BUFFER;
-		srvDesc.Buffer.ElementWidth	=numItems;
-
-		*ppSRV	=GD_CreateSRV(pGD, (ID3D11Resource *)*ppBuffer, &srvDesc);
-	}
-}
-
-static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
-{
-	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
-
-	pDesc->BindFlags			=D3D11_BIND_INDEX_BUFFER;
-	pDesc->ByteWidth			=byteSize;
-	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_NONE;
-	pDesc->MiscFlags			=0;
-	pDesc->StructureByteStride	=0;
-	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
 }

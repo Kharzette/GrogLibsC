@@ -21,4 +21,4 @@ void	Terrain_Destroy(Terrain **ppTer, PhysicsStuff *pPhys);
 
 void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat);
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK);
-void	Terrain_SetSRVAndLayout(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK);
+void	Terrain_SetTexSRV(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK);

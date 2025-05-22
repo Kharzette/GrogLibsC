@@ -9,26 +9,26 @@
 #include	"../MaterialLib/StuffKeeper.h"
 #include	"../MaterialLib/Material.h"
 #include	"../PhysicsLib/PhysicsStuff.h"
+#include	"../MeshLib/Helpers.h"
 
 
 typedef struct	TerrainVert_t
 {
-	vec3		mPosition;
-	uint16_t	mNormal[4];		//16 bit float4
-
-	//these are percentages of each texture in the 8 way atlas
-	uint16_t	mTexFactor0[4];	//16 bit float4
-	uint16_t	mTexFactor1[4];	//16 bit float4
+	vec4		mPosition;
+	ivec4		mTexWeights;	//8 packed F16
+	ivec4		mNormVCol;		//packed F16
 
 }	TerrainVert;
 
 typedef struct	Terrain_t
 {
-	UT_string					*mpName;
-	ID3D11Buffer				*mpVerts, *mpIndexs;
-	ID3D11InputLayout			*mpLayout;
-	ID3D11ShaderResourceView	*mpSRV;
-	int							mNumVerts, mNumTriangles, mVertSize;
+	ID3D11Buffer	*mpVerts, *mpIndexs;
+
+	//structuredbuffer srv
+	ID3D11ShaderResourceView	*mpSBSRV;
+	ID3D11ShaderResourceView	*mpSRV;		//tex atlas
+
+	int	mNumVerts, mNumTriangles, mVertSize;
 
 	//jolt stuff
 	uint32_t	mTerBodyID;
@@ -37,8 +37,10 @@ typedef struct	Terrain_t
 
 //statics
 static void	sSmoothPass(const float *pHeights, float *pOut, int w, int h);
-static void	sVBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts,
-	uint32_t w, uint32_t h, ID3D11Buffer **ppVB, ID3D11Buffer **ppIB);
+static void	sSBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts,
+	uint32_t w, uint32_t h,
+	ID3D11ShaderResourceView **ppVSRV,
+	ID3D11Buffer **ppVB, ID3D11Buffer **ppIB);
 
 
 Terrain	*Terrain_Create(GraphicsDevice *pGD, PhysicsStuff *pPhys,
@@ -116,12 +118,13 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD, PhysicsStuff *pPhys,
 			glm_vec3_scale(fac1, 0.5f * 0.33333f, fac1);
 			glm_vec3_scale(fac2, 0.5f * 0.33333f, fac2);
 
-			Misc_Convert4ToF16(fac0[0], fac0[1], fac0[2], fac1[0], pVerts[idx].mTexFactor0);
-			Misc_Convert4ToF16(fac1[1], fac1[2], fac2[0], fac2[1], pVerts[idx].mTexFactor1);
+			vec4	w0	={	fac0[0], fac0[1], fac0[2], fac1[0]	};
+			vec4	w1	={	fac1[1], fac1[2], fac2[0], fac2[1]	};
+			Misc_InterleaveVec4ToF16(w0, w1, pVerts[idx].mTexWeights);
 #else
 			//set texture 0 to fully on by default for now
-			Misc_Convert4ToF16(0.0f, 0.0f, 0.0f, 0.0f, pVerts[idx].mTexFactor0);
-			Misc_Convert4ToF16(0.0f, 0.0f, 0.0f, 1.0f, pVerts[idx].mTexFactor1);
+			vec4	blep	={	0,0,0,1	};
+			Misc_InterleaveVec4ToF16(GLM_VEC4_ZERO, blep, pVerts[idx].mTexWeights);
 #endif
 		}
 	}
@@ -244,11 +247,13 @@ Terrain	*Terrain_Create(GraphicsDevice *pGD, PhysicsStuff *pPhys,
 
 			glm_vec3_normalize(n0);
 
-			Misc_Convert4ToF16(n0[0], n0[1], n0[2], 1.0f, pVerts[idx].mNormal);
+			vec4	norm	={	n0[0], n0[1], n0[2], 1.0f	};
+			vec4	color	={	1,1,1,1	};
+			Misc_InterleaveVec4ToF16(norm, color, pVerts[idx].mNormVCol);
 		}
 	}
 
-	sVBAndIndex(pGD, pVerts, wp1, hp1, &pRet->mpVerts, &pRet->mpIndexs);
+	sSBAndIndex(pGD, pVerts, wp1, hp1, &pRet->mpSBSRV, &pRet->mpVerts, &pRet->mpIndexs);
 
 	pRet->mNumTriangles	=numTris;
 	pRet->mNumVerts		=wp1 * hp1;
@@ -267,7 +272,8 @@ void	Terrain_Destroy(Terrain **ppTer, PhysicsStuff *pPS)
 {
 	Terrain	*pTer	=*ppTer;
 
-	//free GPU stuff, srv and layout are not addrefd
+	//free GPU stuff
+	pTer->mpSBSRV->lpVtbl->Release(pTer->mpSBSRV);
 	pTer->mpVerts->lpVtbl->Release(pTer->mpVerts);
 	pTer->mpIndexs->lpVtbl->Release(pTer->mpIndexs);
 
@@ -279,7 +285,7 @@ void	Terrain_Destroy(Terrain **ppTer, PhysicsStuff *pPS)
 }
 
 
-void	Terrain_SetSRVAndLayout(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK)
+void	Terrain_SetTexSRV(Terrain *pTer, const char *szSRV, const StuffKeeper *pSK)
 {
 	if(szSRV == NULL)
 	{
@@ -288,20 +294,17 @@ void	Terrain_SetSRVAndLayout(Terrain *pTer, const char *szSRV, const StuffKeeper
 	else
 	{
 		pTer->mpSRV		=StuffKeeper_GetSRV(pSK, szSRV);
-	}
-	
-	pTer->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPosNormTex04Tex14");
+	}	
 }
 
 
 void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 {
-	GD_IASetVertexBuffers(pGD, pTer->mpVerts, pTer->mVertSize, 0);
+	GD_VSSetSRV(pGD, pTer->mpSBSRV, 0);
 	GD_IASetIndexBuffers(pGD, pTer->mpIndexs, DXGI_FORMAT_R32_UINT, 0);
-	GD_IASetInputLayout(pGD, pTer->mpLayout);
 
-	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "WNormWPosTexFactVS"));
-	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TriTexFact8PS"));
+	GD_VSSetShader(pGD, StuffKeeper_GetVertexShader(pSK, "TerrainVS"));
+	GD_PSSetShader(pGD, StuffKeeper_GetPixelShader(pSK, "TerrainPS"));
 
 	GD_PSSetSRV(pGD, pTer->mpSRV, 0);
 
@@ -310,10 +313,8 @@ void	Terrain_Draw(Terrain *pTer, GraphicsDevice *pGD, const StuffKeeper *pSK)
 
 void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const Material *pMat)
 {
-	GD_IASetVertexBuffers(pGD, pTer->mpVerts, pTer->mVertSize, 0);
+	GD_VSSetSRV(pGD, pTer->mpSBSRV, 0);
 	GD_IASetIndexBuffers(pGD, pTer->mpIndexs, DXGI_FORMAT_R32_UINT, 0);
-
-	GD_IASetInputLayout(pGD, pTer->mpLayout);
 
 	MAT_Apply(pMat, pCBK, pGD);
 
@@ -321,30 +322,7 @@ void	Terrain_DrawMat(Terrain *pTer, GraphicsDevice *pGD, CBKeeper *pCBK, const M
 }
 
 
-static void	MakeIBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
-{
-	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
-
-	pDesc->BindFlags			=D3D11_BIND_INDEX_BUFFER;
-	pDesc->ByteWidth			=byteSize;
-	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_NONE;
-	pDesc->MiscFlags			=0;
-	pDesc->StructureByteStride	=0;
-	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
-}
-
-static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
-{
-	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
-
-	pDesc->BindFlags			=D3D11_BIND_VERTEX_BUFFER;
-	pDesc->ByteWidth			=byteSize;
-	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_NONE;
-	pDesc->MiscFlags			=0;
-	pDesc->StructureByteStride	=0;
-	pDesc->Usage				=D3D11_USAGE_IMMUTABLE;
-}
-
+//statics
 static void	sSmoothPass(const float *pHeights, float *pOut, int w, int h)
 {
 	for(int y=0;y < h;y++)
@@ -470,16 +448,12 @@ static void	sSmoothPass(const float *pHeights, float *pOut, int w, int h)
 	}
 }
 
-static void	sVBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts,
+static void	sSBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts,
 						uint32_t w, uint32_t h,
+						ID3D11ShaderResourceView **ppVSRV,
 						ID3D11Buffer **ppVB, ID3D11Buffer **ppIB)
 {
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-
-	sMakeVBDesc(&bufDesc, sizeof(TerrainVert) * w * h);
-
-	*ppVB	=GD_CreateBufferWithData(pGD, &bufDesc, pVerts, bufDesc.ByteWidth);
+	MakeStructuredBuffer(pGD, sizeof(TerrainVert), w * h, pVerts, ppVB, ppVSRV);
 
 	//-1 for anding
 	uint32_t	wm1	=w - 1;
@@ -510,6 +484,7 @@ static void	sVBAndIndex(GraphicsDevice *pGD, TerrainVert *pVerts,
 		}
 	}
 
+	D3D11_BUFFER_DESC	bufDesc;
 	MakeIBDesc(&bufDesc, 4 * numTris * 3);
 
 	*ppIB	=GD_CreateBufferWithData(pGD, &bufDesc, pIndexes, 4 * numTris * 3);

@@ -17,11 +17,6 @@ bool	FileStuff_DirExists(const char *szPath)
 	{
 		return	false;
 	}
-	else if(ENOENT == errno)
-	{
-		return	false;
-	}
-
 	closedir(pDir);
 
 	return	true;

@@ -12,6 +12,7 @@
 #define	EL_TEXCOORD4	7
 #define	EL_POSITION2	8
 #define	EL_POSITION4	9
+#define	EL_DATA			10	//generic int values
 
 //forward decs
 typedef struct	GraphicsDevice_t	GraphicsDevice;

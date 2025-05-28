@@ -85,7 +85,7 @@ void CBK_SetTextModeScreenSize(CBKeeper *pCBK, uint32_t width, uint32_t height, 
 void CBK_SetTextModeFontInfo(CBKeeper *pCBK, uint32_t startChar, uint32_t numColumns, uint32_t charWidth, uint32_t charHeight);
 
 //custom colours
-void	CBK_SetCustomColours(CBKeeper *pCBK, vec4 colours[]);
+void	CBK_SetCustomColours(CBKeeper *pCBK, vec4 colours[], float spows[]);
 
 //cel stuff
 void	CBK_SetCelSteps(CBKeeper *pCBK, const float *pMins, const float *pMaxs,

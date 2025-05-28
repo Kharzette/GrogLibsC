@@ -113,6 +113,7 @@ typedef struct BSP_t
 typedef struct	CustomColours_t
 {
 	vec4	mCColours[NUM_CUSTOM_COLOURS];
+	float	mCSPow[NUM_CUSTOM_COLOURS];
 
 }	CustomColours;
 
@@ -684,11 +685,12 @@ void CBK_SetTextModeFontInfo(CBKeeper *pCBK, uint32_t startChar, uint32_t numCol
 
 
 //custom colours
-void	CBK_SetCustomColours(CBKeeper *pCBK, vec4 colours[])
+void	CBK_SetCustomColours(CBKeeper *pCBK, vec4 colours[], float pows[])
 {
 	for(int i=0;i < NUM_CUSTOM_COLOURS;i++)
 	{
 		glm_vec4_copy(colours[i], pCBK->mpCColours->mCColours[i]);
+		pCBK->mpCColours->mCSPow[i]	=pows[i];
 	}
 }
 

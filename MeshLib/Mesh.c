@@ -30,9 +30,6 @@ typedef struct	Mesh_t
 
 	int	mNumVerts, mNumTriangles, mVertSize;
 	
-	//name of the vertex type
-	UT_string	*mpVertName;
-
 	//extra editor stuff if needed
 	void		*mpVertData;
 	uint16_t	*mpIndData;
@@ -105,8 +102,6 @@ Mesh	*Mesh_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 	fread(&pMesh->mNumTriangles, sizeof(int), 1, f);
 	fread(&pMesh->mVertSize, sizeof(int), 1, f);
 
-	pMesh->mpVertName	=SZ_ReadString(f);
-
 	void	*pVerts	=malloc(pMesh->mVertSize * pMesh->mNumVerts);
 
 	fread(pVerts, pMesh->mVertSize * pMesh->mNumVerts, 1, f);
@@ -174,8 +169,6 @@ void	Mesh_Write(const Mesh *pMesh, FILE *f)
 	fwrite(&pMesh->mNumVerts, sizeof(int), 1, f);
 	fwrite(&pMesh->mNumTriangles, sizeof(int), 1, f);
 	fwrite(&pMesh->mVertSize, sizeof(int), 1, f);
-
-	SZ_WriteString(f, pMesh->mpVertName);
 
 	fwrite(pMesh->mpVertData, pMesh->mVertSize, pMesh->mNumVerts, f);
 

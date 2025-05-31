@@ -68,7 +68,7 @@ AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD, const Stu
 
 	glm_mat4_identity(pRet->mWorld);
 
-	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosTexColIdxVS");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "StaticVS");
 	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriPS");
 
 	return	pRet;
@@ -106,7 +106,7 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD, cons
 
 	glm_rotate(pRet->mPointyOffset, -GLM_PI_2, UnitX);
 
-	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "WNormWPosTexColIdxVS");
+	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "StaticVS");
 	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriPS");
 
 	return	pRet;

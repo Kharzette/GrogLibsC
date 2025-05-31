@@ -1183,7 +1183,7 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDe
 	//index other half, flip winding
 	for(int i=indCount;i < (indCount * 2);i+=3)
 	{
-		if(bFlipped)
+		if(!bFlipped)
 		{
 			pInds[i]		=vertCount + pInds[i - indCount];
 			pInds[i + 1]	=vertCount + pInds[(i + 1) - indCount];
@@ -1197,15 +1197,18 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDe
 		}
 	}
 
+	vertCount	*=2;
+	indCount	*=2;
+
 	//return object
 	PrimObject	*pObj	=malloc(sizeof(PrimObject));
 
 	pObj->mVertCount	=vertCount;
-	pObj->mIndexCount	=indCount * 2;
+	pObj->mIndexCount	=indCount;
 
 	//make index buffer
 	D3D11_BUFFER_DESC	bufDesc;
-	sMakeIBDesc(&bufDesc, indCount * 2 * 2);
+	sMakeIBDesc(&bufDesc, indCount * 2);
 	pObj->mpIB	=GD_CreateBufferWithData(pGD, &bufDesc, pInds, bufDesc.ByteWidth);
 
 	sMakeStructuredBuffer(pGD, sizeof(VPosNormCol), vertCount, vpn,

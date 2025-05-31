@@ -15,8 +15,8 @@
 typedef struct	TerrainVert_t
 {
 	vec4		mPosition;
-	ivec4		mTexWeights;	//8 packed F16
-	ivec4		mNormVCol;		//packed F16
+	uint32_t	mTexWeights[4];	//8 packed F16
+	uint32_t	mNormVCol[4];		//packed F16
 
 }	TerrainVert;
 

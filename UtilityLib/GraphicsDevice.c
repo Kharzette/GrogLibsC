@@ -739,6 +739,11 @@ void GD_CSSetSRV(GraphicsDevice *pGD, ID3D11ShaderResourceView *pSRV, int slot)
 	pGD->mpContext1->lpVtbl->CSSetShaderResources(pGD->mpContext1, slot, 1, &pSRV);
 }
 
+void	GD_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot)
+{
+	pGD->mpContext1->lpVtbl->PSSetSamplers(pGD->mpContext1, slot, 1, &pSamp);
+}
+
 void GD_Dispatch(GraphicsDevice *pGD, UINT threadGroupCountX, UINT threadGroupCountY, UINT threadGroupCountZ)
 {
 	pGD->mpContext1->lpVtbl->Dispatch(pGD->mpContext1, threadGroupCountX, threadGroupCountY, threadGroupCountZ);
@@ -759,15 +764,19 @@ void GD_DrawIndexedInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf
 	pGD->mpContext1->lpVtbl->DrawIndexedInstancedIndirect(pGD->mpContext1, pArgsBuf, offset);
 }
 
-void	GD_PSSetSampler(GraphicsDevice *pGD, ID3D11SamplerState *pSamp, uint32_t slot)
-{
-	pGD->mpContext1->lpVtbl->PSSetSamplers(pGD->mpContext1, slot, 1, &pSamp);
-}
-
 void GD_DrawIndexed(GraphicsDevice *pGD,
 	uint32_t indexCount, uint32_t startIndex, uint32_t baseVert)
 {
 	pGD->mpContext1->lpVtbl->DrawIndexed(pGD->mpContext1, indexCount, startIndex, baseVert);
+}
+
+void GD_DrawIndexedInstanced(GraphicsDevice *pGD,
+	uint32_t indexCountPerInstance, uint32_t instanceCount,
+	uint32_t startIndex, int32_t baseVert, uint32_t startInstance)
+{
+	pGD->mpContext1->lpVtbl->DrawIndexedInstanced(pGD->mpContext1,
+		indexCountPerInstance, instanceCount, startIndex, baseVert,
+		startInstance);
 }
 
 void GD_Present(GraphicsDevice *pGD)

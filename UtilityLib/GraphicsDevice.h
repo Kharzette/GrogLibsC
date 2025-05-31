@@ -76,6 +76,9 @@ extern void GD_DrawInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf
 extern void GD_DrawIndexedInstancedIndirect(GraphicsDevice *pGD, ID3D11Buffer *pArgsBuf, UINT offset);
 extern void GD_DrawIndexed(GraphicsDevice *pGD,
 	uint32_t indexCount, uint32_t startIndex, uint32_t baseVert);
+extern void GD_DrawIndexedInstanced(GraphicsDevice *pGD,
+	uint32_t indexCountPerInstance, uint32_t instanceCount,
+	uint32_t startIndex, int32_t baseVert, uint32_t startInstance);
 extern void GD_Present(GraphicsDevice *pGD);
 
 //set states

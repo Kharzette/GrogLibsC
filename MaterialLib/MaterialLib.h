@@ -5,6 +5,7 @@
 typedef struct	MaterialLib_t	MaterialLib;
 typedef struct	StuffKeeper_t	StuffKeeper;
 typedef struct	StringList_t	StringList;
+typedef struct	Material_t		Material;
 
 MaterialLib		*MatLib_Create(StuffKeeper *pSK);
 void			MatLib_Destroy(MaterialLib **ppMatLib);

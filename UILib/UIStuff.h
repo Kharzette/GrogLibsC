@@ -24,7 +24,7 @@ void	UI_BeginDraw(UIStuff *pUI);
 void	UI_EndDraw(UIStuff *pUI);
 
 void	UI_DrawImage(UIStuff *pUI, const char *szTex, const vec2 pos,
-					 const vec2 size, float rotation, const vec4 color);
+					 float rotation, const vec4 color);
 void	UI_DrawString(UIStuff *pUI, const char *pText, int len,
 						GrogFont *pFont, const vec2 pos, const vec4 colour);
 void	UI_DrawRect(UIStuff *pUI, const UIRect r, const vec4 color);

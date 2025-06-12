@@ -22,6 +22,7 @@ ID3D11DepthStencilState		*StuffKeeper_GetDepthStencilState(const StuffKeeper *pS
 ID3D11BlendState			*StuffKeeper_GetBlendState(const StuffKeeper *pSK, const char *pStateName);
 ID3D11SamplerState			*StuffKeeper_GetSamplerState(const StuffKeeper *pSK, const char *pStateName);
 ID3D11Texture2D				*StuffKeeper_GetTexture2D(const StuffKeeper *pSK, const char *pName);
+int							*StuffKeeper_GetResourceDimensions(const StuffKeeper *pSK, const char *pName);
 ID3D11VertexShader			*StuffKeeper_GetVertexShader(const StuffKeeper *pSK, const char *pName);
 ID3D11PixelShader			*StuffKeeper_GetPixelShader(const StuffKeeper *pSK, const char *pName);
 ID3D11ComputeShader			*StuffKeeper_GetComputeShader(const StuffKeeper *pSK, const char *pName);

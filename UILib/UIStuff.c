@@ -263,7 +263,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 }
 
 void	UI_DrawImage(UIStuff *pUI, const char *szTex, const vec2 pos,
-					 const vec2 size, float rotation, const vec4 color)
+					 float rotation, const vec4 color)
 {
 	if(pUI == NULL || !pUI->mbDrawStage)
 	{
@@ -287,6 +287,8 @@ void	UI_DrawImage(UIStuff *pUI, const char *szTex, const vec2 pos,
 		}
 	}
 
+	int	*dims	=StuffKeeper_GetResourceDimensions(pUI->mpSK, szTex);
+
 	//set ui srv
 	pUI->mpSRV	=pSRV;
 
@@ -303,15 +305,15 @@ void	UI_DrawImage(UIStuff *pUI, const char *szTex, const vec2 pos,
 	//tri 0
 	sAddTriUVC(pUI,
 		(vec2) { pos[0], 			pos[1] 				},		//top left corner
-		(vec2) { pos[0], 			pos[1] + size[1]	},		//bottom left corner 
-		(vec2) { pos[0] + size[0],	pos[1]				},		//top right corner
+		(vec2) { pos[0], 			pos[1] + dims[1]	},		//bottom left corner 
+		(vec2) { pos[0] + dims[0],	pos[1]				},		//top right corner
 		uv0, uv2, uv1, c);
 
 	//tri1
 	sAddTriUVC(pUI,
-		(vec2) { pos[0] + size[0],	pos[1]				},		//top right corner
-		(vec2) { pos[0], 			pos[1] + size[1]	},		//bottom left corner 
-		(vec2) { pos[0] + size[0],	pos[1] + size[1]	},		//bottom right corner
+		(vec2) { pos[0] + dims[0],	pos[1]				},		//top right corner
+		(vec2) { pos[0], 			pos[1] + dims[1]	},		//bottom left corner 
+		(vec2) { pos[0] + dims[0],	pos[1] + dims[1]	},		//bottom right corner
 		uv1, uv2, uv3, c);
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
@@ -1003,7 +1005,6 @@ void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
 
 				UI_DrawImage(pUI, pCird->imageData,
 					(vec2){ boundingBox.x, boundingBox.y },
-					(vec2){ pCird->sourceDimensions.width, pCird->sourceDimensions.height },
 					0.0f, colour);
 				break;
 			}

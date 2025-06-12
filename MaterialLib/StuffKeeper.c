@@ -34,6 +34,7 @@ typedef struct	StuffKeeper_t
 	DictSZ	*mpCSCode;			//CS code bytes for entry point key
 
 	DictSZ	*mpTextures;		//ID3D11Texture2D
+	DictSZ	*mpTexSizes;		//ivec2d
 
 	DictSZ	*mpVShaders;		//ID3D11VertexShader
 	DictSZ	*mpPShaders;		//ID3D11PixelShader
@@ -841,17 +842,17 @@ BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
 }
 
 
-static ID3D11Texture2D *LoadTexture(GraphicsDevice *pGD, const UT_string *pPath)
+static ID3D11Texture2D *sLoadTexture(GraphicsDevice *pGD,
+				const UT_string *pPath, uint32_t *pW, uint32_t *pH)
 {
-	uint32_t	w, h;
-	int			rowPitch;
+	int	rowPitch;
 
-	BYTE	**pRows	=SK_LoadTextureBytes(utstring_body(pPath), &rowPitch, &w, &h);
+	BYTE	**pRows	=SK_LoadTextureBytes(utstring_body(pPath), &rowPitch, pW, pH);
 
-	ID3D11Texture2D	*pTex	=GD_MakeTexture(pGD, pRows, w, h, rowPitch);
+	ID3D11Texture2D	*pTex	=GD_MakeTexture(pGD, pRows, *pW, *pH, rowPitch);
 
 	//free data
-	for(int y=0;y < h;y++)
+	for(int y=0;y < *pH;y++)
 	{
 		free(pRows[y]);
 	}
@@ -932,10 +933,18 @@ static void LoadResourcesDir(GraphicsDevice *pGD, StuffKeeper *pSK, const char *
 			UT_string	*pExtLess	=SZ_StripExtensionUT(pFilePath);
 			UT_string	*pJustName	=SZ_SubStringUTStart(pExtLess, 9);
 
-			ID3D11Texture2D	*pTex	=LoadTexture(pGD, pFilePath);
+			uint32_t	w, h;
+			ID3D11Texture2D	*pTex	=sLoadTexture(pGD, pFilePath, &w, &h);
 			if(pTex != NULL)
 			{
 				DictSZ_Add(&pSK->mpTextures, pJustName, pTex);
+
+				//need a heap alloc here
+				int	*pTexSize	=malloc(sizeof(int) * 2);
+
+				pTexSize[0]	=w;
+				pTexSize[1]	=h;
+				DictSZ_Add(&pSK->mpTexSizes, pJustName, pTexSize);
 			}
 
 			utstring_done(pExtLess);
@@ -1138,7 +1147,8 @@ void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
 			UT_string	*pExtLess	=SZ_StripExtensionUT(pFilePath);
 			UT_string	*pJustName	=SZ_SubStringUTStart(pExtLess, 6);
 
-			ID3D11Texture2D	*pTex	=LoadTexture(pGD, pFilePath);
+			uint32_t	w, h;
+			ID3D11Texture2D	*pTex	=sLoadTexture(pGD, pFilePath, &w, &h);
 			if(pTex != NULL)
 			{
 				DictSZ_Add(&pSK->mpFontTextures, pJustName, pTex);
@@ -1480,6 +1490,7 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	DictSZ_New(&pRet->mpPShaders);
 	DictSZ_New(&pRet->mpCShaders);
 	DictSZ_New(&pRet->mpTextures);
+	DictSZ_New(&pRet->mpTexSizes);
 	DictSZ_New(&pRet->mpFonts);
 	DictSZ_New(&pRet->mpFontTextures);
 	DictSZ_New(&pRet->mpSRVs);
@@ -1536,6 +1547,11 @@ ID3D11SamplerState	*StuffKeeper_GetSamplerState(const StuffKeeper *pSK, const ch
 ID3D11Texture2D	*StuffKeeper_GetTexture2D(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpTextures, pName);
+}
+
+int	*StuffKeeper_GetResourceDimensions(const StuffKeeper *pSK, const char *pName)
+{
+	return	DictSZ_GetValueccp(pSK->mpTexSizes, pName);
 }
 
 ID3D11VertexShader	*StuffKeeper_GetVertexShader(const StuffKeeper *pSK, const char *pName)

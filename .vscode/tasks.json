@@ -16,7 +16,7 @@
             "command": "cp libs/* ${config:CurrentGameLibs}",
             "group": "none",
             "options": {"cwd": "${workspaceFolder}"},
-            "dependsOn" : [ "aud make", "inp make", "mat make", "mesh make", "ter make", "util make", "phys make"],
+            "dependsOn" : [ "aud make", "inp make", "mat make", "ui make", "mesh make", "ter make", "util make", "phys make"],
             "detail": "Copy grog libs to game libs directory for testing."
         },
         {
@@ -68,6 +68,15 @@
             "command": "make",
             "group": "build",
             "options": {"cwd": "${workspaceFolder}/MaterialLib"},
+            "problemMatcher": [],
+            "detail": "make build task"
+        },
+        {
+            "type": "shell",
+            "label": "ui make",
+            "command": "make",
+            "group": "build",
+            "options": {"cwd": "${workspaceFolder}/UILib"},
             "problemMatcher": [],
             "detail": "make build task"
         },

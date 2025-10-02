@@ -14,7 +14,7 @@
 #include	"MaterialLib/Material.h"
 #include	"MaterialLib/MaterialLib.h"
 #define	CLAY_IMPLEMENTATION
-#include	"MaterialLib/UIStuff.h"
+#include	"UILib/UIStuff.h"
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/StringStuff.h"
 #include	"UtilityLib/ListStuff.h"
@@ -871,8 +871,8 @@ static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec3	light2		={	0.1f, 0.2f, 0.2f	};
 
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "WNormWPosTexFactVS", pSK);
-	MAT_SetPShader(pRet, "TriTexFact8PS", pSK);
+	MAT_SetVShader(pRet, "TerrainVS", pSK);
+	MAT_SetPShader(pRet, "TerrainPS", pSK);
 	MAT_SetSolidColour(pRet, GLM_VEC4_ONE);
 	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 3.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
@@ -880,9 +880,6 @@ static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK)
 	{
 		printf("Atlas texture not found!\n");
 	}
-
-	//srv is set in the material, but need input layout set
-	Terrain_SetSRVAndLayout(pTS->mpTer, NULL, pSK);
 
 	return	pRet;
 }
@@ -1115,7 +1112,7 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, vec3 velocity
 	velInfo.chars	=sVelString;
 	velInfo.length	=strlen(sVelString);
 
-	CLAY({.id=CLAY_ID("OuterContainer"), .layout =
+	CLAY(CLAY_ID("OuterContainer"), { .layout =
 		{
 			.layoutDirection = CLAY_TOP_TO_BOTTOM,
 			.sizing =

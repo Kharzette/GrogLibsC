@@ -10,7 +10,7 @@ CFLAGS=-std=gnu23 -g -O0 -march=native	\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in . for shared libs
 #	-Xlinker --verbose	
 SOURCES=$(wildcard *.c)
-LIBS=-lm -lvulkan -lUtilityLib -lPhysicsLib -lMaterialLib -lMeshLib -lTerrainLib -lInputLib -lAudioLib -lFAudio -lSDL3 -lpng
+LIBS=-lm -lvulkan -lUtilityLib -lPhysicsLib -lMaterialLib -lUILib -lMeshLib -lTerrainLib -lInputLib -lAudioLib -lFAudio -lSDL3 -lpng
 LDFLAGS=-Llibs
 
 all: TestStuff

@@ -160,7 +160,7 @@ static void	sDrawMenuItem(const EasyMenu *pEM, int index)
 
 	mmText.isStaticallyAllocated	=false;
 
-	CLAY({
+	CLAY_AUTO_ID({
 		.layout =
 		{
 			.childAlignment	=

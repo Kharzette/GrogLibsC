@@ -11,13 +11,21 @@ CFLAGS2=-std=gnu23 -g -O0 -march=native -fpic	\
 	-I../cglm/include	\
 	-Wall				\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
-LIBS=-lSDL3 -lFAudio
+
 SOURCES=$(wildcard tinywav/tinywav.c) $(wildcard *.c)
+OBJS = $(SOURCES:.c=.o)
+
+LIBS=-lSDL3 -lFAudio -lm
 
 all: AudioLib Audio
 
-AudioLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libAudioLib.so $(LIBS) -lm
+AudioLib: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libAudioLib.so $(LIBS)
 
-Audio: $(SOURCES)
-	$(CC) $(CFLAGS2) $(LDFLAGS) $(SOURCES) $(LIBS) -lm
+Audio: $(OBJS)
+	$(CC) $(CFLAGS2) $(OBJS) $(LDFLAGS) $(LIBS)
+
+.PHONY: all clean
+
+clean:
+	rm *.o a.out ../libs/libAudioLib.so

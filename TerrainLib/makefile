@@ -8,12 +8,14 @@ CFLAGS=-std=gnu23 -g -O0 -march=native -fpic -shared	\
 	-I../cglm/include	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
+
 SOURCES=$(wildcard *.c)
-#LIBS=-lvulkan
+OBJS=$(SOURCES:.c=.o)
+LIBS=-lm
 
 all: TerrainLib
 
-TerrainLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libTerrainLib.so -lm $(LIBS) \
+TerrainLib: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libTerrainLib.so $(LIBS) \
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so

@@ -10,10 +10,12 @@ CFLAGS=-std=gnu++23 -g -O0 -fPIC -shared -march=native 	\
 	-I../cglm/include	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
-SOURCES=$(wildcard *.cpp)
+
+SOURCES=$(wildcard *.c)
+OBJS=$(SOURCES:.c=.o)
 
 all: PhysicsLib
 
-PhysicsLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libPhysicsLib.so \
+PhysicsLib: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libPhysicsLib.so \
 	../JoltPhysics/Build/Linux_Debug/libJolt.a

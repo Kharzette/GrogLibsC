@@ -8,12 +8,14 @@ CFLAGS=-std=gnu23 -g -O0 -march=native -fpic -shared	\
 	-I../cglm/include	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
+
 SOURCES=$(wildcard *.c)
-#LIBS=-lvulkan
+OBJS=$(SOURCES:.c=.o)
+LIBS=-lm
 
 all: MeshLib
 
-MeshLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libMeshLib.so -lm $(LIBS) \
+MeshLib: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libMeshLib.so $(LIBS) \
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so

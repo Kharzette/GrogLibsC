@@ -13,4 +13,4 @@ x	Line of sight checks
 		Physics for ragdolls
 		Physics for IK
 	Static mesh physics
-		like character above integrate into collada tool
+		like character above integrate into mesh tool

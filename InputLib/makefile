@@ -7,11 +7,13 @@ CFLAGS=-std=gnu23 -g -O0 -march=native -fpic -shared	\
 	-Wall				\
 	-Wl,-rpath='libs',--disable-new-dtags	#so exe looks in libs for shared libs
 #	-Xlinker --verbose	
+
 SOURCES=$(wildcard *.c)
+OBJS=$(SOURCES:.c=.o)
 LIBS=-lSDL3 -lm
 LDFLAGS=#-LUtilityLib -LMaterialLib -LMeshLib -LTerrainLib -Ldxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu -LSDL/build
 
 all: InputLib
 
-InputLib: $(SOURCES)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(SOURCES) -o ../libs/libInputLib.so $(LIBS)
+InputLib:  $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libInputLib.so $(LIBS)

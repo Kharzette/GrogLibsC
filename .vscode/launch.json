@@ -20,6 +20,19 @@
 		{
 			"type": "cppdbg",
 			"request": "launch",
+			"preLaunchTask": "testui make",
+			"name": "testUI",
+			"program": "${workspaceFolder}/TestUI",
+			"args": [],
+			"stopAtEntry": false,
+			"externalConsole": true,
+			"cwd": "${config:CurrentGame}",
+			"additionalSOLibSearchPath": "${config:CurrentGameLibs}",
+			"MIMode": "gdb"
+		},
+		{
+			"type": "cppdbg",
+			"request": "launch",
 			"preLaunchTask": "aud make",
 			"name": "audio",
 			"program": "${workspaceFolder}/AudioLib/a.out",

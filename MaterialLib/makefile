@@ -17,6 +17,11 @@ LIBS=-lvulkan -lpng16 -lSDL3
 all: MaterialLib
 
 MaterialLib: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libMaterialLib.so $(LIBS) \
+	$(CC) $(CFLAGS) $(OBJS) -o ../libs/libMaterialLib.so $(LIBS) \
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so
+
+.PHONY: all clean
+
+clean:
+	rm *.o ../libs/libMaterialLib.so

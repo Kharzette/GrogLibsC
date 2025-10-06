@@ -9,7 +9,7 @@
 			"request": "launch",
 			"preLaunchTask": "teststuff make",
 			"name": "teststuff",
-			"program": "${workspaceFolder}/TestStuff",
+			"program": "${workspaceFolder}/test/TestStuff",
 			"args": [],
 			"stopAtEntry": false,
 			"externalConsole": true,
@@ -22,23 +22,10 @@
 			"request": "launch",
 			"preLaunchTask": "testui make",
 			"name": "testUI",
-			"program": "${workspaceFolder}/TestUI",
+			"program": "${workspaceFolder}/test/TestUI",
 			"args": [],
 			"stopAtEntry": false,
 			"externalConsole": true,
-			"cwd": "${config:CurrentGame}",
-			"additionalSOLibSearchPath": "${config:CurrentGameLibs}",
-			"MIMode": "gdb"
-		},
-		{
-			"type": "cppdbg",
-			"request": "launch",
-			"preLaunchTask": "aud make",
-			"name": "audio",
-			"program": "${workspaceFolder}/AudioLib/a.out",
-			"args": [],
-			"stopAtEntry": true,
-			"externalConsole": false,
 			"cwd": "${config:CurrentGame}",
 			"additionalSOLibSearchPath": "${config:CurrentGameLibs}",
 			"MIMode": "gdb"
@@ -66,24 +53,6 @@
 			"externalConsole": true,
 			"cwd": "${config:CurrentGame}",
 			"MIMode": "gdb"
-		},
-		{
-			"type": "cppdbg",
-			"request": "launch",
-			"name": "renderdoc",
-			"program": "/usr/bin/renderdoccmd",
-			"args": [],
-			"stopAtEntry": false,
-			"externalConsole": true,
-			"cwd": "${config:CurrentGame}",
-			"MIMode": "gdb"
-		},
-		{
-			"type": "gdb",
-			"request": "launch",
-			"name": "GDB",
-			"program": "${workspaceFolder}/${command:AskForProgramName}",
-			"stopOnEntry": true
 		}
 	]
 }

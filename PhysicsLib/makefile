@@ -18,5 +18,10 @@ OBJS=$(SOURCES:.c=.o)
 all: PhysicsLib
 
 PhysicsLib: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libPhysicsLib.so \
+	$(CC) $(CFLAGS) $(OBJS) -o ../libs/libPhysicsLib.so \
 	../JoltPhysics/Build/Linux_Debug/libJolt.a
+
+.PHONY: all clean
+
+clean:
+	rm *.o ../libs/libPhysicsLib.so

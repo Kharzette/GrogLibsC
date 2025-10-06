@@ -1,147 +1,145 @@
 {
-    "tasks": [
-        {
-            "type": "shell",
-            "label": "teststuff make",
-            "command": "make TestStuff",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}"},
-            "problemMatcher": [],
-            "detail": "make build task",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "teststuff make",
+			"command": "make TestStuff",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/test"},
+			"problemMatcher": [],
+			"detail": "make build task",
 			"dependsOn": [ "copyGLibs", "copyDXGI", "copyD3D11" ]
-        },
-        {
-            "type": "shell",
-            "label": "testui make",
-            "command": "make TestUI",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}"},
-            "problemMatcher": [],
-            "detail": "make build task",
-			"dependsOn": [ "copyGLibs", "copyDXGI", "copyD3D11" ]
-        },
-        {
-            "type": "shell",
-            "label": "copyGLibs",
-            "command": "cp libs/* ${config:CurrentGameLibs}",
-            "group": "none",
-            "options": {"cwd": "${workspaceFolder}"},
-            "dependsOn" : [ "aud make", "inp make", "mat make", "ui make", "mesh make", "ter make", "util make", "phys make"],
-            "detail": "Copy grog libs to game libs directory for testing."
-        },
-        {
-            "type": "shell",
-            "label": "copyDXGI",
-            "command": "cp dxvk-native/build/src/dxgi/libdxvk_dxgi.so ${config:CurrentGameLibs}",
-            "group": "none",
-            "options": {"cwd": "${workspaceFolder}"},
-            "detail": "Copy dxgi lib to game libs directory for testing."
-        },
-        {
-            "type": "shell",
-            "label": "copyD3D11",
-            "command": "cp dxvk-native/build/src/d3d11/libdxvk_d3d11.so ${config:CurrentGameLibs}",
-            "group": "none",
-            "options": {"cwd": "${workspaceFolder}"},
-            "detail": "Copy d3d lib to game libs directory for testing."
-        },
-        {
-            "type": "shell",
-            "label": "aud make",
-            "command": "make",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}/AudioLib"},
-            "problemMatcher": [],
-            "detail": "make build task"
-        },
-        {
-            "type": "shell",
-            "label": "util make",
-            "command": "make",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}/UtilityLib"},
-            "problemMatcher": [],
-            "detail": "make build task"
-        },
-        {
-            "type": "shell",
-            "label": "phys make",
-            "command": "make",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}/PhysicsLib"},
-            "problemMatcher": [],
-            "detail": "make build task"
-        },
-        {
-            "type": "shell",
-            "label": "mat make",
-            "command": "make",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}/MaterialLib"},
-            "problemMatcher": [],
-            "detail": "make build task"
-        },
-        {
-            "type": "shell",
-            "label": "ui make",
-            "command": "make",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}/UILib"},
-            "problemMatcher": [],
-            "detail": "make build task"
-        },
-        {
-            "type": "shell",
-            "label": "mesh make",
-            "command": "make",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}/MeshLib"},
-            "problemMatcher": [],
-            "detail": "make build task"
-        },
-        {
-            "type": "shell",
-            "label": "ter make",
-            "command": "make",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}/TerrainLib"},
-            "problemMatcher": [],
-            "detail": "make build task"
-        },
-        {
-            "type": "shell",
-            "label": "inp make",
-            "command": "make",
-            "group": "build",
-            "options": {"cwd": "${workspaceFolder}/InputLib"},
-            "problemMatcher": [],
-            "detail": "make build task"
-        },
-        {
-            "type": "shell",
-            "label": "Compile Shaders",
-            "command": "${workspaceFolder}/GrogHLSLCompileTool/bin/Debug/net6.0/GrogHLSLCompileTool",
-            "args": ["${workspaceFolder}/ShaderLib", "SM4", "SM41", "SM5"],    //add more if you want SM2 SM4 etc
-            "group": "build",
-            "options": {"cwd": "${config:CurrentGame}"},
-            "problemMatcher": [
-                {
-                    "owner": "fxc",
-                    "fileLocation":"relative",
-                    "pattern": {
-                        "regexp": "(.+(?=\\())\\((.+?(?=,))\\(?,(.+?(?=[-]))[-](.+?(?=\\)))\\)\\:\\s*(warning|error)\\s*(\\w*):*\\(?(.*)",
-                        "file": 1,
-                        "line": 2,
-                        "column": 3,
-                        "endColumn": 4,
-                        "severity": 5,
-                        "code": 6,
-                        "message": 7
-                    }
-                }
-            ],
-            "detail": "hlsl build task"
-        }
-    ],
-    "version": "2.0.0"
+		},
+		{
+			"type": "shell",
+			"label": "testui make",
+			"command": "make TestUI",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/test"},
+			"problemMatcher": [],
+			"detail": "make build task",
+			"dependsOn": [ "copyGLibs", "copyDXGI", "copyD3D11" ]			
+		},
+		{
+			"type": "shell",
+			"label": "copyGLibs",
+			"command": "cp libs/* ${config:CurrentGameLibs}",
+			"group": "none",
+			"options": {"cwd": "${workspaceFolder}"},
+			"dependsOn" : [ "aud make", "inp make", "mat make", "ui make", "mesh make", "ter make", "util make", "phys make"],
+			"detail": "Copy grog libs to game libs directory for testing."
+		},
+		{
+			"type": "shell",
+			"label": "copyDXGI",
+			"command": "cp dxvk-native/build/src/dxgi/libdxvk_dxgi.so ${config:CurrentGameLibs}",
+			"group": "none",
+			"options": {"cwd": "${workspaceFolder}"},
+			"detail": "Copy dxgi lib to game libs directory for testing."
+		},
+		{
+			"type": "shell",
+			"label": "copyD3D11",
+			"command": "cp dxvk-native/build/src/d3d11/libdxvk_d3d11.so ${config:CurrentGameLibs}",
+			"group": "none",
+			"options": {"cwd": "${workspaceFolder}"},
+			"detail": "Copy d3d lib to game libs directory for testing."
+		},
+		{
+			"type": "shell",			
+			"label": "aud make",
+			"command": "make",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/AudioLib"},
+			"problemMatcher": [],
+			"detail": "make build task"
+		},
+		{
+			"type": "shell",
+			"label": "util make",
+			"command": "make",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/UtilityLib"},
+			"problemMatcher": [],
+			"detail": "make build task"
+		},
+		{
+			"type": "shell",
+			"label": "phys make",
+			"command": "make",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/PhysicsLib"},
+			"problemMatcher": [],
+			"detail": "make build task"
+		},
+		{
+			"type": "shell",
+			"label": "mat make",
+			"command": "make",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/MaterialLib"},
+			"problemMatcher": [],
+			"detail": "make build task"
+		},
+		{
+			"type": "shell",
+			"label": "ui make",
+			"command": "make",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/UILib"},
+			"problemMatcher": [],
+			"detail": "make build task"
+		},
+		{
+			"type": "shell",
+			"label": "mesh make",
+			"command": "make",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/MeshLib"},
+			"problemMatcher": [],
+			"detail": "make build task"
+		},
+		{
+			"type": "shell",
+			"label": "ter make",
+			"command": "make",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/TerrainLib"},
+			"problemMatcher": [],
+			"detail": "make build task"
+		},
+		{
+			"type": "shell",
+			"label": "inp make",
+			"command": "make",
+			"group": "build",
+			"options": {"cwd": "${workspaceFolder}/InputLib"},
+			"problemMatcher": [],
+			"detail": "make build task"
+		},
+		{
+			"type": "shell",
+			"label": "Compile Shaders",
+			"command": "${workspaceFolder}/GrogHLSLCompileTool/bin/Debug/net6.0/GrogHLSLCompileTool",
+			"args": ["${workspaceFolder}/ShaderLib", "SM4", "SM41", "SM5"],    //add more if you want SM2 SM4 etc
+			"group": "build",
+			"options": {"cwd": "${config:CurrentGame}"},
+			"problemMatcher": [{
+				"owner": "fxc",
+				"fileLocation":"relative",
+				"pattern": {
+					"regexp": "(.+(?=\\())\\((.+?(?=,))\\(?,(.+?(?=[-]))[-](.+?(?=\\)))\\)\\:\\s*(warning|error)\\s*(\\w*):*\\(?(.*)",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"endColumn": 4,
+					"severity": 5,
+					"code": 6,
+					"message": 7
+				}
+			}
+		],
+		"detail": "hlsl build task"
+	}],
+	"version": "2.0.0"
 }

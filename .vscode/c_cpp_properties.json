@@ -1,34 +1,26 @@
 {
-    "configurations": [
-        {
-            "name": "Win64",
-            "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/dxvk-native/include/native/directx",
-                "${workspaceFolder}/dxvk-native/include/native/windows",
-                "${workspaceFolder}/uthash/include"
-            ],
-            "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
-            ],
-            "windowsSdkVersion": "10.0.19041.0",
-            "compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
-            "cStandard": "c17",
-            "cppStandard": "c++17",
-            "configurationProvider": "ms-vscode.makefile-tools"
-        },
-        {
-            "name": "Linux",
-            "includePath": [
-                "${workspaceFolder}/**"
-            ],
-            "defines": [ "true=1","false=0" ],  //TODO: annoying workaround
-            "cStandard": "gnu23",
-            "cppStandard": "gnu++23",
-            "intelliSenseMode": "linux-gcc-x64"
-        }
-    ],
-    "version": 4
+	"configurations": [{
+		"name": "Win64",
+		"includePath": [
+			"${workspaceFolder}/**",
+			"${workspaceFolder}/dxvk-native/include/native/directx",
+			"${workspaceFolder}/dxvk-native/include/native/windows",
+			"${workspaceFolder}/uthash/include"
+		],
+		"defines": [ "_DEBUG", "UNICODE", "_UNICODE"],
+		"windowsSdkVersion": "10.0.19041.0",
+		"compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
+		"cStandard": "c17",
+		"cppStandard": "c++17",
+		"configurationProvider": "ms-vscode.makefile-tools"
+	},
+	{
+		"name": "Linux",
+		"includePath": [ "${workspaceFolder}/**" ],
+		"defines": [ "true=1","false=0" ],  //TODO: annoying workaround
+		"cStandard": "gnu23",
+		"cppStandard": "gnu++23",
+		"intelliSenseMode": "linux-gcc-x64"
+	}],
+	"version": 4
 }

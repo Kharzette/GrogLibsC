@@ -11,9 +11,13 @@ CFLAGS=-std=gnu23 -g -O0 -march=native -fpic -shared	\
 SOURCES=$(wildcard *.c)
 OBJS=$(SOURCES:.c=.o)
 LIBS=-lSDL3 -lm
-LDFLAGS=#-LUtilityLib -LMaterialLib -LMeshLib -LTerrainLib -Ldxvk-native/build/dxvk-native-master/lib/x86_64-linux-gnu -LSDL/build
 
 all: InputLib
 
 InputLib:  $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libInputLib.so $(LIBS)
+	$(CC) $(CFLAGS) $(OBJS) -o ../libs/libInputLib.so $(LIBS)
+
+.PHONY: all clean
+
+clean:
+	rm *.o ../libs/libInputLib.so

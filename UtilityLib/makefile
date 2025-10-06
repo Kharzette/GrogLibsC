@@ -17,6 +17,11 @@ LIBS=-lvulkan -lSDL3
 all: UtilityLib
 
 UtilityLib: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libUtilityLib.so $(LIBS) \
+	$(CC) $(CFLAGS) $(OBJS) -o ../libs/libUtilityLib.so $(LIBS) \
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so
+
+.PHONY: all clean
+
+clean:
+	rm *.o ../libs/libUtilityLib.so

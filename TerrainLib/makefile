@@ -16,6 +16,11 @@ LIBS=-lm
 all: TerrainLib
 
 TerrainLib: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(LDFLAGS) -o ../libs/libTerrainLib.so $(LIBS) \
+	$(CC) $(CFLAGS) $(OBJS) -o ../libs/libTerrainLib.so $(LIBS) \
 	../dxvk-native/build/src/dxgi/libdxvk_dxgi.so	\
 	../dxvk-native/build/src/d3d11/libdxvk_d3d11.so
+
+.PHONY: all clean
+
+clean:
+	rm *.o ../libs/libTerrainLib.so	

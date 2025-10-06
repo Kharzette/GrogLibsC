@@ -11,7 +11,8 @@ CFLAGS=-std=gnu++23 -g -O0 -fPIC -shared -march=native 	\
 	-Wall				\
 	-Wl,-rpath='$$ORIGIN',--disable-new-dtags	#so exe looks in . for shared libs
 
-SOURCES=$(wildcard *.c)
+#my only cpp file
+SOURCES=$(wildcard *.cpp)
 OBJS=$(SOURCES:.c=.o)
 
 all: PhysicsLib

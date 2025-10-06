@@ -50,6 +50,8 @@ bool	Phys_VCharacterIsSupported(const PhysVCharacter *pChar);
 void	Phys_Update(PhysicsStuff *pPS, float secDelta);
 
 //add bodies
+uint32_t	Phys_CreateAndAddBox(PhysicsStuff *pPS, float height,
+				float width, float depth, const vec3 org, uint16_t layer);
 uint32_t	Phys_CreateAndAddSphere(PhysicsStuff *pPS, float radius,
 				const vec3 pos, uint16_t layer);
 uint32_t	Phys_CreateAndAddHeightField(PhysicsStuff *pPS,

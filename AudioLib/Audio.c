@@ -454,6 +454,7 @@ void	Audio_Update(Audio *pAud, vec3 position, vec3 velocity)
 }
 
 
+#ifdef	NOWAYTHISHAPPENED
 int	main(void)
 {
 	printf("Blort!  Testing audio stuffs...\n");
@@ -599,6 +600,7 @@ int	main(void)
 
 	return	1;
 }
+#endif
 
 void	Audio_Destroy(Audio **ppAud)
 {

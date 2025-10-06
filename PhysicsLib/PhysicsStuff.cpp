@@ -753,6 +753,23 @@ bool	Phys_VCharacterIsSupported(const PhysVCharacter *pChar)
 
 
 //returns the ID
+uint32_t	Phys_CreateAndAddBox(PhysicsStuff *pPS, float height,
+	float width, float depth, const vec3 org, uint16_t layer)
+{
+	BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+	Vec3Arg	VOrg(org[0], org[1], org[2]);
+
+	Ref<Shape>	box	=new BoxShape(Vec3(height * 0.5f, width * 0.5f, 0.5f * depth));
+
+	BodyID	box_id	=body_interface.CreateAndAddBody(BodyCreationSettings(box, VOrg,
+		Quat::sIdentity(), EMotionType::Static, Layers::NON_MOVING), EActivation::DontActivate);
+
+	return	box_id.GetIndexAndSequenceNumber();
+}
+
+
+//returns the ID
 uint32_t	Phys_CreateAndAddSphere(PhysicsStuff *pPS, float radius,
 	const vec3 org, uint16_t layer)
 {

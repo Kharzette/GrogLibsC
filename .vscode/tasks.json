@@ -26,7 +26,7 @@
 			"command": "cp libs/* ${config:CurrentGameLibs}",
 			"group": "none",
 			"options": {"cwd": "${workspaceFolder}"},
-			"dependsOn" : [ "aud make", "inp make", "mat make", "ui make", "mesh make", "ter make", "util make", "phys make"],
+			"dependsOn" : [ "libs build" ],
 			"detail": "Copy grog libs to game libs directory for testing."
 		},
 		{
@@ -47,73 +47,10 @@
 		},
 		{
 			"type": "shell",			
-			"label": "aud make",
-			"command": "make",
+			"label": "libs build",
+			"command": "./BuildIt",
 			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/AudioLib"},
-			"problemMatcher": [],
-			"detail": "make build task"
-		},
-		{
-			"type": "shell",
-			"label": "util make",
-			"command": "make",
-			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/UtilityLib"},
-			"problemMatcher": [],
-			"detail": "make build task"
-		},
-		{
-			"type": "shell",
-			"label": "phys make",
-			"command": "make",
-			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/PhysicsLib"},
-			"problemMatcher": [],
-			"detail": "make build task"
-		},
-		{
-			"type": "shell",
-			"label": "mat make",
-			"command": "make",
-			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/MaterialLib"},
-			"problemMatcher": [],
-			"detail": "make build task"
-		},
-		{
-			"type": "shell",
-			"label": "ui make",
-			"command": "make",
-			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/UILib"},
-			"problemMatcher": [],
-			"detail": "make build task"
-		},
-		{
-			"type": "shell",
-			"label": "mesh make",
-			"command": "make",
-			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/MeshLib"},
-			"problemMatcher": [],
-			"detail": "make build task"
-		},
-		{
-			"type": "shell",
-			"label": "ter make",
-			"command": "make",
-			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/TerrainLib"},
-			"problemMatcher": [],
-			"detail": "make build task"
-		},
-		{
-			"type": "shell",
-			"label": "inp make",
-			"command": "make",
-			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/InputLib"},
+			"options": {"cwd": "${workspaceFolder}"},
 			"problemMatcher": [],
 			"detail": "make build task"
 		},

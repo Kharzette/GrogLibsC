@@ -1,0 +1,18 @@
+	Moar small test programs instead of a giant TestStuff
+		UI			basic esc menu, onscreen data like lists of assets in gamedir, something realtime like position or velocity
+		Physics		setting up static floors and walls, loading static stuff, bouncing balls, stacking cubes
+		Terrain		load and fly around a terrain chunk, maybe drop balls on it
+		Characters	load and play anims with keys, simple ui instructions
+		Audio		load and play sounds with simple ui
+		Input		key binds?  controllers?  mouse sens?
+
+	Easier window creation and gameloop
+		Looked at raylib and the examples are so small and clean!
+		Could do better at stuffing stuff like rast and viewport into libs somewhere
+
+	Build
+		I hate all build systems
+			Making my own would make everyone hate ME (for good reason)
+		everyone seems to use cmake
+			I hate it but maybe I might try it again
+			better than that meson / ninja crap

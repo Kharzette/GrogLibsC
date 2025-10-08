@@ -10,10 +10,10 @@ Game libraries using C language, often ported from my C# libraries of the same n
 - UI Module using [Clay](https://github.com/nicbarker/clay)
 
 # TODO
-- BSP Maps
+- Better and more focused smaller test programs
 - Integration of a physics library of some sort (Jolt in progress)
-- Better collision / physics on characters
 - Static meshes with various collision shapes
+- Better collision / physics on characters
 - Windows
 
 # Building
@@ -22,18 +22,12 @@ For awhile I had every dependency as a submodule, but that made it annoying for 
 - FAudio
 - pnglib
 
-My awful .vscode makefile stuff needs a libs dir (see below)
-```bash
-mkdir libs
-```
-
 The dxvk-native submodule needs building:
 ```bash
 meson --buildtype "debug" build
 cd build
 ninja
 ```
-Grog's makefiles will look for the libs there in dxvk-native/build/etc
 
 Build JoltPhysics
 ```bash
@@ -43,7 +37,12 @@ cd Linux_Debug
 make -j3
 ```
 
-So something really annoying I do that I should probably fix is using .vscode launch.json and tasks.json to copy the shared libraries around.  I should either commit those or stop doing that and have the makefiles do something more reasonable.
+I've recently ditched makefiles for a build that uses a c program to build.  It is quite fast and easy to use.  The repo for the h file is [here](https://github.com/tsoding/nob.h).  Just run ./BuildIt.  If it isn't there do:
+```bash
+gcc BuildIt.c -o BuildIt
+```
+
+For my own testing with vscode, I have a variable in settings.json called CurrentGame that defines where my game directory is located, that contains all the game assets and such.  CurrentGameLibs is where all of the various libraries get copied to for the run or debug.
 
 # Coordinate System
 I've fairly recently switched from right to left handed.  Since early directX used left, my brain is just wired to work in left handed.  Right made it much easier to get data in and out of blender, but when doing gameplay and cameras and such I was having a rough time of it.

@@ -2,22 +2,22 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"label": "teststuff make",
-			"command": "make TestStuff",
+			"label": "teststuff build",
+			"command": "./BuildIt --test-stuff",
 			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/test"},
+			"options": {"cwd": "${workspaceFolder}"},
 			"problemMatcher": [],
-			"detail": "make build task",
+			"detail": "BuildIt task",
 			"dependsOn": [ "copyGLibs", "copyDXGI", "copyD3D11" ]
 		},
 		{
 			"type": "shell",
-			"label": "testui make",
-			"command": "make TestUI",
+			"label": "testui build",
+			"command": "./BuildIt --test-ui",
 			"group": "build",
-			"options": {"cwd": "${workspaceFolder}/test"},
+			"options": {"cwd": "${workspaceFolder}"},
 			"problemMatcher": [],
-			"detail": "make build task",
+			"detail": "BuildIt task",
 			"dependsOn": [ "copyGLibs", "copyDXGI", "copyD3D11" ]			
 		},
 		{
@@ -48,11 +48,11 @@
 		{
 			"type": "shell",			
 			"label": "libs build",
-			"command": "./BuildIt",
+			"command": "./BuildIt --libs-all",
 			"group": "build",
 			"options": {"cwd": "${workspaceFolder}"},
 			"problemMatcher": [],
-			"detail": "make build task"
+			"detail": "BuildIt task",
 		},
 		{
 			"type": "shell",

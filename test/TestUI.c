@@ -464,8 +464,8 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, const StuffKe
 				.layoutDirection = CLAY_TOP_TO_BOTTOM,
 				.sizing =
 				{
-					.width = CLAY_SIZING_PERCENT(0.5f),
-					.height = CLAY_SIZING_FIT(0)
+					.width	=CLAY_SIZING_PERCENT(0.5f),
+					.height	=CLAY_SIZING_FIT(0)
 				},
 				.padding = { 8, 8, 8, 8 },
 				.childGap = 8
@@ -474,15 +474,16 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, const StuffKe
 				CLAY(CLAY_ID("TexPicture"), {
 					.layout	=
 					{
-						.sizing = {
-							.width = CLAY_SIZING_FIT(0),
-							.height = CLAY_SIZING_FIT(0)
+						.sizing	=
+						{
+							.width	=CLAY_SIZING_FIT(0),
+							.height	=CLAY_SIZING_FIT(0)
 						}
 					},
 					.backgroundColor	={255, 255, 255, 255},
 					.image	=
 					{
-						.imageData			=szSelectedTex,
+						.imageData	=szSelectedTex,
 					}}) {}
 			}
 		}
@@ -491,14 +492,15 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, const StuffKe
 			.layout	=
 			{
 				.layoutDirection = CLAY_TOP_TO_BOTTOM,
-				.sizing =
+				.sizing	=
 				{
-					.width = CLAY_SIZING_FIT(0),
-					.height = CLAY_SIZING_FIT(0)
+					.width	=CLAY_SIZING_FIT(0),
+					.height	=CLAY_SIZING_FIT(0)
 				},
 				.padding = { 8, 8, 8, 8 },
 				.childGap = 8
 			},
+			.backgroundColor	={55, 255, 255, 255},
 			.clip	=
 			{
 				.vertical		=true,

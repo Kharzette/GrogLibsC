@@ -7,8 +7,8 @@
 		{
 			"type": "cppdbg",
 			"request": "launch",
-			"preLaunchTask": "teststuff make",
-			"name": "teststuff",
+			"preLaunchTask": "teststuff build",
+			"name": "TestStuff",
 			"program": "${workspaceFolder}/test/TestStuff",
 			"args": [],
 			"stopAtEntry": false,
@@ -20,8 +20,8 @@
 		{
 			"type": "cppdbg",
 			"request": "launch",
-			"preLaunchTask": "testui make",
-			"name": "testUI",
+			"preLaunchTask": "testui build",
+			"name": "TestUI",
 			"program": "${workspaceFolder}/test/TestUI",
 			"args": [],
 			"stopAtEntry": false,

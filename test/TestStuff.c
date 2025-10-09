@@ -266,7 +266,7 @@ __attribute_maybe_unused__
 
 	pTS->mpUI	=UI_Create(pTS->mpGD, pSK, MAX_UI_VERTS);
 
-	UI_AddFont(pTS->mpUI, "MeiryoUI26", 0);
+	UI_AddAllFonts(pTS->mpUI);
 
 	//clay init
     uint64_t totalMemorySize = Clay_MinMemorySize();

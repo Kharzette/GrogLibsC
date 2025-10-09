@@ -267,7 +267,7 @@ Audio	*Audio_Create(int deviceIndex)
 
 	Init3D(pRet);
 	
-	pRet->mNumSFXLoaded	=SoundEffectLoadAllInPath("Audio", pRet->mpFA,
+	pRet->mNumSFXLoaded	=SoundEffect_LoadAllInPath("Audio", pRet->mpFA,
 							pRet->mpDevices[deviceIndex].mNumChannels);
 
 	if(pRet->mNumSFXLoaded <= 0)
@@ -415,7 +415,7 @@ Audio	*Audio_CreateInteractive(void)
 
 	Init3D(pRet);
 	
-	pRet->mNumSFXLoaded	=SoundEffectLoadAllInPath("Audio", pRet->mpFA,
+	pRet->mNumSFXLoaded	=SoundEffect_LoadAllInPath("Audio", pRet->mpFA,
 							pRet->mpDevices[chosenIndex].mNumChannels);
 
 	if(pRet->mNumSFXLoaded <= 0)
@@ -450,7 +450,15 @@ void	Audio_Update(Audio *pAud, vec3 position, vec3 velocity)
 	pAud->mListener.Velocity.z	=velocity[2];
 
 	//this is broken and needs fixing TODO
-	//SoundEffectUpdateEmitters(pAud->m3D, &pAud->mListener, pAud->mpFAMV);
+	//SoundEffect_UpdateEmitters(pAud->m3D, &pAud->mListener, pAud->mpFAMV);
+}
+
+
+bool	Audio_SFXCreate(Audio *pAud,
+						const char *szName, const char *szPath,
+						uint32_t numChannels, int *pIdx)
+{
+	return	SoundEffect_Create(szName, szPath, pAud->mpFA, numChannels, pIdx);
 }
 
 
@@ -564,7 +572,7 @@ int	main(void)
 
 	printf("Current Dir: %s\n", pathBuf);
 
-	int	numLoaded	=SoundEffectLoadAllInPath("Audio", pFA, devices[chosenIndex].mNumChannels);
+	int	numLoaded	=SoundEffect_LoadAllInPath("Audio", pFA, devices[chosenIndex].mNumChannels);
 
 	if(numLoaded <= 0)
 	{
@@ -585,14 +593,14 @@ int	main(void)
 
 	for(int i=0;i < numLoaded;i++)
 	{
-		SoundEffectPlayIdx(i, zvec);
+		SoundEffect_PlayIdx(i, zvec);
 		sleep(1);
 	}
 
 	//lazy wait for sound effect to finish
 	sleep(7);
 
-	SoundEffectDestroyAll();
+	SoundEffect_DestroyAll();
 
 	FAudioVoice_DestroyVoice(pFAMV);
 
@@ -606,7 +614,7 @@ void	Audio_Destroy(Audio **ppAud)
 {
 	Audio	*pAud	=*ppAud;
 
-	SoundEffectDestroyAll();
+	SoundEffect_DestroyAll();
 
 	//FAudioVoice_DestroyVoice(pAud->mpFAMV);
 

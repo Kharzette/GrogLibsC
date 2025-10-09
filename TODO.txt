@@ -10,9 +10,4 @@
 		Looked at raylib and the examples are so small and clean!
 		Could do better at stuffing stuff like rast and viewport into libs somewhere
 
-	Build
-		I hate all build systems
-			Making my own would make everyone hate ME (for good reason)
-		everyone seems to use cmake
-			I hate it but maybe I might try it again
-			better than that meson / ninja crap
+x	Build (using nob.h)

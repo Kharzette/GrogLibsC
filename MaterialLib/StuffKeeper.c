@@ -518,7 +518,7 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 		int	res	=stat(utstring_body(pFilePath), &fileStuff);
 		if(res)
 		{
-			FileStuff_PrintErrno(res);
+			FileStuff_PrintErrno(errno);
 			continue;
 		}
 
@@ -558,7 +558,7 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 		int	res	=stat(utstring_body(pFilePath), &fileStuff);
 		if(res)
 		{
-			FileStuff_PrintErrno(res);
+			FileStuff_PrintErrno(errno);
 			continue;
 		}
 
@@ -594,7 +594,7 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 		int	res	=stat(utstring_body(pFilePath), &fileStuff);
 		if(res)
 		{
-			FileStuff_PrintErrno(res);
+			FileStuff_PrintErrno(errno);
 			continue;
 		}
 
@@ -897,7 +897,7 @@ static void LoadResourcesDir(GraphicsDevice *pGD, StuffKeeper *pSK, const char *
 		int	res	=stat(utstring_body(pFilePath), &fileStuff);
 		if(res)
 		{
-			FileStuff_PrintErrno(res);
+			FileStuff_PrintErrno(errno);
 			continue;
 		}
 
@@ -1136,7 +1136,7 @@ void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
 		int	res	=stat(utstring_body(pFilePath), &fileStuff);
 		if(res)
 		{
-			FileStuff_PrintErrno(res);
+			FileStuff_PrintErrno(errno);
 			continue;
 		}
 

@@ -37,7 +37,8 @@
 		"stringstuff.h": "c",
 		"faudio.h": "c",
 		"animlib.h": "c",
-		"cstdint": "c"
+		"cstdint": "c",
+		"soundeffect.h": "c"
 	},
 	"terminal.integrated.profiles.windows": {
 

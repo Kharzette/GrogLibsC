@@ -980,7 +980,23 @@ void	UI_ClayRender(UIStuff *pUI, Clay_RenderCommandArray renderCommands)
 		{
 			case CLAY_RENDER_COMMAND_TYPE_TEXT:
 			{
-				GrogFont	*pFontToUse	=sGetFont(pUI, pRC->renderData.text.fontId);
+				GrogFont	*pFontToUse	=NULL;
+
+				//sometimes I'm lazy and don't set the font ID
+				//and instead hope that the size will be used
+				if(pRC->renderData.text.fontId == 0)
+				{
+					int	zeroSize	=UI_GetFontSize(pUI, 0);
+
+					uint16_t	nearID	=UI_GetNearestFontSize(pUI, pRC->renderData.text.fontSize);
+
+					pFontToUse	=sGetFont(pUI, nearID);
+				}
+				else
+				{
+					pFontToUse	=sGetFont(pUI, pRC->renderData.text.fontId);
+				}
+				
 				if(pFontToUse == NULL)
 				{
 					printf("Font not found! %u\n", (uint32_t)pRC->renderData.text.fontId);
@@ -1139,7 +1155,7 @@ void	UI_AddAllFonts(UIStuff *pUI)
 			int	res	=stat(pathBuf, &fileStuff);
 			if(res)
 			{
-				FileStuff_PrintErrno(res);
+				FileStuff_PrintErrno(errno);
 				continue;
 			}
 

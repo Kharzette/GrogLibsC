@@ -17,12 +17,17 @@
 #include	"UtilityLib/GameCamera.h"
 #include	"UtilityLib/UpdateTimer.h"
 #include	"UtilityLib/FileStuff.h"
+#include	"UtilityLib/ListStuff.h"
+#include	"UtilityLib/StringStuff.h"
 #include	"InputLib/Input.h"
+#include	"AudioLib/Audio.h"
+#include	"AudioLib/SoundEffect.h"
 
 
 #define	RESX				1280
 #define	RESY				720
 #define	UVSCALE_RATE		1.0f
+#define	NUM_UI_SECTIONS		2
 #define	MAX_UI_VERTS		(8192)
 
 
@@ -30,7 +35,6 @@
 typedef struct	TestStuff_t
 {
 	GraphicsDevice	*mpGD;
-	GameCamera		*mpCam;
 	UIStuff			*mpUI;
 
 	//toggles
@@ -44,16 +48,17 @@ typedef struct	TestStuff_t
 	//misc data
 	vec3	mLightDir;
 	vec3	mEyePos;
+	int		mSection;		//active section
 
 }	TestStuff;
+
 
 //static forward decs
 static void	sSetupKeyBinds(Input *pInp);
 static void	sSetupRastVP(GraphicsDevice *pGD);
-static void sFindFonts(const TestStuff *pTS);
 
 //clay stuff
-static const Clay_RenderCommandArray sCreateLayout(const TestStuff *pTS);
+static const Clay_RenderCommandArray sCreateLayout(const TestStuff *pTS, const StuffKeeper *pSK);
 static void sHandleClayErrors(Clay_ErrorData errorData);
 
 //input event handlers
@@ -62,7 +67,9 @@ static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt);
 static void	sRightMouseDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sRightMouseUpEH(void *pContext, const SDL_Event *pEvt);
 static void sMouseMoveEH(void *pContext, const SDL_Event *pEvt);
+static void MouseWheelEH(void *pContext, const SDL_Event *pEvt);
 static void sEscEH(void *pContext, const SDL_Event *pEvt);
+static void sTabEH(void *pContext, const SDL_Event *pEvt);
 
 
 int main(void)
@@ -73,8 +80,6 @@ int main(void)
 	//for ref/modifying by input handlers
 	TestStuff	*pTS	=malloc(sizeof(TestStuff));
 	memset(pTS, 0, sizeof(TestStuff));
-
-	sFindFonts(pTS);
 
 	//input and key / mouse bindings
 	Input	*pInp	=INP_CreateInput();
@@ -93,6 +98,8 @@ int main(void)
 
 	sSetupRastVP(pTS->mpGD);
 
+	Audio	*pAud	=Audio_Create(0);
+
 	StuffKeeper	*pSK	=StuffKeeper_Create(pTS->mpGD);
 	if(pSK == NULL)
 	{
@@ -104,28 +111,10 @@ int main(void)
 	CBKeeper	*pCBK	=CBK_Create(pTS->mpGD);
 	PostProcess	*pPP	=PP_Create(pTS->mpGD, pSK, pCBK);
 
-	//set sky gradient
-	{
-		vec3	skyHorizon	={	0.0f, 0.5f, 1.0f	};
-		vec3	skyHigh		={	0.0f, 0.25f, 1.0f	};
-
-		CBK_SetSky(pCBK, skyHorizon, skyHigh);
-		CBK_SetFogVars(pCBK, 50.0f, 300.0f, true);
-	}
-
 	PP_SetTargets(pPP, pTS->mpGD, "BackColor", "BackDepth");
 
-	float	aspect	=(float)RESX / (float)RESY;
-	
 	//these need align
-	__attribute((aligned(32)))	mat4	camProj, textProj, viewMat;
-
-	pTS->mEyePos[0] =185.0f;
-	pTS->mEyePos[1] =36.0f;
-	pTS->mEyePos[2] =180.0f;
-
-	//game camera
-	pTS->mpCam	=GameCam_Create(false, 0.1f, 2000.0f, GLM_PI_4f, aspect, 1.0f, 10.0f);
+	__attribute((aligned(32)))	mat4	textProj;
 
 	//2d projection for text
 	glm_ortho(0, RESX, RESY, 0, -1.0f, 1.0f, textProj);
@@ -133,9 +122,17 @@ int main(void)
 	//set constant buffers to shaders, think I just have to do this once
 	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
+	GD_OMSetBlendState(pTS->mpGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
+	GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
+	GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
+
+	//set proj for 2D
+	CBK_SetProjection(pCBK, textProj);
+	CBK_UpdateFrame(pCBK, pTS->mpGD);
+
 	pTS->mpUI	=UI_Create(pTS->mpGD, pSK, MAX_UI_VERTS);
 
-	UI_AddFont(pTS->mpUI, "MeiryoUI26", 0);
+	UI_AddAllFonts(pTS->mpUI);
 
 	//clay init
     uint64_t totalMemorySize = Clay_MinMemorySize();
@@ -169,25 +166,11 @@ int main(void)
 
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
-
 		{
 			if(dt > maxDT)
 			{
 				maxDT	=dt;
 			}
-		}
-
-		//set no blend, I think post processing turns it on maybe
-		GD_OMSetBlendState(pTS->mpGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
-		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
-
-		//set CB view
-		{
-			GameCam_GetViewMatrixFly(pTS->mpCam, viewMat, pTS->mEyePos);
-			CBK_SetView(pCBK, viewMat, pTS->mEyePos);
-
-			//set the skybox world mat to match eye pos
-			glm_translate_make(viewMat, pTS->mEyePos);
 		}
 
 		PP_ClearDepth(pPP, pTS->mpGD, "BackDepth");
@@ -196,23 +179,11 @@ int main(void)
 		//update frame CB
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
-		//turn depth off for sky
-		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "DisableDepth"));
-
-		//turn depth back on
-		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
-
-		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
-
-		//set proj for 2D
-		CBK_SetProjection(pCBK, textProj);
-		CBK_UpdateFrame(pCBK, pTS->mpGD);
-
 		Clay_UpdateScrollContainers(true, pTS->mScrollDelta, dt);
 
 		pTS->mScrollDelta.x	=pTS->mScrollDelta.y	=0.0f;
 	
-		Clay_RenderCommandArray renderCommands = sCreateLayout(pTS);
+		Clay_RenderCommandArray renderCommands = sCreateLayout(pTS, pSK);
 	
 		UI_BeginDraw(pTS->mpUI);
 	
@@ -220,12 +191,10 @@ int main(void)
 	
 		UI_EndDraw(pTS->mpUI);
 	
-		//change back to 3D
-		CBK_SetProjection(pCBK, camProj);
-		CBK_UpdateFrame(pCBK, pTS->mpGD);
-
 		GD_Present(pTS->mpGD);
 	}
+
+	Audio_Destroy(&pAud);
 
 	GD_Destroy(&pTS->mpGD);
 
@@ -282,6 +251,16 @@ static void	sMouseMoveEH(void *pContext, const SDL_Event *pEvt)
 	Clay_SetPointerState(pTS->mMousePos, pTS->mbLeftMouseDown);
 }
 
+static void	MouseWheelEH(void *pContext, const SDL_Event *pEvt)
+{
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mScrollDelta.x	=pEvt->wheel.x;
+	pTS->mScrollDelta.y	=pEvt->wheel.y;
+}
+
 static void	sEscEH(void *pContext, const SDL_Event *pEvt)
 {
 	TestStuff	*pTS	=(TestStuff *)pContext;
@@ -291,43 +270,30 @@ static void	sEscEH(void *pContext, const SDL_Event *pEvt)
 	pTS->mbRunning	=false;
 }
 
-
-static void sFindFonts(const TestStuff *pTS)
+static void	sTabEH(void *pContext, const SDL_Event *pEvt)
 {
-	DIR	*pDir	=opendir("Fonts");
-	for(;;)
+	TestStuff	*pTS	=(TestStuff *)pContext;
+
+	assert(pTS);
+
+	pTS->mSection++;
+	if(pTS->mSection > NUM_UI_SECTIONS)
 	{
-		struct dirent	*pDE	=readdir(pDir);
-		if(pDE == NULL)
-		{
-			break;
-		}
-
-		struct stat	fileStuff;
-		int	res	=stat(pDE->d_name, &fileStuff);
-		if(res)
-		{
-			FileStuff_PrintErrno(res);
-			continue;
-		}
-
-		//regular file?
-		if(S_ISREG(fileStuff.st_mode))
-		{
-			printf("Font: %s\n", pDE->d_name);
-		}
+		pTS->mSection	=0;
 	}
-	closedir(pDir);
 }
+
 
 static void	sSetupKeyBinds(Input *pInp)
 {
 	//event style bindings
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, sEscEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_TAB, sTabEH);
 
 	//held bindings
 	//move data events
 	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_EVENT_MOUSE_MOTION, sMouseMoveEH);
+	INP_MakeBinding(pInp, INP_BIND_TYPE_MOVE, SDL_EVENT_MOUSE_WHEEL, MouseWheelEH);
 
 	//down/up events
 	INP_MakeBinding(pInp, INP_BIND_TYPE_PRESS, SDL_BUTTON_RIGHT, sRightMouseDownEH);
@@ -366,20 +332,32 @@ static void	sSetupRastVP(GraphicsDevice *pGD)
 }
 
 
+static void	sFillSFXList(void)
+{
+	int	numSFX	=SoundEffect_GetSFXCount();
+
+	for(int i=0;i < numSFX;i++)
+	{
+		Clay_String	texStr;
+
+		texStr.chars					=SoundEffect_GetIndexName(i);
+		texStr.isStaticallyAllocated	=false;
+		texStr.length					=strlen(texStr.chars);
+
+		CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {111, 70, 70, 255}}));
+	}
+}
+
+
 //some ideas for stuff to display
 //files in the game dir
 //time related stuff
 //some kind of fake rpg gump with random stats
-static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS)
+static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, const StuffKeeper *pSK)
 {
 	Clay_BeginLayout();
 
-//	sprintf(sVelString, "Velocity: %f, %f, %f", velocity[0], velocity[1], velocity[2]);
-
-//	Clay_String	velInfo;
-
-//	velInfo.chars	=sVelString;
-//	velInfo.length	=strlen(sVelString);
+	char	*szSelectedTex	=NULL;
 
 	CLAY(CLAY_ID("OuterContainer"), { .layout =
 		{
@@ -393,9 +371,113 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS)
 			.childGap = 8
 		}})
 	{
-//		CLAY_TEXT(velInfo, CLAY_TEXT_CONFIG({ .fontSize = 26, .textColor = {0, 70, 70, 155} }));
+		CLAY(CLAY_ID("Instruct"), {	.layout	=
+			{
+				.layoutDirection = CLAY_TOP_TO_BOTTOM,
+				.sizing =
+				{
+					.width = CLAY_SIZING_FIT(0),
+					.height = CLAY_SIZING_PERCENT(0.025f)
+				},
+				.padding = { 8, 8, 8, 8 },
+				.childGap = 8
+			}})
+		{
+			CLAY_TEXT(CLAY_STRING("Tab between sections, arrows to select..."), CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {255,255,255,255} }));
+		}
+		CLAY(CLAY_ID("Textures"), {	.layout	=
+			{
+				.layoutDirection = CLAY_LEFT_TO_RIGHT,
+				.sizing =
+				{
+					.width = CLAY_SIZING_FIT(0),
+					.height = CLAY_SIZING_FIT(0)
+				},
+				.padding = { 8, 8, 8, 8 },
+				.childGap = 8
+			}})
+		{
+			CLAY(CLAY_ID("TexList"), {	.layout	=
+			{
+				.layoutDirection = CLAY_TOP_TO_BOTTOM,
+				.sizing =
+				{
+					.width = CLAY_SIZING_PERCENT(0.5f),
+					.height = CLAY_SIZING_FIT(0)
+				},
+				.padding = { 8, 8, 8, 8 },
+				.childGap = 8
+			}})
+			{
+				StringList	*pSL	=StuffKeeper_GetTextureList(pSK);
+				
+				const StringList	*pCur	=SZList_Iterate(pSL);
 
-//		sCheckLOS(pTS);
+				while(pCur != NULL)
+				{
+					Clay_String	texStr;
+
+					texStr.chars					=SZList_IteratorVal(pCur);
+					texStr.isStaticallyAllocated	=false;
+					texStr.length					=strlen(texStr.chars);
+
+					if(szSelectedTex == NULL)
+					{
+						szSelectedTex	=texStr.chars;
+					}
+
+					CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {0, 70, 70, 155}}));
+
+					pCur	=SZList_IteratorNext(pCur);
+				}
+			}
+			CLAY(CLAY_ID("TexDisplay"), {	.layout	=
+			{
+				.layoutDirection = CLAY_TOP_TO_BOTTOM,
+				.sizing =
+				{
+					.width = CLAY_SIZING_PERCENT(0.5f),
+					.height = CLAY_SIZING_FIT(0)
+				},
+				.padding = { 8, 8, 8, 8 },
+				.childGap = 8
+			}})
+			{
+				CLAY(CLAY_ID("TexPicture"), {
+					.layout	=
+					{
+						.sizing = {
+							.width = CLAY_SIZING_FIT(0),
+							.height = CLAY_SIZING_FIT(0)
+						}
+					},
+					.backgroundColor	={255, 255, 255, 255},
+					.image	=
+					{
+						.imageData			=szSelectedTex,
+					}}) {}
+			}
+		}
+		CLAY(CLAY_ID("Audio"), {	.layout	=
+			{
+				.layoutDirection = CLAY_TOP_TO_BOTTOM,
+				.sizing =
+				{
+					.width = CLAY_SIZING_FIT(0),
+					.height = CLAY_SIZING_FIT(0)
+				},
+				.padding = { 8, 8, 8, 8 },
+				.childGap = 8
+			},
+			.clip	=
+			{
+				.vertical		=true,
+				.childOffset	=Clay_GetScrollOffset()
+			}
+		})
+		{
+			sFillSFXList();
+		}
 	}
 
 	return	Clay_EndLayout();

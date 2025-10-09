@@ -10,13 +10,16 @@
 #include	<string.h>
 #include	<FAudio.h>
 #include	<F3DAudio.h>
+#include	"../UtilityLib/StringStuff.h"
 #include	"tinywav/tinywav.h"
 #include	"SoundEffect.h"
+#include	"Audio.h"
 
 
 #define	SFX_NAME_LEN		32
 #define	SFX_MAX_COUNT		64
 #define	SRC_VOICE_CHANNELS	32
+
 
 //lazy data
 typedef struct
@@ -51,122 +54,24 @@ SoundEffect	sSoundFX[SFX_MAX_COUNT]	={0};
 uint32_t	sNumSFX	=0;
 
 
-//callbacks, not doing anything with these yet
+//callback forward decs
+static void FAUDIOCALL sOnBufferEnd(FAudioVoiceCallback *pCB, void *pContext);
+static void FAUDIOCALL sOnBufferStart(FAudioVoiceCallback *pCB, void *pContext);
+static void FAUDIOCALL sOnLoopEnd(FAudioVoiceCallback *pCB, void *pContext);
+static void FAUDIOCALL sOnStreamEnd(FAudioVoiceCallback *pCB);
+static void FAUDIOCALL sOnVoiceError(FAudioVoiceCallback *pCB, void *pContext, uint32_t Error);
+static void FAUDIOCALL sOnVoiceProcessingPassStart(FAudioVoiceCallback *pCB, uint32_t BytesRequired);
+static void FAUDIOCALL sOnVoiceProcessingPassEnd(FAudioVoiceCallback *pCB);
 
-static void FAUDIOCALL OnBufferEnd(FAudioVoiceCallback *pCB, void *pContext)
-{
-	SoundEffect	*pSFX	=(SoundEffect *)pContext;
-
-//	printf("Buffer end!\n");
-
-	pSFX->mbPlaying	=false;
-}
-
-static void FAUDIOCALL OnBufferStart(FAudioVoiceCallback *pCB, void *pContext)
-{
-}
-
-static void FAUDIOCALL OnLoopEnd(FAudioVoiceCallback *pCB, void *pContext)
-{
-}
-
-static void FAUDIOCALL OnStreamEnd(FAudioVoiceCallback *pCB)
-{
-	printf("Stream end!\n");
-}
-
-static void FAUDIOCALL OnVoiceError(FAudioVoiceCallback *pCB, void *pContext, uint32_t Error)
-{
-}
-
-static void FAUDIOCALL OnVoiceProcessingPassStart(FAudioVoiceCallback *pCB, uint32_t BytesRequired)
-{
-}
-
-static void FAUDIOCALL OnVoiceProcessingPassEnd(FAudioVoiceCallback *pCB)
-{
-}
-
-
-static void	PrintErr(int err)
-{
-	if(err == 0)
-	{
-		return;	//success!
-	}
-
-	switch(err)
-	{
-		case	EACCES:
-			printf("EACCESS\n");
-			break;
-		case	EIO:
-			printf("EI EI O (EIO)\n");
-			break;
-		case	ELOOP:
-			printf("ELOOP\n");
-			break;
-		case	ENAMETOOLONG:
-			printf("ENAMETOOLONG\n");
-			break;
-		case	ENOENT:
-			printf("ENOENT\n");
-			break;
-		case	ENOTDIR:
-			printf("ENOTDIR\n");
-			break;
-		case	EOVERFLOW:
-			printf("EOVERFLOW\n");
-			break;
-		default:
-			printf("This: %d happened ¯\\_(ツ)_/¯\n", err);
-	}
-}
-
-
-static int	GetIndex(const char *szName)
-{
-	assert(szName != NULL);
-
-	for(int i=0;i < sNumSFX;i++)
-	{
-		if(0 == strncmp(sSoundFX[i].mszName, szName, SFX_NAME_LEN))
-		{
-			return	i;
-		}
-	}
-	return	-1;
-}
-
-static bool	CheckExisting(const char *szName)
-{
-	return	(GetIndex(szName) != -1);
-}
-
-
-void	SoundEffectDestroyAll(void)
-{
-	for(int i=0;i < sNumSFX;i++)
-	{
-		//free voice
-		FAudioVoice_DestroyVoice(sSoundFX[i].mpSrcVoice);
-		sSoundFX[i].mpSrcVoice	=NULL;
-
-		//free buffer data
-		free((void *)sSoundFX[i].mBuffer.pAudioData);
-		memset(&sSoundFX[i].mBuffer, 0, sizeof(FAudioBuffer));
-
-		//zero out name
-		memset(sSoundFX[i].mszName, 0, SFX_NAME_LEN);
-	}
-
-	sNumSFX	=0;
-}
+//statics
+static void	sPrintErr(int err);
+static int	sGetIndex(const char *szName);
+static bool	sCheckExisting(const char *szName);
 
 
 //loadup a sound effect (non streamed)
-bool    SoundEffectCreate(const char *szName, const char *szPath,
-							FAudio *pFA, uint32_t numChannels)
+bool    SoundEffect_Create(const char *szName, const char *szPath,
+							FAudio *pFA, uint32_t numChannels, int *pIdx)
 {
 	if(sNumSFX == SFX_MAX_COUNT)
 	{
@@ -176,8 +81,9 @@ bool    SoundEffectCreate(const char *szName, const char *szPath,
 	TinyWav	tw;
 
 	//check for existing?
-	if(CheckExisting(szName))
+	if(sCheckExisting(szName))
 	{
+		*pIdx	=sGetIndex(szName);
 		return	true;	//already loaded?
 	}
 
@@ -207,13 +113,13 @@ bool    SoundEffectCreate(const char *szName, const char *szPath,
 	FAudioVoiceCallback	*pCB	=&pCur->mCB;
 
 	//callbacks!
-	pCB->OnBufferEnd				=OnBufferEnd;
-	pCB->OnBufferStart				=OnBufferStart;
-	pCB->OnLoopEnd					=OnLoopEnd;
-	pCB->OnStreamEnd				=OnStreamEnd;
-	pCB->OnVoiceError				=OnVoiceError;
-	pCB->OnVoiceProcessingPassEnd	=OnVoiceProcessingPassEnd;
-	pCB->OnVoiceProcessingPassStart	=OnVoiceProcessingPassStart;
+	pCB->OnBufferEnd				=sOnBufferEnd;
+	pCB->OnBufferStart				=sOnBufferStart;
+	pCB->OnLoopEnd					=sOnLoopEnd;
+	pCB->OnStreamEnd				=sOnStreamEnd;
+	pCB->OnVoiceError				=sOnVoiceError;
+	pCB->OnVoiceProcessingPassEnd	=sOnVoiceProcessingPassEnd;
+	pCB->OnVoiceProcessingPassStart	=sOnVoiceProcessingPassStart;
 	
 	uint32_t	res	=FAudio_CreateSourceVoice(
 		pFA, &pFASV, &wfx, 0, 1.0f, pCB, NULL, NULL);
@@ -278,28 +184,28 @@ bool    SoundEffectCreate(const char *szName, const char *szPath,
 	return	true;
 }
 
-
-void	StripExtension(const char *szFileName, char *extLess, size_t retBufSize)
+void	SoundEffect_DestroyAll(void)
 {
-	//copy stream
-	strncpy(extLess, szFileName, retBufSize);
-
-	//find last . I guess assumes only one .
-	char	*pExt	=strrchr(extLess, '.');
-
-	if(pExt == NULL)
+	for(int i=0;i < sNumSFX;i++)
 	{
-		return;	//no extension
+		//free voice
+		FAudioVoice_DestroyVoice(sSoundFX[i].mpSrcVoice);
+		sSoundFX[i].mpSrcVoice	=NULL;
+
+		//free buffer data
+		free((void *)sSoundFX[i].mBuffer.pAudioData);
+		memset(&sSoundFX[i].mBuffer, 0, sizeof(FAudioBuffer));
+
+		//zero out name
+		memset(sSoundFX[i].mszName, 0, SFX_NAME_LEN);
 	}
 
-	//lazy null at the .
-	*pExt	=0;
+	sNumSFX	=0;
 }
-
 
 //return how many sounds loaded
 //numChannels is how many speakers on the output device
-int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA, uint32_t numChannels)
+int	SoundEffect_LoadAllInPath(const char *szDir, FAudio *pFA, uint32_t numChannels)
 {
 	DIR	*pDir	=opendir(szDir);
 	if(pDir == NULL)
@@ -308,7 +214,7 @@ int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA, uint32_t numChannel
 	}
 
 	//lazy
-	char	nameBuf[256], pathBuf[256];
+	char	pathBuf[256];
 	int		count	=0;
 	for(;;)
 	{
@@ -328,23 +234,42 @@ int	SoundEffectLoadAllInPath(const char *szDir, FAudio *pFA, uint32_t numChannel
 		int	res	=stat(pathBuf, &fileStuff);
 		if(res)
 		{
-			PrintErr(res);
+			sPrintErr(res);
 			continue;
 		}
 
 		//regular file?
 		if(S_ISREG(fileStuff.st_mode))
 		{
-			StripExtension(pEnt->d_name, nameBuf, 255);
+			UT_string	*pFName	=SZ_StripExtension(pEnt->d_name);
 
-			if(SoundEffectCreate(nameBuf, pathBuf, pFA, numChannels))
+			int	idx	=0;
+			if(SoundEffect_Create(utstring_body(pFName), pathBuf, pFA, numChannels, &idx))
 			{
 				count++;
 			}
+			utstring_free(pFName);
 		}
 	}
 	return	count;
 }
+
+
+const char	*SoundEffect_GetIndexName(int idx)
+{
+	if(idx < 0 || idx >= sNumSFX)
+	{
+		return	NULL;
+	}
+
+	return	sSoundFX[idx].mszName;
+}
+
+int	SoundEffect_GetSFXCount(void)
+{
+	return	sNumSFX;
+}
+
 
 bool	SoundEffectPlayIdx(int idx, vec3 position)
 {
@@ -380,7 +305,7 @@ bool	SoundEffectPlayIdx(int idx, vec3 position)
 //think about returning indexes to save on string compares?
 bool	SoundEffectPlay(const char *szName, vec3 position)
 {
-	int	idx	=GetIndex(szName);
+	int	idx	=sGetIndex(szName);
 	if(idx == -1)
 	{
 		return	false;
@@ -389,9 +314,8 @@ bool	SoundEffectPlay(const char *szName, vec3 position)
 }
 
 
-void	SoundEffectUpdateEmitters(F3DAUDIO_HANDLE h3d,
-									const F3DAUDIO_LISTENER *pList,
-									FAudioVoice *pMaster)
+void	SoundEffect_UpdateEmitters(F3DAUDIO_HANDLE h3d,
+			const F3DAUDIO_LISTENER *pList, FAudioVoice *pMaster)
 {
 	return;
 
@@ -417,4 +341,96 @@ void	SoundEffectUpdateEmitters(F3DAUDIO_HANDLE h3d,
 		FAudioSourceVoice_SetFrequencyRatio(pSFX->mpSrcVoice,
 			pSFX->mDSP.DopplerFactor, FAUDIO_COMMIT_NOW);
 	}
+}
+
+
+//callbacks, not doing anything with these yet
+static void FAUDIOCALL sOnBufferEnd(FAudioVoiceCallback *pCB, void *pContext)
+{
+	SoundEffect	*pSFX	=(SoundEffect *)pContext;
+
+//	printf("Buffer end!\n");
+
+	pSFX->mbPlaying	=false;
+}
+
+static void FAUDIOCALL sOnBufferStart(FAudioVoiceCallback *pCB, void *pContext)
+{
+}
+
+static void FAUDIOCALL sOnLoopEnd(FAudioVoiceCallback *pCB, void *pContext)
+{
+}
+
+static void FAUDIOCALL sOnStreamEnd(FAudioVoiceCallback *pCB)
+{
+	printf("Stream end!\n");
+}
+
+static void FAUDIOCALL sOnVoiceError(FAudioVoiceCallback *pCB, void *pContext, uint32_t Error)
+{
+}
+
+static void FAUDIOCALL sOnVoiceProcessingPassStart(FAudioVoiceCallback *pCB, uint32_t BytesRequired)
+{
+}
+
+static void FAUDIOCALL sOnVoiceProcessingPassEnd(FAudioVoiceCallback *pCB)
+{
+}
+
+
+//other statics
+static void	sPrintErr(int err)
+{
+	if(err == 0)
+	{
+		return;	//success!
+	}
+
+	switch(err)
+	{
+		case	EACCES:
+			printf("EACCESS\n");
+			break;
+		case	EIO:
+			printf("EI EI O (EIO)\n");
+			break;
+		case	ELOOP:
+			printf("ELOOP\n");
+			break;
+		case	ENAMETOOLONG:
+			printf("ENAMETOOLONG\n");
+			break;
+		case	ENOENT:
+			printf("ENOENT\n");
+			break;
+		case	ENOTDIR:
+			printf("ENOTDIR\n");
+			break;
+		case	EOVERFLOW:
+			printf("EOVERFLOW\n");
+			break;
+		default:
+			printf("This: %d happened ¯\\_(ツ)_/¯\n", err);
+	}
+}
+
+static int	sGetIndex(const char *szName)
+{
+	assert(szName != NULL);
+
+	for(int i=0;i < sNumSFX;i++)
+	{
+		if(0 == strncmp(sSoundFX[i].mszName, szName, SFX_NAME_LEN))
+		{
+			return	i;
+		}
+	}
+	return	-1;
+}
+
+static bool	sCheckExisting(const char *szName)
+{
+	return	(sGetIndex(szName) != -1);
 }

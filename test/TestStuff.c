@@ -252,7 +252,7 @@ __attribute_maybe_unused__
 
 	BPM_SetMoveMethod(pTS->mpBPM, pTS->mbFlyMode? BPM_MOVE_FLY : BPM_MOVE_GROUND);
 
-	SoundEffectPlay("synth", pTS->mPlayerPos);
+	SoundEffect_Play("synth", pTS->mPlayerPos);
 
 	//3D Projection
 	GameCam_GetProjection(pTS->mpCam, camProj);
@@ -333,7 +333,7 @@ __attribute_maybe_unused__
 				bool	bJumped	=BPM_Update(pTS->mpBPM, bSup, bFooting, secDelta, moveVec);
 				if(bJumped)
 				{
-					SoundEffectPlay("jump", pTS->mPlayerPos);
+					SoundEffect_Play("jump", pTS->mPlayerPos);
 				}
 
 				//moveVec is an amount to move this frame

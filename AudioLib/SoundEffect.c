@@ -271,7 +271,7 @@ int	SoundEffect_GetSFXCount(void)
 }
 
 
-bool	SoundEffectPlayIdx(int idx, vec3 position)
+bool	SoundEffect_PlayIdx(int idx, vec3 position)
 {
 	idx	%=sNumSFX;
 
@@ -303,14 +303,14 @@ bool	SoundEffectPlayIdx(int idx, vec3 position)
 }
 
 //think about returning indexes to save on string compares?
-bool	SoundEffectPlay(const char *szName, vec3 position)
+bool	SoundEffect_Play(const char *szName, vec3 position)
 {
 	int	idx	=sGetIndex(szName);
 	if(idx == -1)
 	{
 		return	false;
 	}
-	return	SoundEffectPlayIdx(idx, position);
+	return	SoundEffect_PlayIdx(idx, position);
 }
 
 

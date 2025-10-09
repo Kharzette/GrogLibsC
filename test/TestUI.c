@@ -332,6 +332,17 @@ static void	sSetupRastVP(GraphicsDevice *pGD)
 }
 
 
+static void sOnHoverSFX(Clay_ElementId eID, Clay_PointerData pnt, intptr_t userData)
+{
+	//clicked?
+	if(pnt.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME)
+	{
+		printf("Click! %s\n", eID.stringId.chars);
+
+		SoundEffect_Play(eID.stringId.chars, GLM_VEC3_ZERO);
+	}
+}
+
 static void	sFillSFXList(void)
 {
 	int	numSFX	=SoundEffect_GetSFXCount();
@@ -344,7 +355,24 @@ static void	sFillSFXList(void)
 		texStr.isStaticallyAllocated	=false;
 		texStr.length					=strlen(texStr.chars);
 
-		CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {111, 70, 70, 255}}));
+		CLAY(Clay__HashString(texStr, 0), { .layout	=
+			{
+				.layoutDirection = CLAY_LEFT_TO_RIGHT,
+				.sizing =
+				{
+					.width = CLAY_SIZING_FIT(0),
+					.height = CLAY_SIZING_FIT(0)
+				},
+				.padding = { 2, 2, 2, 2 },
+				.childGap = 8
+			}})
+		{
+			Clay_OnHover(sOnHoverSFX, (intptr_t)NULL);
+
+			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
+				.fontSize	=24,
+				.textColor	={Clay_Hovered()? 222:170, 88, 170, 255}}));
+		}
 	}
 }
 
@@ -458,7 +486,9 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, const StuffKe
 					}}) {}
 			}
 		}
-		CLAY(CLAY_ID("Audio"), {	.layout	=
+
+		CLAY(CLAY_ID("Audio"), {
+			.layout	=
 			{
 				.layoutDirection = CLAY_TOP_TO_BOTTOM,
 				.sizing =

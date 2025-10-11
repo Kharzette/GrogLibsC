@@ -1,5 +1,5 @@
 	Moar small test programs instead of a giant TestStuff
-		UI			basic esc menu, onscreen data like lists of assets in gamedir, something realtime like position or velocity
+x		UI			basic esc menu, onscreen data like lists of assets in gamedir, something realtime like position or velocity
 		Physics		setting up static floors and walls, loading static stuff, bouncing balls, stacking cubes
 		Terrain		load and fly around a terrain chunk, maybe drop balls on it
 		Characters	load and play anims with keys, simple ui instructions

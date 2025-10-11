@@ -162,7 +162,7 @@ static void	sStandardProgJunk_Add(Nob_Cmd *pCmd)
 		"-I../dxvk-native/include/native",
 		"-I../dxvk-native/include",
 		"-I../cglm/include", "-Wall",
-		"-Wl,-rpath=libs,--disable-new-dtags,--verbose");
+		"-Wl,-rpath=libs,--disable-new-dtags");
 }
 
 static bool	sbIsC(const char *szFileName)

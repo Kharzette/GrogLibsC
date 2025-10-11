@@ -28,7 +28,7 @@
 #define	RESY				720
 #define	UVSCALE_RATE		1.0f
 #define	NUM_UI_SECTIONS		2
-#define	MAX_UI_VERTS		(8192)
+#define	MAX_UI_VERTS		(8192 * 2)
 
 
 //input context, stuff input handlers will need
@@ -50,6 +50,9 @@ typedef struct	TestStuff_t
 	vec3	mEyePos;
 	int		mSection;		//active section
 
+	//selected texture
+	const char	*mpSelTex;
+
 }	TestStuff;
 
 
@@ -58,7 +61,7 @@ static void	sSetupKeyBinds(Input *pInp);
 static void	sSetupRastVP(GraphicsDevice *pGD);
 
 //clay stuff
-static const Clay_RenderCommandArray sCreateLayout(const TestStuff *pTS, const StuffKeeper *pSK);
+static const Clay_RenderCommandArray sCreateLayout(TestStuff *pTS, const StuffKeeper *pSK);
 static void sHandleClayErrors(Clay_ErrorData errorData);
 
 //input event handlers
@@ -332,14 +335,65 @@ static void	sSetupRastVP(GraphicsDevice *pGD)
 }
 
 
-static void sOnHoverSFX(Clay_ElementId eID, Clay_PointerData pnt, intptr_t userData)
+static void sOnHover(Clay_ElementId eID, Clay_PointerData pnt, intptr_t userData)
 {
 	//clicked?
 	if(pnt.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME)
 	{
 		printf("Click! %s\n", eID.stringId.chars);
 
-		SoundEffect_Play(eID.stringId.chars, GLM_VEC3_ZERO);
+		if(userData == NULL)
+		{
+			SoundEffect_Play(eID.stringId.chars, GLM_VEC3_ZERO);
+			return;
+		}
+
+		TestStuff	*pTS	=(TestStuff *)userData;
+		if(pTS == NULL)
+		{
+			printf("Goofy userdata in hover\n");
+			return;
+		}
+
+		pTS->mpSelTex	=eID.stringId.chars;
+	}
+}
+
+static void sFillTexList(TestStuff *pTS, const StuffKeeper *pSK)
+{
+	StringList	*pSL	=StuffKeeper_GetTextureList(pSK);
+	
+	const StringList	*pCur	=SZList_Iterate(pSL);
+
+	while(pCur != NULL)
+	{
+		Clay_String	texStr;
+
+		texStr.chars					=SZList_IteratorVal(pCur);
+		texStr.isStaticallyAllocated	=false;
+		texStr.length					=strlen(texStr.chars);
+
+		CLAY(Clay__HashString(texStr, 0), { .layout	=
+			{
+				.layoutDirection = CLAY_LEFT_TO_RIGHT,
+				.sizing =
+				{
+					.width = CLAY_SIZING_FIT(0),
+					.height = CLAY_SIZING_FIT(0)
+				},
+				.padding = { 2, 2, 2, 2 },
+				.childGap = 8
+			},
+			.cornerRadius		={ 6 },
+			.backgroundColor	={55, 55, 255, 255},
+		})
+		{
+			Clay_OnHover(sOnHover, (intptr_t)pTS);
+
+			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {0, 70, 70, 155}}));
+
+			pCur	=SZList_IteratorNext(pCur);
+		}
 	}
 }
 
@@ -363,11 +417,14 @@ static void	sFillSFXList(void)
 					.width = CLAY_SIZING_FIT(0),
 					.height = CLAY_SIZING_FIT(0)
 				},
-				.padding = { 2, 2, 2, 2 },
-				.childGap = 8
-			}})
+				.padding		={ 2, 2, 2, 2 },
+				.childGap		=8
+			},
+			.cornerRadius		={ 6 },
+			.backgroundColor	={55, 255, 255, 255},
+		})
 		{
-			Clay_OnHover(sOnHoverSFX, (intptr_t)NULL);
+			Clay_OnHover(sOnHover, (intptr_t)NULL);
 
 			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
 				.fontSize	=24,
@@ -381,11 +438,15 @@ static void	sFillSFXList(void)
 //files in the game dir
 //time related stuff
 //some kind of fake rpg gump with random stats
-static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, const StuffKeeper *pSK)
+static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *pSK)
 {
 	Clay_BeginLayout();
 
-	char	*szSelectedTex	=NULL;
+/*			.clip	=
+			{
+				.vertical		=true,
+				.childOffset	=Clay_GetScrollOffset()
+			}*/
 
 	CLAY(CLAY_ID("OuterContainer"), { .layout =
 		{
@@ -413,59 +474,83 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, const StuffKe
 		{
 			CLAY_TEXT(CLAY_STRING("Tab between sections, arrows to select..."), CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {255,255,255,255} }));
 		}
-		CLAY(CLAY_ID("Textures"), {	.layout	=
+
+		CLAY(CLAY_ID("SideBySideContainer"), { .layout =
 			{
 				.layoutDirection = CLAY_LEFT_TO_RIGHT,
 				.sizing =
 				{
-					.width = CLAY_SIZING_FIT(0),
-					.height = CLAY_SIZING_FIT(0)
+					.width = CLAY_SIZING_GROW(0),
+					.height = CLAY_SIZING_GROW(0)
 				},
 				.padding = { 8, 8, 8, 8 },
 				.childGap = 8
 			}})
 		{
-			CLAY(CLAY_ID("TexList"), {	.layout	=
-			{
-				.layoutDirection = CLAY_TOP_TO_BOTTOM,
-				.sizing =
+			CLAY(CLAY_ID("LeftPane"), {	.layout	=
 				{
-					.width = CLAY_SIZING_PERCENT(0.5f),
-					.height = CLAY_SIZING_FIT(0)
-				},
-				.padding = { 8, 8, 8, 8 },
-				.childGap = 8
-			}})
-			{
-				StringList	*pSL	=StuffKeeper_GetTextureList(pSK);
-				
-				const StringList	*pCur	=SZList_Iterate(pSL);
-
-				while(pCur != NULL)
-				{
-					Clay_String	texStr;
-
-					texStr.chars					=SZList_IteratorVal(pCur);
-					texStr.isStaticallyAllocated	=false;
-					texStr.length					=strlen(texStr.chars);
-
-					if(szSelectedTex == NULL)
+					.layoutDirection = CLAY_TOP_TO_BOTTOM,
+					.sizing =
 					{
-						szSelectedTex	=texStr.chars;
+						.width = CLAY_SIZING_PERCENT(0.3f),
+						.height = CLAY_SIZING_PERCENT(0.975f)
+					},
+					.padding = { 8, 8, 8, 8 },
+					.childGap = 8
+				}
+			})
+			{
+				CLAY(CLAY_ID("TexList"), {
+					.layout	=
+					{
+						.layoutDirection = CLAY_TOP_TO_BOTTOM,
+						.sizing	=
+						{
+							.width	=CLAY_SIZING_FIT(0),
+							.height	=CLAY_SIZING_FIT(0)
+						},
+						.padding = { 8, 8, 8, 8 },
+						.childGap = 8
+					},
+					.clip	=
+					{
+						.vertical		=true,
+						.childOffset	=Clay_GetScrollOffset()
 					}
-
-					CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {0, 70, 70, 155}}));
-
-					pCur	=SZList_IteratorNext(pCur);
+				})
+				{
+					sFillTexList(pTS, pSK);
+				}
+				CLAY(CLAY_ID("Audio"), {
+					.layout	=
+					{
+						.layoutDirection = CLAY_TOP_TO_BOTTOM,
+						.sizing	=
+						{
+							.width	=CLAY_SIZING_FIT(0),
+							.height	=CLAY_SIZING_FIT(0)
+						},
+						.padding = { 8, 8, 8, 8 },
+						.childGap = 8
+					},
+					.clip	=
+					{
+						.vertical		=true,
+						.childOffset	=Clay_GetScrollOffset()
+					}
+				})
+				{
+					sFillSFXList();
 				}
 			}
-			CLAY(CLAY_ID("TexDisplay"), {	.layout	=
+
+			CLAY(CLAY_ID("RightPane"), {	.layout	=
 			{
 				.layoutDirection = CLAY_TOP_TO_BOTTOM,
 				.sizing =
 				{
-					.width	=CLAY_SIZING_PERCENT(0.5f),
-					.height	=CLAY_SIZING_FIT(0)
+					.width = CLAY_SIZING_PERCENT(0.7f),
+					.height = CLAY_SIZING_PERCENT(0.975f)
 				},
 				.padding = { 8, 8, 8, 8 },
 				.childGap = 8
@@ -483,32 +568,10 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, const StuffKe
 					.backgroundColor	={255, 255, 255, 255},
 					.image	=
 					{
-						.imageData	=szSelectedTex,
-					}}) {}
+						.imageData	=pTS->mpSelTex
+					}
+				}) {}
 			}
-		}
-
-		CLAY(CLAY_ID("Audio"), {
-			.layout	=
-			{
-				.layoutDirection = CLAY_TOP_TO_BOTTOM,
-				.sizing	=
-				{
-					.width	=CLAY_SIZING_FIT(0),
-					.height	=CLAY_SIZING_FIT(0)
-				},
-				.padding = { 8, 8, 8, 8 },
-				.childGap = 8
-			},
-			.backgroundColor	={55, 255, 255, 255},
-			.clip	=
-			{
-				.vertical		=true,
-				.childOffset	=Clay_GetScrollOffset()
-			}
-		})
-		{
-			sFillSFXList();
 		}
 	}
 

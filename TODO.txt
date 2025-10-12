@@ -13,7 +13,5 @@ x		UI			basic esc menu, onscreen data like lists of assets in gamedir, something
 x	Build (using nob.h)
 
 x	Solution for tools and test programs to get fonts right
-		Going by size and finding the nearest works well for the draw stage,
-			but screws up during measurement
 	Hover change colour on stuff
-	Come up with some decent colours for the sections
+x	Come up with some decent colours for the sections

@@ -27,6 +27,20 @@
 //macro for supplying fontid and size
 #define	FONTDEETS(ui, fid)	.fontId = fid, .fontSize = UI_GetFontSize(ui, fid)
 
+//colors generated from coolors.co or some other generator
+//this one is Pastel Dreamland Adventure
+Clay_Color	sPastel0	={	0xCD, 0xB4, 0xDB, 0xFF	};
+Clay_Color	sPastel1	={	0xFF, 0xC8, 0xDD, 0xFF	};
+Clay_Color	sPastel2	={	0xFF, 0xAF, 0xCC, 0xFF	};
+Clay_Color	sPastel3	={	0xBD, 0xE0, 0xFE, 0xFF	};
+Clay_Color	sPastel4	={	0xA2, 0xD2, 0xFF, 0xFF	};
+
+//Warm Autumn Glow
+Clay_Color	sWAG0	={	0x00, 0x30, 0x49, 0xFF	};
+Clay_Color	sWAG1	={	0xD6, 0x28, 0x28, 0xFF	};
+Clay_Color	sWAG2	={	0xF7, 0x7F, 0x00, 0xFF	};
+Clay_Color	sWAG3	={	0xFC, 0xBF, 0x49, 0xFF	};
+Clay_Color	sWAG4	={	0xEA, 0xE2, 0xB7, 0xFF	};
 
 #define	RESX				1280
 #define	RESY				720
@@ -403,14 +417,14 @@ static void sFillTexList(TestStuff *pTS, const StuffKeeper *pSK)
 				.childGap = 8
 			},
 			.cornerRadius		={ 6 },
-			.backgroundColor	={55, 55, 255, 255},
+			.backgroundColor	=sWAG1,
 		})
 		{
 			Clay_OnHover(sOnHover, (intptr_t)pTS);
 
 			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
 				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
-				.textColor = {0, 70, 70, 155}}));
+				.textColor = sWAG0}));
 
 			pCur	=SZList_IteratorNext(pCur);
 		}
@@ -441,14 +455,15 @@ static void	sFillSFXList(const TestStuff *pTS)
 				.childGap		=8
 			},
 			.cornerRadius		={ 6 },
-			.backgroundColor	={55, 255, 255, 255},
+			.backgroundColor	=sWAG2,
 		})
 		{
 			Clay_OnHover(sOnHover, (intptr_t)NULL);
 
 			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
 				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
-				.textColor	={Clay_Hovered()? 222:170, 88, 170, 255}}));
+				.textColor	=sWAG0}));
+//				.textColor	={Clay_Hovered()? 222:170, 88, 170, 255}}));
 		}
 	}
 }
@@ -462,12 +477,6 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 {
 	Clay_BeginLayout();
 
-/*			.clip	=
-			{
-				.vertical		=true,
-				.childOffset	=Clay_GetScrollOffset()
-			}*/
-
 	CLAY(CLAY_ID("OuterContainer"), { .layout =
 		{
 			.layoutDirection = CLAY_TOP_TO_BOTTOM,
@@ -478,7 +487,8 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 			},
 			.padding = { 8, 8, 8, 8 },
 			.childGap = 8
-		}})
+		},
+		.backgroundColor	=sWAG4,})
 	{
 		CLAY(CLAY_ID("Instruct"), {	.layout	=
 			{
@@ -486,16 +496,17 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 				.sizing =
 				{
 					.width = CLAY_SIZING_FIT(0),
-					.height = CLAY_SIZING_PERCENT(0.04f)
+					.height = CLAY_SIZING_PERCENT(0.08f)
 				},
-				.padding = { 8, 8, 8, 8 },
-				.childGap = 8
-			}})
+				.padding = { 2, 2, 2, 2 },
+				.childGap = 2
+			},
+			.backgroundColor	=sWAG3,})
 		{
 			CLAY_TEXT(CLAY_STRING("Click on stuff to display / play..."),
 				CLAY_TEXT_CONFIG({
 					FONTDEETS(pTS->mpUI, pTS->mFontIDBig),
-					.textColor = {255,255,255,255} }));
+					.textColor = sWAG0 }));
 		}
 
 		CLAY(CLAY_ID("SideBySideContainer"), { .layout =
@@ -508,7 +519,8 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 				},
 				.padding = { 8, 8, 8, 8 },
 				.childGap = 8
-			}})
+			},
+			.backgroundColor	=sPastel2,})
 		{
 			CLAY(CLAY_ID("LeftPane"), {	.layout	=
 				{
@@ -520,8 +532,8 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 					},
 					.padding = { 8, 8, 8, 8 },
 					.childGap = 8
-				}
-			})
+				},
+				.backgroundColor	=sPastel0,})
 			{
 				CLAY(CLAY_ID("TexList"), {
 					.layout	=
@@ -539,7 +551,8 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 					{
 						.vertical		=true,
 						.childOffset	=Clay_GetScrollOffset()
-					}
+					},
+					.backgroundColor	=sPastel1,
 				})
 				{
 					sFillTexList(pTS, pSK);
@@ -556,6 +569,7 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 						.padding = { 8, 8, 8, 8 },
 						.childGap = 8
 					},
+					.backgroundColor	=sPastel2,
 					.clip	=
 					{
 						.vertical		=true,
@@ -577,7 +591,8 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 				},
 				.padding = { 8, 8, 8, 8 },
 				.childGap = 8
-			}})
+			},
+			.backgroundColor	=sWAG4,})
 			{
 				CLAY(CLAY_ID("TexPicture"), {
 					.layout	=

@@ -24,11 +24,18 @@
 #include	"AudioLib/SoundEffect.h"
 
 
+//macro for supplying fontid and size
+#define	FONTDEETS(ui, fid)	.fontId = fid, .fontSize = UI_GetFontSize(ui, fid)
+
+
 #define	RESX				1280
 #define	RESY				720
 #define	UVSCALE_RATE		1.0f
 #define	NUM_UI_SECTIONS		2
 #define	MAX_UI_VERTS		(8192 * 2)
+#define	FONT_SIZE_TINY		8
+#define	FONT_SIZE_MEDIUM	16
+#define	FONT_SIZE_BIG		40
 
 
 //input context, stuff input handlers will need
@@ -49,6 +56,12 @@ typedef struct	TestStuff_t
 	vec3	mLightDir;
 	vec3	mEyePos;
 	int		mSection;		//active section
+
+	//font ids for various sizes
+	//these will vary as the game assets vary
+	uint16_t	mFontIDTiny;
+	uint16_t	mFontIDMedium;
+	uint16_t	mFontIDBig;
 
 	//selected texture
 	const char	*mpSelTex;
@@ -136,6 +149,11 @@ int main(void)
 	pTS->mpUI	=UI_Create(pTS->mpGD, pSK, MAX_UI_VERTS);
 
 	UI_AddAllFonts(pTS->mpUI);
+
+	//pick out 3 useful ids
+	pTS->mFontIDTiny	=UI_GetNearestFontSize(pTS->mpUI, FONT_SIZE_TINY);
+	pTS->mFontIDMedium	=UI_GetNearestFontSize(pTS->mpUI, FONT_SIZE_MEDIUM);
+	pTS->mFontIDBig		=UI_GetNearestFontSize(pTS->mpUI, FONT_SIZE_BIG);
 
 	//clay init
     uint64_t totalMemorySize = Clay_MinMemorySize();
@@ -390,14 +408,16 @@ static void sFillTexList(TestStuff *pTS, const StuffKeeper *pSK)
 		{
 			Clay_OnHover(sOnHover, (intptr_t)pTS);
 
-			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {0, 70, 70, 155}}));
+			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
+				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
+				.textColor = {0, 70, 70, 155}}));
 
 			pCur	=SZList_IteratorNext(pCur);
 		}
 	}
 }
 
-static void	sFillSFXList(void)
+static void	sFillSFXList(const TestStuff *pTS)
 {
 	int	numSFX	=SoundEffect_GetSFXCount();
 
@@ -427,7 +447,7 @@ static void	sFillSFXList(void)
 			Clay_OnHover(sOnHover, (intptr_t)NULL);
 
 			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
-				.fontSize	=24,
+				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
 				.textColor	={Clay_Hovered()? 222:170, 88, 170, 255}}));
 		}
 	}
@@ -466,13 +486,16 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 				.sizing =
 				{
 					.width = CLAY_SIZING_FIT(0),
-					.height = CLAY_SIZING_PERCENT(0.025f)
+					.height = CLAY_SIZING_PERCENT(0.04f)
 				},
 				.padding = { 8, 8, 8, 8 },
 				.childGap = 8
 			}})
 		{
-			CLAY_TEXT(CLAY_STRING("Tab between sections, arrows to select..."), CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = {255,255,255,255} }));
+			CLAY_TEXT(CLAY_STRING("Click on stuff to display / play..."),
+				CLAY_TEXT_CONFIG({
+					FONTDEETS(pTS->mpUI, pTS->mFontIDBig),
+					.textColor = {255,255,255,255} }));
 		}
 
 		CLAY(CLAY_ID("SideBySideContainer"), { .layout =
@@ -540,7 +563,7 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 					}
 				})
 				{
-					sFillSFXList();
+					sFillSFXList(pTS);
 				}
 			}
 

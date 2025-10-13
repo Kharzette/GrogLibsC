@@ -374,7 +374,7 @@ static void sOnHover(Clay_ElementId eID, Clay_PointerData pnt, intptr_t userData
 	{
 		printf("Click! %s\n", eID.stringId.chars);
 
-		if(userData == NULL)
+		if(userData == (intptr_t)NULL)
 		{
 			SoundEffect_Play(eID.stringId.chars, GLM_VEC3_ZERO);
 			return;
@@ -417,7 +417,7 @@ static void sFillTexList(TestStuff *pTS, const StuffKeeper *pSK)
 				.childGap = 8
 			},
 			.cornerRadius		={ 6 },
-			.backgroundColor	=sWAG1,
+			.backgroundColor	=Clay_Hovered()?	sWAG1 : sWAG2,
 		})
 		{
 			Clay_OnHover(sOnHover, (intptr_t)pTS);
@@ -455,15 +455,15 @@ static void	sFillSFXList(const TestStuff *pTS)
 				.childGap		=8
 			},
 			.cornerRadius		={ 6 },
-			.backgroundColor	=sWAG2,
+			.backgroundColor	=Clay_Hovered()?	sWAG2 : sWAG3,
 		})
 		{
 			Clay_OnHover(sOnHover, (intptr_t)NULL);
 
 			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
 				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
-				.textColor	=sWAG0}));
-//				.textColor	={Clay_Hovered()? 222:170, 88, 170, 255}}));
+				.textColor	=sWAG0
+			}));
 		}
 	}
 }
@@ -606,7 +606,7 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 					.backgroundColor	={255, 255, 255, 255},
 					.image	=
 					{
-						.imageData	=pTS->mpSelTex
+						.imageData	=(void *)pTS->mpSelTex
 					}
 				}) {}
 			}

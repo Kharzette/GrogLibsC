@@ -11,7 +11,6 @@ x		UI			basic esc menu, onscreen data like lists of assets in gamedir, something
 		Could do better at stuffing stuff like rast and viewport into libs somewhere
 
 x	Build (using nob.h)
-
 x	Solution for tools and test programs to get fonts right
-	Hover change colour on stuff
+x	Hover change colour on stuff
 x	Come up with some decent colours for the sections

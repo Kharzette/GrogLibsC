@@ -245,7 +245,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 		GFont_GetUV(pUI->mpFont, letter, 2, bUV);
 		GFont_GetUV(pUI->mpFont, letter, 1, cUV);
 
-		sAddTriUVC(pUI, A, B, C, aUV, bUV, cUV, colour);
+		sAddTriUVC(pUI, A, B, C, aUV, bUV, cUV, c);
 
 		glm_vec2_add(pos, xCoord, A);
 		glm_vec2_add(A, yCoord2, B);
@@ -256,7 +256,7 @@ void	UI_DrawString(UIStuff *pUI, const char *pText, int len, GrogFont *pFont,
 		GFont_GetUV(pUI->mpFont, letter, 5, bUV);
 		GFont_GetUV(pUI->mpFont, letter, 4, cUV);
 
-		sAddTriUVC(pUI, A, B, C, aUV, bUV, cUV, colour);
+		sAddTriUVC(pUI, A, B, C, aUV, bUV, cUV, c);
 
 		curWidth	=nextWidth;
 	}
@@ -1149,12 +1149,15 @@ void	UI_AddAllFonts(UIStuff *pUI)
 			//regular file?
 			if(S_ISREG(fileStuff.st_mode))
 			{
-				UT_string	*pFName	=SZ_StripExtension(pEnt->d_name);
+				if(SZ_IsExtension(pEnt->d_name, "dat"))
+				{
+					UT_string	*pFName	=SZ_StripExtension(pEnt->d_name);
 
-				UI_AddFont(pUI, utstring_body(pFName), count);
-				count++;
+					UI_AddFont(pUI, utstring_body(pFName), count);
+					count++;
 
-				utstring_free(pFName);
+					utstring_free(pFName);
+				}
 			}
 		}
 	}

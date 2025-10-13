@@ -16,12 +16,10 @@
 #include	"UtilityLib/GraphicsDevice.h"
 #include	"UtilityLib/GameCamera.h"
 #include	"UtilityLib/UpdateTimer.h"
-#include	"UtilityLib/FileStuff.h"
-#include	"UtilityLib/ListStuff.h"
-#include	"UtilityLib/StringStuff.h"
 #include	"InputLib/Input.h"
 #include	"AudioLib/Audio.h"
 #include	"AudioLib/SoundEffect.h"
+#include	"UtilityLib/ListStuff.h"	//stringlist stuff
 
 
 //macro for supplying fontid and size
@@ -46,7 +44,7 @@ Clay_Color	sWAG4	={	0xEA, 0xE2, 0xB7, 0xFF	};
 #define	RESY				720
 #define	UVSCALE_RATE		1.0f
 #define	NUM_UI_SECTIONS		2
-#define	MAX_UI_VERTS		(8192 * 2)
+#define	MAX_UI_VERTS		(8192 * 3)	//bump this up as needed (debug needs alot)
 #define	FONT_SIZE_TINY		8
 #define	FONT_SIZE_MEDIUM	16
 #define	FONT_SIZE_BIG		40
@@ -175,6 +173,8 @@ int main(void)
     Clay_Initialize(clayMemory, (Clay_Dimensions) { (float)RESX, (float)RESY }, (Clay_ErrorHandler) { sHandleClayErrors });
     Clay_SetMeasureTextFunction(UI_MeasureText, pTS->mpUI);
 
+	//debug info uses font id zero
+	//so if zero happens to be huge, this will be messed up
 	Clay_SetDebugModeEnabled(false);
 
 
@@ -416,7 +416,6 @@ static void sFillTexList(TestStuff *pTS, const StuffKeeper *pSK)
 				.padding = { 2, 2, 2, 2 },
 				.childGap = 8
 			},
-			.cornerRadius		={ 6 },
 			.backgroundColor	=Clay_Hovered()?	sWAG1 : sWAG2,
 		})
 		{
@@ -468,6 +467,36 @@ static void	sFillSFXList(const TestStuff *pTS)
 	}
 }
 
+static void	sMakeColourTestBox(const TestStuff *pTS,
+	Clay_ElementId id, const char *szColName, Clay_Color col)
+{
+	CLAY(id,
+	{
+		.layout	=
+		{
+			.sizing	=
+			{
+				.width	=CLAY_SIZING_FIXED(80),
+				.height	=CLAY_SIZING_FIXED(64)
+			},
+			.padding = { 8, 8, 8, 8 },
+			.childGap = 8
+		},
+		.backgroundColor	=col,
+	})
+	{
+		Clay_String	texStr;
+
+		texStr.chars					=szColName;
+		texStr.isStaticallyAllocated	=true;
+		texStr.length					=strlen(texStr.chars);
+
+		CLAY_TEXT(texStr,
+			CLAY_TEXT_CONFIG({
+				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
+				.textColor = sWAG0 }));
+	}
+}
 
 //some ideas for stuff to display
 //files in the game dir
@@ -600,7 +629,7 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 						.sizing	=
 						{
 							.width	=CLAY_SIZING_FIT(0),
-							.height	=CLAY_SIZING_FIT(0)
+							.height	=CLAY_SIZING_PERCENT(0.9f)
 						}
 					},
 					.backgroundColor	={255, 255, 255, 255},
@@ -609,6 +638,33 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 						.imageData	=(void *)pTS->mpSelTex
 					}
 				}) {}
+
+				CLAY(CLAY_ID("ColourTestArea"), {
+					.layout	=
+					{
+						.layoutDirection = CLAY_LEFT_TO_RIGHT,
+						.sizing	=
+						{
+							.width	=CLAY_SIZING_FIT(0),
+							.height	=CLAY_SIZING_PERCENT(0.1f)
+						}
+					},
+				})
+				{
+					//pastels
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectPas0"), "Pas0", sPastel0);
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectPas1"), "Pas1", sPastel1);
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectPas2"), "Pas2", sPastel2);
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectPas3"), "Pas3", sPastel3);
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectPas4"), "Pas4", sPastel4);
+
+					//autumns
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectWAG0"), "Aut0", sWAG0);
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectWAG1"), "Aut1", sWAG1);
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectWAG2"), "Aut2", sWAG2);
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectWAG3"), "Aut3", sWAG3);
+					sMakeColourTestBox(pTS, CLAY_ID("ColRectWAG4"), "Aut4", sWAG4);
+				}
 			}
 		}
 	}

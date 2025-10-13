@@ -356,6 +356,51 @@ UT_string	*SZ_StripExtensionUT(const UT_string *pSZ)
 	return	SZ_StripExtension(utstring_body(pSZ));
 }
 
+//return true if pSZ has the extension pExt
+bool	SZ_IsExtension(const char *pSZ, const char *pExt)
+{
+	if(pSZ == NULL || pExt == NULL)
+	{
+		return	false;
+	}
+
+	int	dotPos	=SZ_LastIndexOf(pSZ, '.');
+	if(dotPos == -1)
+	{
+		return	false;
+	}
+
+	//ensure it isn't a blank extension
+	if(pSZ[dotPos + 1] == 0)
+	{
+		return	false;
+	}
+
+	//location to start compare
+	const char	*pCompareSZPos	=pSZ + dotPos + 1;
+	const char	*pCompareExtPos	=NULL;
+
+	//does input extension have a dot?
+	dotPos	=SZ_LastIndexOf(pExt, '.');
+	if(dotPos == -1)
+	{
+		//no dot, this is probably the usual input
+		pCompareExtPos	=pExt;
+	}
+	else
+	{
+		//there is a dot, should be position 0
+		if(dotPos != 0)
+		{
+			//should probably consider this invalid input?
+			return	false;
+		}
+		pCompareExtPos	=pExt + 1;
+	}
+
+	return	(strcmp(pCompareSZPos, pCompareExtPos) == 0);
+}
+
 
 //remove the filename from the path if there is one
 //Returns a new string or NULL if the input was NULL

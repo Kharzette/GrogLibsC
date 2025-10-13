@@ -31,6 +31,9 @@ extern UT_string	*SZ_GetExtensionUT(const UT_string *pSZ);
 extern UT_string	*SZ_StripExtension(const char *pSZ);
 extern UT_string	*SZ_StripExtensionUT(const UT_string *pSZ);
 
+//return true if pSZ has the extension pExt
+extern bool	SZ_IsExtension(const char *pSZ, const char *pExt);
+
 //remove the filename from the path if there is one
 //Returns a new string or NULL if the input was NULL
 extern UT_string	*SZ_StripFileName(const char *pSZ);

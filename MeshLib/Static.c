@@ -88,7 +88,9 @@ Static	*Static_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 
 	fread(pRet->mTransform, sizeof(mat4), 1, f);
 
-	pRet->mpBound	=MeshBound_Read(f);
+	//TODO: figure out what to do with these
+//	pRet->mpBound	=MeshBound_Read(f);
+	pRet->mpBound	=NULL;
 
 	fread(&pRet->mNumParts, sizeof(int), 1, f);
 	pRet->mpParts		=malloc(sizeof(MeshPart) * pRet->mNumParts);
@@ -129,7 +131,7 @@ void	Static_Write(const Static *pStat, const char *szFileName)
 
 	fwrite(pStat->mTransform, sizeof(mat4), 1, f);
 
-	MeshBound_Write(pStat->mpBound, f);
+//	MeshBound_Write(pStat->mpBound, f);
 
 	fwrite(&pStat->mNumParts, sizeof(int), 1, f);
 

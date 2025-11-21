@@ -5,8 +5,12 @@
 #include	<string.h>
 #include	<stdlib.h>
 #include	<unistd.h>
-#include	<x86intrin.h>
 #include	<cglm/call.h>
+#if defined(__ARM_NEON)
+#include	<sse2neon.h>
+#else
+#include	<x86intrin.h>
+#endif
 
 
 typedef struct GameCamera_t
@@ -193,7 +197,11 @@ void	GameCam_GetViewMatrixThird(const GameCamera *pCam, mat4 mat, vec3 eyePos)
 	glm_quat_rotate(mat, pCam->mCamQuat, mat);
 
 	//invert for camera matrix
+#if defined(__ARM_NEON)
+	glm_mat4_inv_fast(mat, mat);
+#else
 	glm_mat4_inv_fast_sse2(mat, mat);
+#endif
 
 	//position of the viewer
 	glm_vec3_copy(translation, eyePos);
@@ -211,10 +219,18 @@ void	GameCam_GetViewMatrixFly(const GameCamera *pCam, mat4 mat, vec3 eyePos)
 	glm_quat_mat4(pCam->mView, mat);
 
 	//mul together
+#if defined(__ARM_NEON)
+	glm_mul(temp, mat, mat);
+#else
 	glm_mul_sse2(temp, mat, mat);
+#endif
 
 	//invert for camera matrix
+#if defined(__ARM_NEON)
+	glm_mat4_inv_fast(mat, mat);
+#else
 	glm_mat4_inv_fast_sse2(mat, mat);
+#endif
 
 	glm_vec3_copy(pCam->mTrackingPosition, eyePos);
 }

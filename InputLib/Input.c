@@ -3,13 +3,13 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<unistd.h>
-#include	<x86intrin.h>
 #include	<string.h>
 #include	<assert.h>
 #include	<SDL3/SDL.h>
 #include	<SDL3/SDL_keycode.h>
 #include	"utlist.h"
 #include	"Input.h"
+
 
 //call event callback with either update context or stored in bind
 #define	EVENTCB(pIB,pEvt,pContext)	if(pIB->mpContext != NULL) pIB->EventCB(pIB->mpContext, pEvt); else pIB->EventCB(pContext, pEvt);

@@ -1,5 +1,4 @@
 #include	<stdint.h>
-#include	<x86intrin.h>
 #include	<string.h>
 #include	<cglm/call.h>
 #include	<cglm/box.h>

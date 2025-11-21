@@ -5,7 +5,6 @@
 #include	<stdio.h>
 #include	<stdlib.h>
 #include	<unistd.h>
-#include	<x86intrin.h>
 #include	<utlist.h>
 #include	<cglm/call.h>
 #include	"GraphicsDevice.h"

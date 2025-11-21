@@ -1,11 +1,15 @@
 #include	<stdint.h>
-#include	<x86intrin.h>
 #include	<string.h>
 #include	<cglm/call.h>
 #include	<cglm/box.h>
 #include	<assert.h>
 #include	"MiscStuff.h"
 
+#if defined(__ARM_NEON)
+#include	<sse2neon.h>
+#else
+#include	<x86intrin.h>
+#endif
 
 #define		MIN_MAX_BOUNDS	15192.0f
 

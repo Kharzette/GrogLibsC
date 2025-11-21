@@ -22,3 +22,6 @@
 [submodule "JoltPhysics"]
 	path = JoltPhysics
 	url = git@github.com:jrouwe/JoltPhysics.git
+[submodule "arena"]
+	path = arena
+	url = https://github.com/tsoding/arena

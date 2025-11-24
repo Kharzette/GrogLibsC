@@ -25,6 +25,6 @@ void		Static_AssignMaterial(Static *pStat, int partIndex, const char *pMatName);
 
 void	Static_DeletePartIndex(Static *pStat, int idx);
 void	Static_DeletePart(Static *pStat, const char *szName);
-void	Static_Destroy(Static *pStat);
+void	Static_Destroy(Static **pStat);
 
 const char	*Static_GetMaterialForPart(const Static *pStat, const char *szPartName);

@@ -83,6 +83,8 @@ MaterialLib	*MatLib_Read(const char *pFileName, StuffKeeper *pSK)
 		Material	*pM	=MAT_Read(f, pSK);
 
 		DictSZ_Add(&pRet->mpMats, szMatName, pM);
+
+		utstring_free(szMatName);
 	}
 
 	fclose(f);

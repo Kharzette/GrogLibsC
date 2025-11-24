@@ -273,7 +273,7 @@ void	Character_DeletePartIndex(Character *pChar, int idx)
 		{
 			if(i == idx)
 			{
-				utstring_done(pChar->mpParts[i].mpMaterial);
+				utstring_free(pChar->mpParts[i].mpMaterial);
 				Mesh_Destroy(pChar->mpParts[i].mpPart);
 				continue;
 			}
@@ -287,7 +287,7 @@ void	Character_DeletePartIndex(Character *pChar, int idx)
 	}
 	else
 	{
-		utstring_done(pChar->mpParts[0].mpMaterial);
+		utstring_free(pChar->mpParts[0].mpMaterial);
 		Mesh_Destroy(pChar->mpParts[0].mpPart);
 		free(pChar->mpParts);
 		pChar->mpParts	=NULL;
@@ -311,15 +311,17 @@ void	Character_DeletePart(Character *pChar, const char *szName)
 	}
 }
 
-void	Character_Destroy(Character *pChar)
+void	Character_Destroy(Character **ppChar)
 {
+	Character	*pChar	=*ppChar;
+
 	assert(pChar != NULL);
 
 	free(pChar->mBones);
 
 	for(int i=0;i < pChar->mNumParts;i++)
 	{
-		utstring_done(pChar->mpParts[i].mpMaterial);
+		utstring_free(pChar->mpParts[i].mpMaterial);
 		Mesh_Destroy(pChar->mpParts[i].mpPart);
 	}
 
@@ -332,6 +334,8 @@ void	Character_Destroy(Character *pChar)
 	Skin_Destroy(pChar->mpSkin);
 
 	free(pChar);
+
+	*ppChar	=NULL;
 }
 
 void	Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatName)

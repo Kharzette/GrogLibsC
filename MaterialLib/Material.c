@@ -182,30 +182,30 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 	//vertex shader
 	UT_string	*szStuff	=SZ_ReadString(f);
 	pRet->mpVShader	=StuffKeeper_GetVertexShader(pSK, utstring_body(szStuff));
-	utstring_clear(szStuff);
+	utstring_free(szStuff);
 
 	//pixel shader
 	szStuff			=SZ_ReadString(f);
 	pRet->mpPShader	=StuffKeeper_GetPixelShader(pSK, utstring_body(szStuff));
-	utstring_clear(szStuff);
+	utstring_free(szStuff);
 
 	//haven't done these in C yet
 	//depth stencil state
 	szStuff	=SZ_ReadString(f);
 	printf("Depth stencil state in matlib: %s\n", utstring_body(szStuff));
-	utstring_clear(szStuff);
+	utstring_free(szStuff);
 
 	szStuff	=SZ_ReadString(f);
 	printf("Blend state in matlib: %s\n", utstring_body(szStuff));
-	utstring_clear(szStuff);
+	utstring_free(szStuff);
 
 	szStuff	=SZ_ReadString(f);
 	printf("Samp0 state in matlib: %s\n", utstring_body(szStuff));
-	utstring_clear(szStuff);
+	utstring_free(szStuff);
 
 	szStuff	=SZ_ReadString(f);
 	printf("Samp1 state in matlib: %s\n", utstring_body(szStuff));
-	utstring_clear(szStuff);
+	utstring_free(szStuff);
 
 	fread(&pRet->mMaterialID, sizeof(int), 1, f);
 
@@ -252,15 +252,15 @@ Material	*MAT_Read(FILE *f, const StuffKeeper *pSK)
 	szStuff				=SZ_ReadString(f);
 	UT_string	*szConv	=SZ_ConvertPathSlashesUT(szStuff);
 	pRet->mpSRV0		=StuffKeeper_GetSRV(pSK, utstring_body(szConv));
-	utstring_clear(szStuff);
-	utstring_clear(szConv);
+	utstring_free(szStuff);
+	utstring_free(szConv);
 
 	szStuff			=SZ_ReadString(f);
 	szConv			=SZ_ConvertPathSlashesUT(szStuff);
 	pRet->mpSRV1	=StuffKeeper_GetSRV(pSK, utstring_body(szConv));
 
-	utstring_done(szStuff);
-	utstring_done(szConv);
+	utstring_free(szStuff);
+	utstring_free(szConv);
 
 	glm_mat4_identity(pRet->mWorld);
 

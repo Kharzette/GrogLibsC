@@ -15,11 +15,11 @@ typedef struct	Mesh_t				Mesh;
 
 
 Character	*Character_Create(Skin *pSkin, Mesh *pMeshes[], int numMeshes);
+void		Character_Destroy(Character **ppChar);
 Character	*Character_Read(GraphicsDevice *pGD, StuffKeeper *pSK,
 							const char *szFileName, bool bEditor);
 void		Character_Write(const Character *pChar, const char *szFileName);
 
-void		Character_Destroy(Character *pChar);
 void		Character_AssignMaterial(Character *pChar, int partIndex, const char *pMatName);
 void		Character_ReNamePart(Character *pChar, const char *pOldName, const char *pNewName);
 void		Character_DeletePartIndex(Character *pChar, int idx);

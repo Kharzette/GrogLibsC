@@ -49,7 +49,7 @@ void	GSNode_Write(const GSNode *pNode, FILE *f)
 
 void	GSNode_Destroy(GSNode *pNode)
 {
-	utstring_done(pNode->szName);
+	utstring_free(pNode->szName);
 
 	for(int i=0;i < pNode->mNumChildren;i++)
 	{

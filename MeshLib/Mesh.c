@@ -240,7 +240,7 @@ void	Mesh_Destroy(Mesh *pMesh, GraphicsDevice *pGD)
 	pMesh->mpVerts->lpVtbl->Release(pMesh->mpVerts);
 	pMesh->mpIndexs->lpVtbl->Release(pMesh->mpIndexs);
 
-	utstring_done(pMesh->mpName);
+	utstring_free(pMesh->mpName);
 
 	//free extra editor data if needed
 	if(pMesh->mpVertData != NULL)

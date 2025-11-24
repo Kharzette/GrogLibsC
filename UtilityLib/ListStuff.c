@@ -97,7 +97,7 @@ void	SZList_Remove(StringList **ppSL, const char *pSZ)
 			LL_DELETE(*ppSL, pElement);
 
 			//free data
-			utstring_done(pElement->mpSZ);
+			utstring_free(pElement->mpSZ);
 			free(pElement);
 
 			return;
@@ -119,7 +119,7 @@ void	SZList_RemoveUT(StringList **ppSL, const UT_string *pSZ)
 			LL_DELETE(*ppSL, pElement);
 
 			//free data
-			utstring_done(pElement->mpSZ);
+			utstring_free(pElement->mpSZ);
 			free(pElement);
 
 			return;

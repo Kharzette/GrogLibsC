@@ -215,7 +215,7 @@ void	Static_DeletePartIndex(Static *pStat, int idx)
 		{
 			if(i == idx)
 			{
-				utstring_done(pStat->mpParts[i].mpMaterial);
+				utstring_free(pStat->mpParts[i].mpMaterial);
 				Mesh_Destroy(pStat->mpParts[i].mpPart);
 				continue;
 			}
@@ -233,7 +233,7 @@ void	Static_DeletePartIndex(Static *pStat, int idx)
 	}
 	else
 	{
-		utstring_done(pStat->mpParts[0].mpMaterial);
+		utstring_free(pStat->mpParts[0].mpMaterial);
 		Mesh_Destroy(pStat->mpParts[0].mpPart);
 		free(pStat->mpParts);
 		pStat->mpParts	=NULL;
@@ -255,11 +255,13 @@ void	Static_DeletePart(Static *pStat, const char *szName)
 	}
 }
 
-void	Static_Destroy(Static *pStat)
+void	Static_Destroy(Static **ppStat)
 {
+	Static	*pStat	=*ppStat;
+
 	for(int i=0;i < pStat->mNumParts;i++)
 	{
-		utstring_done(pStat->mpParts[i].mpMaterial);
+		utstring_free(pStat->mpParts[i].mpMaterial);
 
 		Mesh_Destroy(pStat->mpParts[i].mpPart);
 	}
@@ -279,6 +281,8 @@ void	Static_Destroy(Static *pStat)
 	}
 
 	free(pStat);
+
+	*ppStat	=NULL;
 }
 
 void	Static_AssignMaterial(Static *pStat, int partIndex, const char *pMatName)

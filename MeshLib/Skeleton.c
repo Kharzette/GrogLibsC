@@ -93,14 +93,14 @@ GSNode	*Skeleton_GetBoneMirror(const Skeleton *pSkel, const UT_string *pName)
 		UT_string	*pBeg	=SZ_SubStringUTStartEnd(pMirror, 0, len - 1);
 		utstring_clear(pMirror);
 		utstring_printf(pMirror, "%sR", utstring_body(pBeg));
-		utstring_done(pBeg);
+		utstring_free(pBeg);
 	}
 	else if(SZ_EndsWithUT(pMirror, 'R'))
 	{
 		UT_string	*pBeg	=SZ_SubStringUTStartEnd(pMirror, 0, len - 1);
 		utstring_clear(pMirror);
 		utstring_printf(pMirror, "%sL", utstring_body(pBeg));
-		utstring_done(pBeg);
+		utstring_free(pBeg);
 	}
 	else if(SZ_ContainsUTCC(pMirror, "_L_"))
 	{
@@ -113,14 +113,14 @@ GSNode	*Skeleton_GetBoneMirror(const Skeleton *pSkel, const UT_string *pName)
 	else
 	{
 		//no leftish rightish stuff found
-		utstring_done(pMirror);
+		utstring_free(pMirror);
 		return	NULL;
 	}
 
 	//see if the mirror exists
 	pNode	=GSNode_GetNodeByName(pSkel->mpRoot, utstring_body(pMirror));
 
-	utstring_done(pMirror);
+	utstring_free(pMirror);
 
 	return	pNode;
 }

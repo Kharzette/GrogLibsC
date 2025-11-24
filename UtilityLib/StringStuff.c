@@ -283,10 +283,10 @@ bool	SZ_ReplaceUTCCCC(UT_string *pSZ, const char *pszTarget, const char *pszRepl
 			utstring_body(pAfter));
 	}
 	
-	utstring_done(pBeg);
+	utstring_free(pBeg);
 	if(pAfter != NULL)
 	{
-		utstring_done(pAfter);
+		utstring_free(pAfter);
 	}
 
 	return	true;

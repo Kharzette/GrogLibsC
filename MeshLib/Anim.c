@@ -135,13 +135,14 @@ void	Anim_SetPingPong(Anim *pAnim, bool bPingPong)
 
 void	Anim_Destroy(Anim *pAnim)
 {
-	utstring_done(pAnim->szName);
+	utstring_free(pAnim->szName);
 
 	for(int i=0;i < pAnim->mNumSubAnims;i++)
 	{
 		SubAnim_Destroy(pAnim->mpSubAnims[i]);
 	}
 
+	free(pAnim->mpSubAnims);
 	free(pAnim);
 }
 

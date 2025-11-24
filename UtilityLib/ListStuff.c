@@ -77,7 +77,7 @@ void	SZList_Clear(StringList **ppSL)
 		LL_DELETE(*ppSL, pElement);
 
 		//free data
-		utstring_done(pElement->mpSZ);
+		utstring_free(pElement->mpSZ);
 		free(pElement);
 	}
 }

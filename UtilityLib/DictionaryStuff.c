@@ -54,9 +54,11 @@ void	DictSZ_Remove(DictSZ **ppHead, const UT_string *pKey)
 	}
 
 	//free data
-	utstring_done(pHash->mpKey);
+	utstring_free(pHash->mpKey);
 
 	HASH_DELETE(hh, *ppHead, pHash);
+
+	free(pHash);
 }
 
 //does not free the value
@@ -72,9 +74,11 @@ void	DictSZ_Removeccp(DictSZ **ppHead, const char *pKey)
 	}
 
 	//free data
-	utstring_done(pHash->mpKey);
+	utstring_free(pHash->mpKey);
 
 	HASH_DELETE(hh, *ppHead, pHash);
+
+	free(pHash);
 }
 
 
@@ -127,10 +131,12 @@ void	DictSZ_Clear(DictSZ **ppHead)
 	HASH_ITER(hh, *ppHead, pIt, pTmp)
 	{
 		//nuke data
-		utstring_done(pIt->mpKey);
+		utstring_free(pIt->mpKey);
 		free(pIt->pValue);
 
 		HASH_DEL(*ppHead, pIt);
+
+		free(pIt);
 	}
 }
 
@@ -142,9 +148,11 @@ void	DictSZ_ClearNoFree(DictSZ **ppHead)
 	HASH_ITER(hh, *ppHead, pIt, pTmp)
 	{
 		//nuke data, user will nuke value
-		utstring_done(pIt->mpKey);
+		utstring_free(pIt->mpKey);
 
 		HASH_DEL(*ppHead, pIt);
+
+		free(pIt);
 	}
 }
 
@@ -159,9 +167,11 @@ void	DictSZ_ClearCB(DictSZ **ppHead, DictSZ_ValueNukeCB pCB)
 		pCB(pIt->pValue);
 
 		//nuke key
-		utstring_done(pIt->mpKey);
+		utstring_free(pIt->mpKey);
 
 		HASH_DEL(*ppHead, pIt);
+
+		free(pIt);
 	}
 }
 

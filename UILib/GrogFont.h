@@ -6,6 +6,7 @@ typedef struct	GrogFont_t	GrogFont;
 typedef interface ID3D11ShaderResourceView	ID3D11ShaderResourceView;
 
 GrogFont	*GFont_Create(const UT_string *pPath);
+void		GFont_Destroy(GrogFont **ppFont);
 
 void	GFont_SetSRV(GrogFont *pFont, ID3D11ShaderResourceView *pSRV);
 

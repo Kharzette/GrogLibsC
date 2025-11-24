@@ -146,7 +146,8 @@ static void	sStandardLibJunk_Add(Nob_Cmd *pCmd)
 		"-I../dxvk-native/include/native",
 		"-I../dxvk-native/sse2neon",
 		"-I../dxvk-native/include",
-		"-I../cglm/include", "-Wall",
+		"-I../cglm/include", //"-Wall",
+		"-Wall", "-fsanitize=address",
 		"-Wl,-rpath=$ORIGIN,--disable-new-dtags");
 }
 

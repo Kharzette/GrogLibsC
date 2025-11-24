@@ -4,6 +4,7 @@ typedef struct	CBKeeper_t			CBKeeper;
 typedef struct	GraphicsDevice_t	GraphicsDevice;
 
 extern CBKeeper	*CBK_Create(GraphicsDevice *pGD);
+extern void		CBK_Destroy(CBKeeper **ppCBK);
 
 //assign buffers to shaders
 void	CBK_SetCommonCBToShaders(CBKeeper *pCBK, GraphicsDevice *pGD);

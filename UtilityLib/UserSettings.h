@@ -6,6 +6,7 @@
 typedef struct	UserSettings_t	UserSettings;
 
 UserSettings	*UserSettings_Create(void);
+void			UserSettings_Destroy(UserSettings **ppUS);
 
 void	UserSettings_Load(UserSettings *pUS);
 void	UserSettings_Save(const UserSettings *pUS);

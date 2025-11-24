@@ -4,6 +4,7 @@
 typedef struct	Mover_t	Mover;
 
 Mover	*Mover_Create(void);
+void	Mover_Destroy(Mover **ppMv);
 
 //all times in seconds
 void	Mover_SetUpMove(Mover *pMv, const vec4 startPos, const vec4 endPos,

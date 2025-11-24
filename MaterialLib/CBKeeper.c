@@ -303,7 +303,54 @@ CBKeeper	*CBK_Create(GraphicsDevice *pGD)
 	pRet->mpCColours	=malloc(sizeof(CustomColours));
 	pRet->mpCelStuff	=malloc(sizeof(CelStuff));
 	pRet->mpEmitter		=malloc(sizeof(Emitter));
+
 	return	pRet;
+}
+
+void	CBK_Destroy(CBKeeper **ppCBK)
+{
+	CBKeeper	*pCBK	=*ppCBK;
+
+	free(pCBK->mpEmitter);
+	free(pCBK->mpCelStuff);
+	free(pCBK->mpCColours);
+	free(pCBK->mpTextMode);
+	free(pCBK->mpPerShadow);
+	free(pCBK->mpPost);
+	free(pCBK->mpTwoD);
+
+	free(pCBK->mpPerFrame);
+	free(pCBK->mpPerObject);
+
+	//free resource pointers
+	pCBK->mpEmitterRes->lpVtbl->Release(pCBK->mpEmitterRes);
+	pCBK->mpCelRes->lpVtbl->Release(pCBK->mpCelRes);
+	pCBK->mpCColourRes->lpVtbl->Release(pCBK->mpCColourRes);
+	pCBK->mpTextModeRes->lpVtbl->Release(pCBK->mpTextModeRes);
+	pCBK->mpPerShadowRes->lpVtbl->Release(pCBK->mpPerShadowRes);
+	pCBK->mpPostRes->lpVtbl->Release(pCBK->mpPostRes);
+	pCBK->mpCharacterRes->lpVtbl->Release(pCBK->mpCharacterRes);
+	pCBK->mpBSPRes->lpVtbl->Release(pCBK->mpBSPRes);
+	pCBK->mpTwoDRes->lpVtbl->Release(pCBK->mpTwoDRes);
+	pCBK->mpPerFrameRes->lpVtbl->Release(pCBK->mpPerFrameRes);
+	pCBK->mpPerObjectRes->lpVtbl->Release(pCBK->mpPerObjectRes);
+
+	//free constant buffers
+	pCBK->mpEmitterBuf->lpVtbl->Release(pCBK->mpEmitterBuf);
+	pCBK->mpCelBuf->lpVtbl->Release(pCBK->mpCelBuf);
+	pCBK->mpCColourBuf->lpVtbl->Release(pCBK->mpCColourBuf);
+	pCBK->mpTextModeBuf->lpVtbl->Release(pCBK->mpTextModeBuf);
+	pCBK->mpPerShadowBuf->lpVtbl->Release(pCBK->mpPerShadowBuf);
+	pCBK->mpPostBuf->lpVtbl->Release(pCBK->mpPostBuf);
+	pCBK->mpCharacterBuf->lpVtbl->Release(pCBK->mpCharacterBuf);
+	pCBK->mpBSPBuf->lpVtbl->Release(pCBK->mpBSPBuf);
+	pCBK->mpTwoDBuf->lpVtbl->Release(pCBK->mpTwoDBuf);
+	pCBK->mpPerFrameBuf->lpVtbl->Release(pCBK->mpPerFrameBuf);
+	pCBK->mpPerObjectBuf->lpVtbl->Release(pCBK->mpPerObjectBuf);
+
+	free(pCBK);
+
+	*ppCBK	=NULL;
 }
 
 

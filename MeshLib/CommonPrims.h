@@ -14,6 +14,8 @@ typedef struct	StuffKeeper_t	StuffKeeper;
 //creates
 AxisXYZ		*CP_CreateAxis(float length, float width, GraphicsDevice *pGD, const StuffKeeper *pSK);
 LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD, const StuffKeeper *pSK);
+void		CP_DestroyAxis(AxisXYZ **ppAxis);
+void		CP_DestroyLightRay(LightRay **ppLR);
 
 //draws
 void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,

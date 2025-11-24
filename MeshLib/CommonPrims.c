@@ -70,6 +70,9 @@ AxisXYZ	*CP_CreateAxis(float length, float width, GraphicsDevice *pGD, const Stu
 
 	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "StaticVS");
 	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriPS");
+	
+	pRet->mpVS->lpVtbl->AddRef(pRet->mpVS);
+	pRet->mpPS->lpVtbl->AddRef(pRet->mpPS);
 
 	return	pRet;
 }
@@ -109,8 +112,44 @@ LightRay	*CP_CreateLightRay(float length, float width, GraphicsDevice *pGD, cons
 	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "StaticVS");
 	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "TriPS");
 
+	pRet->mpVS->lpVtbl->AddRef(pRet->mpVS);
+	pRet->mpPS->lpVtbl->AddRef(pRet->mpPS);
+
 	return	pRet;
 }
+
+void	CP_DestroyAxis(AxisXYZ **ppAxis)
+{
+	AxisXYZ	*pAxis	=*ppAxis;
+
+	pAxis->mpPS->lpVtbl->Release(pAxis->mpPS);
+	pAxis->mpVS->lpVtbl->Release(pAxis->mpVS);
+
+	PF_DestroyPO(&pAxis->mpPointyEnd);
+	PF_DestroyPO(&pAxis->mpZ);
+	PF_DestroyPO(&pAxis->mpY);
+	PF_DestroyPO(&pAxis->mpX);
+
+	free(pAxis);
+
+	*ppAxis	=NULL;
+}
+
+void	CP_DestroyLightRay(LightRay **ppLR)
+{
+	LightRay	*pLR	=*ppLR;
+
+	pLR->mpPS->lpVtbl->Release(pLR->mpPS);
+	pLR->mpVS->lpVtbl->Release(pLR->mpVS);
+
+	PF_DestroyPO(&pLR->mpPointyEnd);
+	PF_DestroyPO(&pLR->mpAxis);
+
+	free(pLR);
+
+	*ppLR	=NULL;
+}
+
 
 void	CP_DrawLightRay(LightRay *pRay, const vec3 lightDir, const vec4 rayColour,
 						const vec3 location, CBKeeper *pCBK, GraphicsDevice *pGD)

@@ -103,6 +103,14 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
 	pRet->mpBS		=StuffKeeper_GetBlendState(pSK, "AlphaBlending");
 	pRet->mpSS		=StuffKeeper_GetSamplerState(pSK, "LinearClamp");
 
+	//refs
+	pRet->mpLayout->lpVtbl->AddRef(pRet->mpLayout);
+	pRet->mpVS->lpVtbl->AddRef(pRet->mpVS);
+	pRet->mpPS->lpVtbl->AddRef(pRet->mpPS);
+	pRet->mpDSS->lpVtbl->AddRef(pRet->mpDSS);
+	pRet->mpBS->lpVtbl->AddRef(pRet->mpBS);
+	pRet->mpSS->lpVtbl->AddRef(pRet->mpSS);
+
 	//make scissor rast states
 	D3D11_RASTERIZER_DESC	rastDesc;
 	rastDesc.AntialiasedLineEnable	=false;
@@ -134,13 +142,36 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
 	return	pRet;
 }
 
-void	UI_FreeAll(UIStuff *pUI)
+void	UI_Destroy(UIStuff **ppUI)
 {
+	UIStuff	*pUI	=*ppUI;
+
 	pUI->mpVB->lpVtbl->Release(pUI->mpVB);
 
 	free(pUI->mpUIBuf);
 
+	//nuke font hash stuff
+	UIFonts	*cur, *tmp;
+	HASH_ITER(hh, pUI->mpFonts, cur, tmp)
+	{
+		HASH_DEL(pUI->mpFonts, cur);
+		free(cur);
+	}
+
+	//unref dx stuff
+	pUI->mpScissorRast->lpVtbl->Release(pUI->mpScissorRast);
+	pUI->mpNormalRast->lpVtbl->Release(pUI->mpNormalRast);
+
+	pUI->mpSS->lpVtbl->Release(pUI->mpSS);
+	pUI->mpBS->lpVtbl->Release(pUI->mpBS);
+	pUI->mpDSS->lpVtbl->Release(pUI->mpDSS);
+	pUI->mpPS->lpVtbl->Release(pUI->mpPS);
+	pUI->mpVS->lpVtbl->Release(pUI->mpVS);
+	pUI->mpLayout->lpVtbl->Release(pUI->mpLayout);
+
 	free(pUI);
+
+	*ppUI	=NULL;
 }
 
 
@@ -1118,6 +1149,7 @@ void	UI_AddAllFonts(UIStuff *pUI)
 	if(pDir == NULL)
 	{
 		printf("No fonts dir!");
+		return;
 	}
 	else
 	{
@@ -1161,6 +1193,7 @@ void	UI_AddAllFonts(UIStuff *pUI)
 			}
 		}
 	}
+	closedir(pDir);
 }
 
 //returns -1 if font not found

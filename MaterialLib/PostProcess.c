@@ -56,169 +56,15 @@ typedef struct	VPosTex_t
 }	VPosTex;
 
 
-static void MakeQuad(PostProcess *pPP, GraphicsDevice *pGD)
-{
-	VPosTex	verts[4]	={
-		{
-			{	-1, 1, 0.9f	}
-		},
-		{
-			{	1, 1, 0.9f	}
-		},
-		{
-			{	-1, -1, 0.9f	}
-		},
-		{
-			{	1, -1, 0.9f	}
-		}
-	};
-
-	Misc_Convert2ToF16(0, 0, verts[0].TexCoord0);
-	Misc_Convert2ToF16(1, 0, verts[1].TexCoord0);
-	Misc_Convert2ToF16(0, 1, verts[2].TexCoord0);
-	Misc_Convert2ToF16(1, 1, verts[3].TexCoord0);
-
-	uint16_t	inds[6]	={ 2, 1, 0, 2, 3, 1 };
-
-	D3D11_BUFFER_DESC	bDesc;
-
-	bDesc.BindFlags				=D3D11_BIND_VERTEX_BUFFER;
-	bDesc.ByteWidth				=sizeof(VPosTex) * 4;
-	bDesc.CPUAccessFlags		=0;
-	bDesc.MiscFlags				=0;
-	bDesc.StructureByteStride	=0;		//only for structuredbuffer stuff
-	bDesc.Usage					=D3D11_USAGE_IMMUTABLE;
-
-	pPP->mpQuadVB	=GD_CreateBufferWithData(pGD, &bDesc, &verts, bDesc.ByteWidth);
-
-	bDesc.BindFlags			=D3D11_BIND_INDEX_BUFFER;
-	bDesc.ByteWidth			=sizeof(uint16_t) * 6;
-
-	pPP->mpQuadIB	=GD_CreateBufferWithData(pGD, &bDesc, &inds, bDesc.ByteWidth);
-}
-
-
-static float ComputeGaussian(float n)
-{
-	float	theta	=BlurAmount;
-	
-	return	(float)((1.0 / sqrtf(2 * GLM_PI * theta)) *
-		expf(-(n * n) / (2 * theta * theta)));
-}
-
-//from the xna bloom sample
-static void InitBlurParams(PostProcess *pPP, float dxX, float dyX, float dxY, float dyY)
-{
-	int	sampleCountX;
-	int	sampleCountY;
-
-	//Doesn't seem to be a way to get array sizes from shaders any more
-	//these values need to match KERNEL_SIZE in post.fx
-	sampleCountX	=KERNEL_SIZE;
-	sampleCountY	=KERNEL_SIZE;
-	
-	//The first sample always has a zero offset.
-	pPP->mSampleWeightsX[0]	=ComputeGaussian(0);
-	pPP->mSampleOffsetsX[0]	=0.0f;
-	pPP->mSampleWeightsY[0]	=ComputeGaussian(0);
-	pPP->mSampleOffsetsY[0]	=0.0f;
-	
-	//Maintain a sum of all the weighting values.
-	float	totalWeightsX	=pPP->mSampleWeightsX[0];
-	float	totalWeightsY	=pPP->mSampleWeightsY[0];
-	
-	//Add pairs of additional sample taps, positioned
-	//along a line in both directions from the center.
-	for(int i=0;i < sampleCountX / 2; i++)
-	{
-		//Store weights for the positive and negative taps.
-		float	weight				=ComputeGaussian(i + 1);
-		pPP->mSampleWeightsX[i * 2 + 1]	=weight;
-		pPP->mSampleWeightsX[i * 2 + 2]	=weight;				
-		totalWeightsX				+=weight * 2;
-
-		//To get the maximum amount of blurring from a limited number of
-		//pixel shader samples, we take advantage of the bilinear filtering
-		//hardware inside the texture fetch unit. If we position our texture
-		//coordinates exactly halfway between two texels, the filtering unit
-		//will average them for us, giving two samples for the price of one.
-		//This allows us to step in units of two texels per sample, rather
-		//than just one at a time. The 1.5 offset kicks things off by
-		//positioning us nicely in between two texels.
-		float	sampleOffset	=i * 2 + 1.5f;
-		
-		vec2	deltaX;
-		deltaX[0]	=dxX * sampleOffset;
-		deltaX[1]	=dyX * sampleOffset;
-
-		//Store texture coordinate offsets for the positive and negative taps.
-		pPP->mSampleOffsetsX[i * 2 + 1]	=deltaX[0];
-		pPP->mSampleOffsetsX[i * 2 + 2]	=-deltaX[0];
-	}
-
-	//Add pairs of additional sample taps, positioned
-	//along a line in both directions from the center.
-	for(int i=0;i < sampleCountY / 2; i++)
-	{
-		//Store weights for the positive and negative taps.
-		float	weight				=ComputeGaussian(i + 1);
-		pPP->mSampleWeightsY[i * 2 + 1]	=weight;
-		pPP->mSampleWeightsY[i * 2 + 2]	=weight;				
-		totalWeightsY				+=weight * 2;
-
-		//To get the maximum amount of blurring from a limited number of
-		//pixel shader samples, we take advantage of the bilinear filtering
-		//hardware inside the texture fetch unit. If we position our texture
-		//coordinates exactly halfway between two texels, the filtering unit
-		//will average them for us, giving two samples for the price of one.
-		//This allows us to step in units of two texels per sample, rather
-		//than just one at a time. The 1.5 offset kicks things off by
-		//positioning us nicely in between two texels.
-		float	sampleOffset	=i * 2 + 1.5f;
-		
-		vec2	deltaY;
-		deltaY[0]	=dxY * sampleOffset;
-		deltaY[1]	=dyY * sampleOffset;
-
-		//Store texture coordinate offsets for the positive and negative taps.
-		pPP->mSampleOffsetsY[i * 2 + 1]	=deltaY[1];
-		pPP->mSampleOffsetsY[i * 2 + 2]	=-deltaY[1];
-	}
-
-	//Normalize the list of sample weightings, so they will always sum to one.
-	for(int i=0;i < KERNEL_SIZE;i++)
-	{
-		pPP->mSampleWeightsX[i]	/=totalWeightsX;
-	}
-	for(int i=0;i < KERNEL_SIZE;i++)
-	{
-		pPP->mSampleWeightsY[i]	/=totalWeightsY;
-	}
-}
-
-static void InitPostParams(PostProcess *pPP, CBKeeper *pCBK)
-{
-	vec2	res, invRes;
-
-	res[0]	=pPP->mResX;
-	res[1]	=pPP->mResY;
-
-	invRes[0]	=1.0f / pPP->mResX;
-	invRes[1]	=1.0f / pPP->mResY;
-
-	CBK_SetInvViewPort(pCBK, invRes);
-
-	CBK_SetBilateralBlurVars(pCBK, 1.0f, 1.0f, 0.75f);
-
-	CBK_SetBloomVars(pCBK, 0.25f, 1.25f, 1.0f, 1.0f, 1.0f);
-
-	CBK_SetOutlinerVars(pCBK, res, 1.0f, 5.0f);
-
-	InitBlurParams(pPP, 1.0f / (pPP->mResX / 2), 0, 0, 1.0f / (pPP->mResY / 2));
-
-	CBK_SetWeightsOffsets(pCBK, pPP->mSampleWeightsX, pPP->mSampleWeightsY,
-		pPP->mSampleOffsetsX, pPP->mSampleOffsetsY);
-}
+//static forward decs
+static void sReleaseSRVCB(void *pValue);
+static void sReleaseTexture2DCB(void *pValue);
+static void sReleaseDSVCB(void *pValue);
+static void sReleaseRTVCB(void *pValue);
+static void sMakeQuad(PostProcess *pPP, GraphicsDevice *pGD);
+static float sComputeGaussian(float n);
+static void sInitBlurParams(PostProcess *pPP, float dxX, float dyX, float dxY, float dyY);
+static void sInitPostParams(PostProcess *pPP, CBKeeper *pCBK);
 
 
 PostProcess	*PP_Create(GraphicsDevice *pGD, StuffKeeper *pSK, CBKeeper *pCBK)
@@ -249,11 +95,29 @@ PostProcess	*PP_Create(GraphicsDevice *pGD, StuffKeeper *pSK, CBKeeper *pCBK)
 	DictSZ_Addccp(&pPP->mpPostTargets, "BackColor", pBB);
 	DictSZ_Addccp(&pPP->mpPostDepths, "BackDepth", pDS);
 
-	MakeQuad(pPP, pGD);
+	sMakeQuad(pPP, pGD);
 
-	InitPostParams(pPP, pCBK);
+	sInitPostParams(pPP, pCBK);
 
 	return	pPP;
+}
+
+void	PP_Destroy(PostProcess **ppPP)
+{
+	PostProcess	*pPP	=*ppPP;
+
+	pPP->mpQuadIB->lpVtbl->Release(pPP->mpQuadIB);
+	pPP->mpQuadVB->lpVtbl->Release(pPP->mpQuadVB);
+
+	DictSZ_ClearCB(&pPP->mpPostTargSRVs, sReleaseSRVCB);
+	DictSZ_ClearCB(&pPP->mpPostTex2Ds, sReleaseTexture2DCB);
+
+	DictSZ_ClearCB(&pPP->mpPostDepths, sReleaseDSVCB);
+	DictSZ_ClearCB(&pPP->mpPostTargets, sReleaseRTVCB);
+
+	free(pPP);
+
+	*ppPP	=NULL;
 }
 
 
@@ -384,4 +248,197 @@ void PP_DrawStage(PostProcess *pPP, GraphicsDevice *pGD, CBKeeper *pCBK)
 	CBK_SetPostToShaders(pCBK, pGD);
 
 	GD_DrawIndexed(pGD, 6, 0, 0);
+}
+
+
+//statics
+static void sReleaseSRVCB(void *pValue)
+{
+	ID3D11ShaderResourceView	*pSRV	=(ID3D11ShaderResourceView *)pValue;
+
+	pSRV->lpVtbl->Release(pSRV);
+}
+
+static void sReleaseTexture2DCB(void *pValue)
+{
+	ID3D11Texture2D	*pT	=(ID3D11Texture2D *)pValue;
+
+	pT->lpVtbl->Release(pT);
+}
+
+static void sReleaseDSVCB(void *pValue)
+{
+	ID3D11DepthStencilView	*pDSV	=(ID3D11DepthStencilView *)pValue;
+
+	pDSV->lpVtbl->Release(pDSV);
+}
+
+static void sReleaseRTVCB(void *pValue)
+{
+	ID3D11RenderTargetView	*pRTV	=(ID3D11RenderTargetView *)pValue;
+
+	pRTV->lpVtbl->Release(pRTV);
+}
+
+static void sMakeQuad(PostProcess *pPP, GraphicsDevice *pGD)
+{
+	VPosTex	verts[4]	={
+		{
+			{	-1, 1, 0.9f	}
+		},
+		{
+			{	1, 1, 0.9f	}
+		},
+		{
+			{	-1, -1, 0.9f	}
+		},
+		{
+			{	1, -1, 0.9f	}
+		}
+	};
+
+	Misc_Convert2ToF16(0, 0, verts[0].TexCoord0);
+	Misc_Convert2ToF16(1, 0, verts[1].TexCoord0);
+	Misc_Convert2ToF16(0, 1, verts[2].TexCoord0);
+	Misc_Convert2ToF16(1, 1, verts[3].TexCoord0);
+
+	uint16_t	inds[6]	={ 2, 1, 0, 2, 3, 1 };
+
+	D3D11_BUFFER_DESC	bDesc;
+
+	bDesc.BindFlags				=D3D11_BIND_VERTEX_BUFFER;
+	bDesc.ByteWidth				=sizeof(VPosTex) * 4;
+	bDesc.CPUAccessFlags		=0;
+	bDesc.MiscFlags				=0;
+	bDesc.StructureByteStride	=0;		//only for structuredbuffer stuff
+	bDesc.Usage					=D3D11_USAGE_IMMUTABLE;
+
+	pPP->mpQuadVB	=GD_CreateBufferWithData(pGD, &bDesc, &verts, bDesc.ByteWidth);
+
+	bDesc.BindFlags			=D3D11_BIND_INDEX_BUFFER;
+	bDesc.ByteWidth			=sizeof(uint16_t) * 6;
+
+	pPP->mpQuadIB	=GD_CreateBufferWithData(pGD, &bDesc, &inds, bDesc.ByteWidth);
+}
+
+static float sComputeGaussian(float n)
+{
+	float	theta	=BlurAmount;
+	
+	return	(float)((1.0 / sqrtf(2 * GLM_PI * theta)) *
+		expf(-(n * n) / (2 * theta * theta)));
+}
+
+//from the xna bloom sample
+static void sInitBlurParams(PostProcess *pPP, float dxX, float dyX, float dxY, float dyY)
+{
+	int	sampleCountX;
+	int	sampleCountY;
+
+	//Doesn't seem to be a way to get array sizes from shaders any more
+	//these values need to match KERNEL_SIZE in post.fx
+	sampleCountX	=KERNEL_SIZE;
+	sampleCountY	=KERNEL_SIZE;
+	
+	//The first sample always has a zero offset.
+	pPP->mSampleWeightsX[0]	=sComputeGaussian(0);
+	pPP->mSampleOffsetsX[0]	=0.0f;
+	pPP->mSampleWeightsY[0]	=sComputeGaussian(0);
+	pPP->mSampleOffsetsY[0]	=0.0f;
+	
+	//Maintain a sum of all the weighting values.
+	float	totalWeightsX	=pPP->mSampleWeightsX[0];
+	float	totalWeightsY	=pPP->mSampleWeightsY[0];
+	
+	//Add pairs of additional sample taps, positioned
+	//along a line in both directions from the center.
+	for(int i=0;i < sampleCountX / 2; i++)
+	{
+		//Store weights for the positive and negative taps.
+		float	weight				=sComputeGaussian(i + 1);
+		pPP->mSampleWeightsX[i * 2 + 1]	=weight;
+		pPP->mSampleWeightsX[i * 2 + 2]	=weight;				
+		totalWeightsX				+=weight * 2;
+
+		//To get the maximum amount of blurring from a limited number of
+		//pixel shader samples, we take advantage of the bilinear filtering
+		//hardware inside the texture fetch unit. If we position our texture
+		//coordinates exactly halfway between two texels, the filtering unit
+		//will average them for us, giving two samples for the price of one.
+		//This allows us to step in units of two texels per sample, rather
+		//than just one at a time. The 1.5 offset kicks things off by
+		//positioning us nicely in between two texels.
+		float	sampleOffset	=i * 2 + 1.5f;
+		
+		vec2	deltaX;
+		deltaX[0]	=dxX * sampleOffset;
+		deltaX[1]	=dyX * sampleOffset;
+
+		//Store texture coordinate offsets for the positive and negative taps.
+		pPP->mSampleOffsetsX[i * 2 + 1]	=deltaX[0];
+		pPP->mSampleOffsetsX[i * 2 + 2]	=-deltaX[0];
+	}
+
+	//Add pairs of additional sample taps, positioned
+	//along a line in both directions from the center.
+	for(int i=0;i < sampleCountY / 2; i++)
+	{
+		//Store weights for the positive and negative taps.
+		float	weight				=sComputeGaussian(i + 1);
+		pPP->mSampleWeightsY[i * 2 + 1]	=weight;
+		pPP->mSampleWeightsY[i * 2 + 2]	=weight;				
+		totalWeightsY				+=weight * 2;
+
+		//To get the maximum amount of blurring from a limited number of
+		//pixel shader samples, we take advantage of the bilinear filtering
+		//hardware inside the texture fetch unit. If we position our texture
+		//coordinates exactly halfway between two texels, the filtering unit
+		//will average them for us, giving two samples for the price of one.
+		//This allows us to step in units of two texels per sample, rather
+		//than just one at a time. The 1.5 offset kicks things off by
+		//positioning us nicely in between two texels.
+		float	sampleOffset	=i * 2 + 1.5f;
+		
+		vec2	deltaY;
+		deltaY[0]	=dxY * sampleOffset;
+		deltaY[1]	=dyY * sampleOffset;
+
+		//Store texture coordinate offsets for the positive and negative taps.
+		pPP->mSampleOffsetsY[i * 2 + 1]	=deltaY[1];
+		pPP->mSampleOffsetsY[i * 2 + 2]	=-deltaY[1];
+	}
+
+	//Normalize the list of sample weightings, so they will always sum to one.
+	for(int i=0;i < KERNEL_SIZE;i++)
+	{
+		pPP->mSampleWeightsX[i]	/=totalWeightsX;
+	}
+	for(int i=0;i < KERNEL_SIZE;i++)
+	{
+		pPP->mSampleWeightsY[i]	/=totalWeightsY;
+	}
+}
+
+static void sInitPostParams(PostProcess *pPP, CBKeeper *pCBK)
+{
+	vec2	res, invRes;
+
+	res[0]	=pPP->mResX;
+	res[1]	=pPP->mResY;
+
+	invRes[0]	=1.0f / pPP->mResX;
+	invRes[1]	=1.0f / pPP->mResY;
+
+	CBK_SetInvViewPort(pCBK, invRes);
+
+	CBK_SetBilateralBlurVars(pCBK, 1.0f, 1.0f, 0.75f);
+
+	CBK_SetBloomVars(pCBK, 0.25f, 1.25f, 1.0f, 1.0f, 1.0f);
+
+	CBK_SetOutlinerVars(pCBK, res, 1.0f, 5.0f);
+
+	sInitBlurParams(pPP, 1.0f / (pPP->mResX / 2), 0, 0, 1.0f / (pPP->mResY / 2));
+
+	CBK_SetWeightsOffsets(pCBK, pPP->mSampleWeightsX, pPP->mSampleWeightsY,
+		pPP->mSampleOffsetsX, pPP->mSampleOffsetsY);
 }

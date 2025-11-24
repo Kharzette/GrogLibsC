@@ -54,8 +54,6 @@ typedef struct	StuffKeeper_t
 	DictSZ	*mpLayCounts;		//Num elements in layout
 	DictSZ	*mpElems;			//Layout elements in simple int arrays
 
-	DictSZ	*mpEntryLayouts;	//UT_string layout name
-
 }	StuffKeeper;
 
 typedef struct	ShaderBytes_t
@@ -226,6 +224,8 @@ DictSZ	*ReadEntryPoints(FILE *f)
 				pEntryPoints	=SZList_New();
 			}
 
+			utstring_free(pCurShader);
+
 			//strip extension
 			pCurShader	=SZ_StripExtension(szLine);
 		}
@@ -238,6 +238,8 @@ DictSZ	*ReadEntryPoints(FILE *f)
 
 	//add last data to pRet
 	DictSZ_Add(&pRet, pCurShader, pEntryPoints);
+
+	utstring_free(pCurShader);
 
 	return	pRet;
 }
@@ -276,15 +278,15 @@ static void ReadEntryLayouts(FILE *f, DictSZ **ppDict)
 		//add data
 		DictSZ_Add(ppDict, pShaderEntry, pLTrimmed);
 
+		utstring_free(pShaderEntry);
+		utstring_free(pLayout);
+		utstring_free(pLTrimmed);
+
 		if(feof(f))
 		{
 			break;
 		}
 	}
-
-	utstring_done(pShaderEntry);
-	utstring_done(pLayout);
-	utstring_done(pLTrimmed);
 }
 
 
@@ -370,7 +372,7 @@ static UT_string	*ProfileFromSM(ShaderModel sm, ShaderEntryType set)
 			assert(false);
 	}
 
-	utstring_done(pVer);
+	utstring_free(pVer);
 
 	return	pRet;
 }
@@ -430,6 +432,55 @@ static void LoadCompiledShader(DictSZ **ppStorage, const UT_string *pPath, const
 }
 
 
+//generic code loader for any type of shader
+static void	sLoadShaderDir(DictSZ **ppCodeDict, UT_string *szDir)
+{
+	UT_string	*pFilePath;
+	utstring_new(pFilePath);
+
+	DIR	*pDir	=opendir(utstring_body(szDir));
+	for(;;)
+	{
+		struct dirent	*pDE	=readdir(pDir);
+		if(pDE == NULL)
+		{
+			break;
+		}
+
+		UT_string	*pDName;
+		utstring_new(pDName);
+		utstring_printf(pDName, "%s", pDE->d_name);
+
+		utstring_clear(pFilePath);
+
+		utstring_concat(pFilePath, szDir);
+		utstring_concat(pFilePath, pDName);
+
+		struct stat	fileStuff;
+		int	res	=stat(utstring_body(pFilePath), &fileStuff);
+		if(res)
+		{
+			FileStuff_PrintErrno(errno);
+			continue;
+		}
+
+		//regular file?
+		if(S_ISREG(fileStuff.st_mode))
+		{
+			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
+
+			LoadCompiledShader(ppCodeDict, pFilePath, pExtLess);
+
+			utstring_free(pExtLess);
+		}
+		utstring_free(pDName);
+	}
+	closedir(pDir);
+
+	utstring_free(pFilePath);
+}
+
+
 static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 {
 	//check dirs
@@ -442,16 +493,16 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 
 	if(!FileStuff_DirExists(utstring_body(pCompiledShaderDir)))
 	{
-		utstring_done(pVer);
-		utstring_done(pCompiledShaderDir);
+		utstring_free(pVer);
+		utstring_free(pCompiledShaderDir);
 		return;
 	}
 
 	utstring_concat(pCompiledShaderDir, pVer);
 	if(!FileStuff_DirExists(utstring_body(pCompiledShaderDir)))
 	{
-		utstring_done(pVer);
-		utstring_done(pCompiledShaderDir);
+		utstring_free(pVer);
+		utstring_free(pCompiledShaderDir);
 		return;
 	}
 
@@ -466,146 +517,41 @@ static void	LoadShaders(StuffKeeper *pSK, ShaderModel sm)
 
 	if(!FileStuff_DirExists(utstring_body(pVSDir)))
 	{
-		utstring_done(pVer);
-		utstring_done(pCompiledShaderDir);
-		utstring_done(pVSDir);
-		utstring_done(pPSDir);
-		utstring_done(pCSDir);
+		utstring_free(pVer);
+		utstring_free(pCompiledShaderDir);
+		utstring_free(pVSDir);
+		utstring_free(pPSDir);
+		utstring_free(pCSDir);
 		return;
 	}
 	if(!FileStuff_DirExists(utstring_body(pPSDir)))
 	{
-		utstring_done(pVer);
-		utstring_done(pCompiledShaderDir);
-		utstring_done(pVSDir);
-		utstring_done(pPSDir);
-		utstring_done(pCSDir);
+		utstring_free(pVer);
+		utstring_free(pCompiledShaderDir);
+		utstring_free(pVSDir);
+		utstring_free(pPSDir);
+		utstring_free(pCSDir);
 		return;
 	}	
 	if(!FileStuff_DirExists(utstring_body(pCSDir)))
 	{
-		utstring_done(pVer);
-		utstring_done(pCompiledShaderDir);
-		utstring_done(pVSDir);
-		utstring_done(pPSDir);
-		utstring_done(pCSDir);
+		utstring_free(pVer);
+		utstring_free(pCompiledShaderDir);
+		utstring_free(pVSDir);
+		utstring_free(pPSDir);
+		utstring_free(pCSDir);
 		return;
 	}	
 
-	UT_string	*pFilePath;
-	utstring_new(pFilePath);
+	sLoadShaderDir(&pSK->mpVSCode, pVSDir);
+	sLoadShaderDir(&pSK->mpPSCode, pPSDir);
+	sLoadShaderDir(&pSK->mpCSCode, pCSDir);
 
-	//load all vertex
-	DIR	*pDir	=opendir(utstring_body(pVSDir));
-	for(;;)
-	{
-		struct dirent	*pDE	=readdir(pDir);
-		if(pDE == NULL)
-		{
-			break;
-		}
-
-		UT_string	*pDName;
-		utstring_new(pDName);
-		utstring_printf(pDName, "%s", pDE->d_name);
-
-		utstring_clear(pFilePath);
-
-		utstring_concat(pFilePath, pVSDir);
-		utstring_concat(pFilePath, pDName);
-
-		struct stat	fileStuff;
-		int	res	=stat(utstring_body(pFilePath), &fileStuff);
-		if(res)
-		{
-			FileStuff_PrintErrno(errno);
-			continue;
-		}
-
-		//regular file?
-		if(S_ISREG(fileStuff.st_mode))
-		{
-			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
-
-			LoadCompiledShader(&pSK->mpVSCode, pFilePath, pExtLess);
-
-			utstring_done(pExtLess);
-		}
-		utstring_done(pDName);
-	}
-	closedir(pDir);
-
-	//load pixel
-	pDir	=opendir(utstring_body(pPSDir));
-	for(;;)
-	{
-		struct dirent	*pDE	=readdir(pDir);
-		if(pDE == NULL)
-		{
-			break;
-		}
-
-		UT_string	*pDName;
-		utstring_new(pDName);
-		utstring_printf(pDName, "%s", pDE->d_name);
-
-		utstring_clear(pFilePath);
-
-		utstring_concat(pFilePath, pPSDir);
-		utstring_concat(pFilePath, pDName);
-
-		struct stat	fileStuff;
-		int	res	=stat(utstring_body(pFilePath), &fileStuff);
-		if(res)
-		{
-			FileStuff_PrintErrno(errno);
-			continue;
-		}
-
-		//regular file?
-		if(S_ISREG(fileStuff.st_mode))
-		{
-			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
-
-			LoadCompiledShader(&pSK->mpPSCode, pFilePath, pExtLess);
-		}
-	}
-
-	//load compute
-	pDir	=opendir(utstring_body(pCSDir));
-	for(;;)
-	{
-		struct dirent	*pDE	=readdir(pDir);
-		if(pDE == NULL)
-		{
-			break;
-		}
-
-		UT_string	*pDName;
-		utstring_new(pDName);
-		utstring_printf(pDName, "%s", pDE->d_name);
-
-		utstring_clear(pFilePath);
-
-		utstring_concat(pFilePath, pCSDir);
-		utstring_concat(pFilePath, pDName);
-
-		struct stat	fileStuff;
-		int	res	=stat(utstring_body(pFilePath), &fileStuff);
-		if(res)
-		{
-			FileStuff_PrintErrno(errno);
-			continue;
-		}
-
-		//regular file?
-		if(S_ISREG(fileStuff.st_mode))
-		{
-			UT_string	*pExtLess	=SZ_StripExtensionUT(pDName);
-
-			LoadCompiledShader(&pSK->mpCSCode, pFilePath, pExtLess);
-		}
-	}
+	utstring_free(pVer);
+	utstring_free(pCompiledShaderDir);
+	utstring_free(pVSDir);
+	utstring_free(pPSDir);
+	utstring_free(pCSDir);
 }
 
 
@@ -696,7 +642,7 @@ BYTE **SK_LoadTextureBytes(const char *pPath, int *pOutRowPitch,
 
 	FILE	*fRaw	=fopen(utstring_body(pNoExt), "rb");
 
-	utstring_done(pNoExt);
+	utstring_free(pNoExt);
 
 	png_structp	pPng	=png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
 	if(pPng == NULL)
@@ -919,7 +865,7 @@ static void LoadResourcesDir(GraphicsDevice *pGD, StuffKeeper *pSK, const char *
 		int	upper	=strncmp(utstring_body(pExt), ".PNG", utstring_len(pExt));
 		int	lower	=strncmp(utstring_body(pExt), ".png", utstring_len(pExt));
 
-		utstring_done(pExt);
+		utstring_free(pExt);
 
 		if(upper && lower)
 		{
@@ -947,14 +893,14 @@ static void LoadResourcesDir(GraphicsDevice *pGD, StuffKeeper *pSK, const char *
 				DictSZ_Add(&pSK->mpTexSizes, pJustName, pTexSize);
 			}
 
-			utstring_done(pExtLess);
-			utstring_done(pJustName);
+			utstring_free(pExtLess);
+			utstring_free(pJustName);
 		}
 	}
 	closedir(pDir);
 
-	utstring_done(pTexDir);
-	utstring_done(pFilePath);
+	utstring_free(pTexDir);
+	utstring_free(pFilePath);
 }
 
 
@@ -1066,9 +1012,9 @@ static void	CreateFontSRVCB(const UT_string *pKey, const void *pValue, void *pCo
 		}
 	}
 
-
 	pRes->lpVtbl->Release(pRes);
 }
+
 
 
 static void CreateShadersFromCode(StuffKeeper *pSK, GraphicsDevice *pGD)
@@ -1122,7 +1068,7 @@ void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
 		int	upper	=strncmp(utstring_body(pExt), ".PNG", utstring_len(pExt));
 		int	lower	=strncmp(utstring_body(pExt), ".png", utstring_len(pExt));
 
-		utstring_done(pExt);
+		utstring_free(pExt);
 
 		if(upper && lower)
 		{
@@ -1167,14 +1113,14 @@ void LoadFonts(GraphicsDevice *pGD, StuffKeeper *pSK)
 					DictSZ_Add(&pSK->mpFonts, pJustName, pFont);
 				}
 			}
-			utstring_done(pExtLess);
-			utstring_done(pJustName);
+			utstring_free(pExtLess);
+			utstring_free(pJustName);
 		}
 	}
 	closedir(pDir);
 
-	utstring_done(pFontDir);
-	utstring_done(pFilePath);
+	utstring_free(pFontDir);
+	utstring_free(pFilePath);
 }
 
 
@@ -1397,16 +1343,6 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 
 static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
 {
-	//load EntryLayouts, this maps from a shader entry point
-	//to a layout name (such as VPosNormBone etc...)
-	FILE	*f	=fopen("CompiledShaders/EntryLayouts.txt", "r");
-	if(f == NULL)
-	{
-		printf("Couldn't open entry layouts file!\n");
-		return;
-	}
-	ReadEntryLayouts(f, &pSK->mpEntryLayouts);
-
 	//make the layout elements for matching later
 	Layouts_MakeElems(&pSK->mpElems, &pSK->mpLayCounts);
 
@@ -1499,7 +1435,6 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	DictSZ_New(&pRet->mpDSSs);
 	DictSZ_New(&pRet->mpSSs);
 	DictSZ_New(&pRet->mpLayouts);
-	DictSZ_New(&pRet->mpEntryLayouts);
 	DictSZ_New(&pRet->mpElems);
 	DictSZ_New(&pRet->mpLayCounts);
 
@@ -1526,6 +1461,123 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 		numShaderData, numTex, numVS, numPS, numCS, numFonts, numSRVs, numFontSRVs);
 
 	return	pRet;
+}
+
+static void	sReleaseInputLayoutCB(void *pValue)
+{
+	ID3D11InputLayout	*pLay	=(ID3D11InputLayout *)pValue;
+
+	pLay->lpVtbl->Release(pLay);
+}
+
+static void	sReleaseBlendStateCB(void *pValue)
+{
+	ID3D11BlendState	*pBS	=(ID3D11BlendState *)pValue;
+
+	pBS->lpVtbl->Release(pBS);
+}
+
+static void	sReleaseDepthStencilStateCB(void *pValue)
+{
+	ID3D11DepthStencilState	*pDSS	=(ID3D11DepthStencilState *)pValue;
+
+	pDSS->lpVtbl->Release(pDSS);
+}
+
+static void	sReleaseSamplerStateCB(void *pValue)
+{
+	ID3D11SamplerState	*pSS	=(ID3D11SamplerState *)pValue;
+
+	pSS->lpVtbl->Release(pSS);
+}
+
+static void	sReleaseSRVCB(void *pValue)
+{
+	ID3D11ShaderResourceView	*pSRV	=(ID3D11ShaderResourceView *)pValue;
+
+	pSRV->lpVtbl->Release(pSRV);
+}
+
+static void	sReleaseTexture2DCB(void *pValue)
+{
+	ID3D11Texture2D	*pTex	=(ID3D11Texture2D *)pValue;
+
+	pTex->lpVtbl->Release(pTex);
+}
+
+static void sNukeFontCB(void *pValue)
+{
+	GrogFont	*pFont	=(GrogFont *)pValue;
+
+	GFont_Destroy(&pFont);
+}
+
+static void sReleaseComputeShaderCB(void *pValue)
+{
+	ID3D11ComputeShader	*pCS	=(ID3D11ComputeShader *)pValue;
+
+	pCS->lpVtbl->Release(pCS);
+}
+
+static void sReleasePixelShaderCB(void *pValue)
+{
+	ID3D11PixelShader	*pPS	=(ID3D11PixelShader *)pValue;
+
+	pPS->lpVtbl->Release(pPS);
+}
+
+static void sReleaseVertexShaderCB(void *pValue)
+{
+	ID3D11VertexShader	*pVS	=(ID3D11VertexShader *)pValue;
+
+	pVS->lpVtbl->Release(pVS);
+}
+
+static void sNukeShaderBytes(void *pValue)
+{
+	ShaderBytes	*pSB	=(ShaderBytes *)pValue;
+
+	free(pSB->mpBytes);
+	free(pSB);
+}
+
+static void	sNukeEntryPoints(void *pValue)
+{
+	StringList	*pSL	=(StringList *)pValue;
+
+	SZList_Clear(&pSL);
+}
+
+void	StuffKeeper_Destroy(StuffKeeper **ppSK)
+{
+	StuffKeeper	*pSK	=*ppSK;
+
+	//free stuff in reverse order
+	DictSZ_ClearNoFree(&pSK->mpLayCounts);
+	DictSZ_Clear(&pSK->mpElems);
+	DictSZ_ClearCB(&pSK->mpLayouts, sReleaseInputLayoutCB);
+	DictSZ_ClearCB(&pSK->mpBlends, sReleaseBlendStateCB);
+	DictSZ_ClearCB(&pSK->mpDSSs, sReleaseDepthStencilStateCB);
+	DictSZ_ClearCB(&pSK->mpSSs, sReleaseSamplerStateCB);
+	DictSZ_ClearCB(&pSK->mpFontSRVs, sReleaseSRVCB);
+	DictSZ_ClearCB(&pSK->mpSRVs, sReleaseSRVCB);
+	DictSZ_ClearCB(&pSK->mpFonts, sNukeFontCB);
+	DictSZ_ClearCB(&pSK->mpFontTextures, sReleaseTexture2DCB);
+	DictSZ_ClearCB(&pSK->mpTextures, sReleaseTexture2DCB);
+	DictSZ_Clear(&pSK->mpTexSizes);
+	DictSZ_ClearCB(&pSK->mpCShaders, sReleaseComputeShaderCB);
+	DictSZ_ClearCB(&pSK->mpPShaders, sReleasePixelShaderCB);
+	DictSZ_ClearCB(&pSK->mpVShaders, sReleaseVertexShaderCB);
+	DictSZ_ClearCB(&pSK->mpCSCode, sNukeShaderBytes);
+	DictSZ_ClearCB(&pSK->mpPSCode, sNukeShaderBytes);
+	DictSZ_ClearCB(&pSK->mpVSCode, sNukeShaderBytes);
+	DictSZ_ClearCB(&pSK->mpCSEntryPoints, sNukeEntryPoints);
+	DictSZ_ClearCB(&pSK->mpPSEntryPoints, sNukeEntryPoints);
+	DictSZ_ClearCB(&pSK->mpVSEntryPoints, sNukeEntryPoints);
+
+	free(pSK);
+
+	*ppSK	=NULL;
 }
 
 

@@ -18,7 +18,7 @@ typedef struct	UIRect_t
 }	UIRect;
 
 UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts);
-void	UI_FreeAll(UIStuff *pUI);
+void	UI_Destroy(UIStuff **ppUI);
 
 void	UI_BeginDraw(UIStuff *pUI);
 void	UI_EndDraw(UIStuff *pUI);

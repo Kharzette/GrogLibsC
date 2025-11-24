@@ -269,11 +269,13 @@ void	GD_Destroy(GraphicsDevice **ppGD)
 	pGD->mpSwapChain->lpVtbl->Release(pGD->mpSwapChain);
 	pGD->mpDevice->lpVtbl->Release(pGD->mpDevice);
 
-	*ppGD	=NULL;
-
 	SDL_Vulkan_UnloadLibrary();
 
 	SDL_DestroyWindow(pGD->mpWnd);
+	
+	free(pGD);
+
+	*ppGD	=NULL;
 
 	SDL_Quit();
 }

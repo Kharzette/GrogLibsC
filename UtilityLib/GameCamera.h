@@ -5,7 +5,8 @@ typedef struct	GameCamera_t	GameCamera;
 
 
 GameCamera	*GameCam_Create(bool bSpaceMode, float near, float far,
-			float fov, float aspect, float minDist, float maxDist);
+				float fov, float aspect, float minDist, float maxDist);
+void		GameCam_Destroy(GameCamera **ppCam);
 
 void	GameCam_UpdateRotation(GameCamera *pCam, vec3 pos, float deltaPitch,
 								float deltaYaw, float deltaRoll);

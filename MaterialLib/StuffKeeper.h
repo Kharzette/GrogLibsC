@@ -11,6 +11,7 @@ typedef struct	StringList_t		StringList;
 
 
 StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD);
+void		StuffKeeper_Destroy(StuffKeeper **ppSK);
 void		TestSKStuff(void);
 
 //raw png load, used externally by terrain stuff

@@ -43,6 +43,16 @@ Mover	*Mover_Create(void)
 	return	pRet;
 }
 
+void	Mover_Destroy(Mover **ppMv)
+{
+	Mover	*pMv	=*ppMv;
+
+	free(pMv);
+
+	*ppMv	=NULL;
+}
+
+
 void	Mover_GetPos(const Mover *pMv, vec4 outPos)
 {
 	glm_vec4_copy(pMv->mCurPos, outPos);

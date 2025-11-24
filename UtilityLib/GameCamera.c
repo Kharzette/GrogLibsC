@@ -75,6 +75,16 @@ GameCamera	*GameCam_Create(bool bSpaceMode, float near, float far,
 	return	pRet;
 }
 
+void	GameCam_Destroy(GameCamera **ppCam)
+{
+	GameCamera	*pCam	=*ppCam;
+
+	free(pCam);
+
+	*ppCam	=NULL;
+}
+
+
 //standard fps update
 void	GameCam_UpdateRotation(GameCamera *pCam, vec3 objectPos, float deltaPitch, float deltaYaw, float deltaRoll)
 {

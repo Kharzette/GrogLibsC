@@ -49,6 +49,24 @@ Input	*INP_CreateInput(void)
 	return	pRet;
 }
 
+void	INP_DestroyInput(Input **ppInp)
+{
+	Input	*pInp	=*ppInp;
+
+	InputBinding	*pCur, *pTmp;
+
+	LL_FOREACH_SAFE(pInp->mpBindings, pCur, pTmp)
+	{
+		LL_DELETE(pInp->mpBindings, pCur);
+
+		free(pCur);
+	}
+
+	free(pInp);
+
+	*ppInp	=NULL;
+}
+
 
 //for a context related to the binding
 void	INP_MakeBindingCTX(Input *pInp, int bindType, uint32_t code, InputCB cb, void *pContext)

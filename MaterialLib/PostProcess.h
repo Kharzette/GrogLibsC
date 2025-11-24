@@ -8,6 +8,7 @@ typedef struct	CBKeeper_t			CBKeeper;
 
 
 PostProcess	*PP_Create(GraphicsDevice *pGD, StuffKeeper *pSK, CBKeeper *pCBK);
+void		PP_Destroy(PostProcess **ppPP);
 
 void	PP_MakePostTarget(PostProcess *pPP, GraphicsDevice *pGD,
 	const char *szName, int resX, int resY, DXGI_FORMAT fmt);

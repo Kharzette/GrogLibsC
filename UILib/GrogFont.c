@@ -51,12 +51,29 @@ GrogFont	*GFont_Create(const UT_string *pPath)
 	return	pRet;
 }
 
+void	GFont_Destroy(GrogFont **ppFont)
+{
+	GrogFont	*pFont	=*ppFont;
+
+	pFont->mpSRV->lpVtbl->Release(pFont->mpSRV);
+
+	free(pFont->mpWidths);
+
+	free(pFont);
+
+	*ppFont	=NULL;
+}
+
+
 void	GFont_SetSRV(GrogFont *pFont, ID3D11ShaderResourceView *pSRV)
 {
 	if(pFont == NULL)
 	{
 		return;
 	}
+
+	//add a ref
+	pSRV->lpVtbl->AddRef(pSRV);
 
 	pFont->mpSRV	=pSRV;
 }

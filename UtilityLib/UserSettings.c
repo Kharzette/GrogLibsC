@@ -39,6 +39,18 @@ UserSettings	*UserSettings_Create(void)
 	return	pRet;
 }
 
+void	UserSettings_Destroy(UserSettings **ppUS)
+{
+	UserSettings	*pUS	=*ppUS;
+
+	DictSZ_Clear(&pUS->mPositions);
+
+	free(pUS);
+
+	*ppUS	=NULL;
+}
+
+
 void	UserSettings_Load(UserSettings *pUS)
 {
 	FILE	*f	=fopen("ControlSettings.sav", "rb");
@@ -59,6 +71,8 @@ void	UserSettings_Load(UserSettings *pUS)
 		fread(pVal, sizeof(vec2), 1, f);
 
 		DictSZ_Add(&pUS->mPositions, pKey, pVal);
+
+		utstring_free(pKey);
 	}
 
 	fclose(f);

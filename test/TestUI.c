@@ -367,7 +367,7 @@ static void	sSetupRastVP(GraphicsDevice *pGD)
 }
 
 
-static void sOnHover(Clay_ElementId eID, Clay_PointerData pnt, intptr_t userData)
+static void sOnHover(Clay_ElementId eID, Clay_PointerData pnt, void *userData)
 {
 	//clicked?
 	if(pnt.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME)
@@ -419,7 +419,7 @@ static void sFillTexList(TestStuff *pTS, const StuffKeeper *pSK)
 			.backgroundColor	=Clay_Hovered()?	sWAG1 : sWAG2,
 		})
 		{
-			Clay_OnHover(sOnHover, (intptr_t)pTS);
+			Clay_OnHover(sOnHover, pTS);
 
 			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
 				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
@@ -457,7 +457,7 @@ static void	sFillSFXList(const TestStuff *pTS)
 			.backgroundColor	=Clay_Hovered()?	sWAG2 : sWAG3,
 		})
 		{
-			Clay_OnHover(sOnHover, (intptr_t)NULL);
+			Clay_OnHover(sOnHover, NULL);
 
 			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
 				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),

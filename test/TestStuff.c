@@ -599,7 +599,7 @@ __attribute_maybe_unused__
 
 	Terrain_Destroy(&pTS->mpTer, pPhys);
 
-	Character_Destroy(pChar);
+	Character_Destroy(&pChar);
 
 	MatLib_Destroy(&pCharMats);
 

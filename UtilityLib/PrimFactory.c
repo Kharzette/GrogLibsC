@@ -393,8 +393,8 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 	return	pObj;
 }
 
-PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
-								float size, GraphicsDevice *pGD)
+PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, const vec4 *pColours,
+								int numCubes, float size, GraphicsDevice *pGD)
 {
 	VPosNormCol	*vpn	=malloc(sizeof(VPosNormCol) * 24 * numCubes);
 	uint32_t	*inds	=malloc(sizeof(uint32_t) * 36 * numCubes);
@@ -406,9 +406,6 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 	{
 		int		ofs	=i * 24;
 		vec3	mins, maxs;
-		vec4	col;
-
-		Misc_RandomColour(col);
 
 		glm_vec3_sub(pCubeCenters[i], sizeVec, mins);
 		glm_vec3_add(pCubeCenters[i], sizeVec, maxs);
@@ -497,35 +494,35 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, int numCubes,
 		glm_vec3_copy(lowerTopRight,	vpn[ofs + 20].PositionU);
 		
 		//normals
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[0].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[1].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[2].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[3].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 0].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 1].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 2].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 3].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[4].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[5].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[6].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[7].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 4].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 5].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 6].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 7].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[8].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[9].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[10].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[11].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, pColours[i], vpn[ofs + 8].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, pColours[i], vpn[ofs + 9].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, pColours[i], vpn[ofs + 10].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, pColours[i], vpn[ofs + 11].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[12].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[13].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[14].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[15].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, pColours[i], vpn[ofs + 12].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, pColours[i], vpn[ofs + 13].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, pColours[i], vpn[ofs + 14].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, pColours[i], vpn[ofs + 15].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[16].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[17].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[18].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[19].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 16].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 17].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 18].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 19].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[20].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[21].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[22].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[23].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 20].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 21].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 22].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 23].NormVCol);
 
 		//indexes
 		uint32_t	idx	=ofs;

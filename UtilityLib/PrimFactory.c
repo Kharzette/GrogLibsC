@@ -393,6 +393,7 @@ PrimObject	*PF_CreateCubesFromBoundArray(const vec3 *pMins, const vec3 *pMaxs, i
 	return	pObj;
 }
 
+//pColours is optional
 PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, const vec4 *pColours,
 								int numCubes, float size, GraphicsDevice *pGD)
 {
@@ -406,6 +407,9 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, const vec4 *pColours,
 	{
 		int		ofs	=i * 24;
 		vec3	mins, maxs;
+		vec4	col;
+
+		Misc_RandomColour(col);
 
 		glm_vec3_sub(pCubeCenters[i], sizeVec, mins);
 		glm_vec3_add(pCubeCenters[i], sizeVec, maxs);
@@ -493,36 +497,41 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, const vec4 *pColours,
 		glm_vec3_copy(lowerBotRight,	vpn[ofs + 21].PositionU);
 		glm_vec3_copy(lowerTopRight,	vpn[ofs + 20].PositionU);
 		
+		if(pColours != NULL)
+		{
+			glm_vec4_copy(pColours[i], col);
+		}
+
 		//normals
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 0].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 1].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 2].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 3].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 0].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 1].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 2].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 3].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 4].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 5].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 6].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 7].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 4].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 5].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 6].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, -1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 7].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, pColours[i], vpn[ofs + 8].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, pColours[i], vpn[ofs + 9].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, pColours[i], vpn[ofs + 10].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, pColours[i], vpn[ofs + 11].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[ofs + 8].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[ofs + 9].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[ofs + 10].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, 1.0f, 1.0f	}, col, vpn[ofs + 11].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, pColours[i], vpn[ofs + 12].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, pColours[i], vpn[ofs + 13].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, pColours[i], vpn[ofs + 14].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, pColours[i], vpn[ofs + 15].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[ofs + 12].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[ofs + 13].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[ofs + 14].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	0.0f, 0.0f, -1.0f, 1.0f	}, col, vpn[ofs + 15].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 16].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 17].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 18].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 19].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[ofs + 16].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[ofs + 17].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[ofs + 18].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	-1.0f, 0.0f, 0.0f, 1.0f	}, col, vpn[ofs + 19].NormVCol);
 
-		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 20].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 21].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 22].NormVCol);
-		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, pColours[i], vpn[ofs + 23].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 20].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 21].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 22].NormVCol);
+		Misc_InterleaveVec4ToF16((vec4){	1.0f, 1.0f, 0.0f, 1.0f	}, col, vpn[ofs + 23].NormVCol);
 
 		//indexes
 		uint32_t	idx	=ofs;
@@ -563,6 +572,7 @@ PrimObject	*PF_CreateManyCubes(const vec3 *pCubeCenters, const vec4 *pColours,
 	return	pObj;
 }
 
+//pColours is optional
 PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4 *pColours,
 								int numRays, float rayWidth, GraphicsDevice *pGD)
 {
@@ -575,6 +585,9 @@ PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4
 	{
 		int		ofs	=i * 24;
 		vec3	start, end;
+		vec4	col;
+
+		Misc_RandomColour(col);
 
 		glm_vec3_copy(pStarts[i], start);
 		glm_vec3_copy(pEnds[i], end);
@@ -670,43 +683,48 @@ PrimObject	*PF_CreateManyRays(const vec3 *pStarts, const vec3 *pEnds, const vec4
 		glm_vec3_copy(upperBotRight,	vpnc[ofs + 22].PositionU);
 		glm_vec3_copy(lowerBotRight,	vpnc[ofs + 21].PositionU);
 		glm_vec3_copy(lowerTopRight,	vpnc[ofs + 20].PositionU);
+
+		if(pColours != NULL)
+		{
+			glm_vec4_copy(pColours[i], col);
+		}
 		
 		//normals
 		//top (Z+)
-		Misc_InterleaveVec34ToF16(rayZ, pColours[i], vpnc[ofs + 0].NormVCol);
-		Misc_InterleaveVec34ToF16(rayZ, pColours[i], vpnc[ofs + 1].NormVCol);
-		Misc_InterleaveVec34ToF16(rayZ, pColours[i], vpnc[ofs + 2].NormVCol);
-		Misc_InterleaveVec34ToF16(rayZ, pColours[i], vpnc[ofs + 3].NormVCol);
+		Misc_InterleaveVec34ToF16(rayZ, col, vpnc[ofs + 0].NormVCol);
+		Misc_InterleaveVec34ToF16(rayZ, col, vpnc[ofs + 1].NormVCol);
+		Misc_InterleaveVec34ToF16(rayZ, col, vpnc[ofs + 2].NormVCol);
+		Misc_InterleaveVec34ToF16(rayZ, col, vpnc[ofs + 3].NormVCol);
 
 		//bottom (Z-)
-		Misc_InterleaveVec34ToF16(rayNegZ, pColours[i], vpnc[ofs + 4].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegZ, pColours[i], vpnc[ofs + 5].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegZ, pColours[i], vpnc[ofs + 6].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegZ, pColours[i], vpnc[ofs + 7].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegZ, col, vpnc[ofs + 4].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegZ, col, vpnc[ofs + 5].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegZ, col, vpnc[ofs + 6].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegZ, col, vpnc[ofs + 7].NormVCol);
 
 		//top Y side (Y+)
-		Misc_InterleaveVec34ToF16(rayY, pColours[i], vpnc[ofs + 8].NormVCol);
-		Misc_InterleaveVec34ToF16(rayY, pColours[i], vpnc[ofs + 9].NormVCol);
-		Misc_InterleaveVec34ToF16(rayY, pColours[i], vpnc[ofs + 10].NormVCol);
-		Misc_InterleaveVec34ToF16(rayY, pColours[i], vpnc[ofs + 11].NormVCol);
+		Misc_InterleaveVec34ToF16(rayY, col, vpnc[ofs + 8].NormVCol);
+		Misc_InterleaveVec34ToF16(rayY, col, vpnc[ofs + 9].NormVCol);
+		Misc_InterleaveVec34ToF16(rayY, col, vpnc[ofs + 10].NormVCol);
+		Misc_InterleaveVec34ToF16(rayY, col, vpnc[ofs + 11].NormVCol);
 
 		//bottom Y side (Y-)
-		Misc_InterleaveVec34ToF16(rayNegY, pColours[i], vpnc[ofs + 12].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegY, pColours[i], vpnc[ofs + 13].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegY, pColours[i], vpnc[ofs + 14].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegY, pColours[i], vpnc[ofs + 15].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegY, col, vpnc[ofs + 12].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegY, col, vpnc[ofs + 13].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegY, col, vpnc[ofs + 14].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegY, col, vpnc[ofs + 15].NormVCol);
 
 		//-x side
-		Misc_InterleaveVec34ToF16(rayNegX, pColours[i], vpnc[ofs + 16].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegX, pColours[i], vpnc[ofs + 17].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegX, pColours[i], vpnc[ofs + 18].NormVCol);
-		Misc_InterleaveVec34ToF16(rayNegX, pColours[i], vpnc[ofs + 19].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegX, col, vpnc[ofs + 16].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegX, col, vpnc[ofs + 17].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegX, col, vpnc[ofs + 18].NormVCol);
+		Misc_InterleaveVec34ToF16(rayNegX, col, vpnc[ofs + 19].NormVCol);
 
 		//+x side
-		Misc_InterleaveVec34ToF16(rayX, pColours[i], vpnc[ofs + 20].NormVCol);
-		Misc_InterleaveVec34ToF16(rayX, pColours[i], vpnc[ofs + 21].NormVCol);
-		Misc_InterleaveVec34ToF16(rayX, pColours[i], vpnc[ofs + 22].NormVCol);
-		Misc_InterleaveVec34ToF16(rayX, pColours[i], vpnc[ofs + 23].NormVCol);
+		Misc_InterleaveVec34ToF16(rayX, col, vpnc[ofs + 20].NormVCol);
+		Misc_InterleaveVec34ToF16(rayX, col, vpnc[ofs + 21].NormVCol);
+		Misc_InterleaveVec34ToF16(rayX, col, vpnc[ofs + 22].NormVCol);
+		Misc_InterleaveVec34ToF16(rayX, col, vpnc[ofs + 23].NormVCol);
 
 		//indexes
 		uint32_t	idx	=ofs;

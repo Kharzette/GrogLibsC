@@ -151,7 +151,7 @@ int	SZ_IndexOf(const char *pSZ, char cThing)
 		return	-1;
 	}
 
-	char	*pSpot	=strchr(pSZ, cThing);
+	const char	*pSpot	=strchr(pSZ, cThing);
 	if(pSpot == NULL)
 	{
 		return	-1;
@@ -173,7 +173,7 @@ int	SZ_LastIndexOf(const char *pSZ, char cThing)
 		return	-1;
 	}
 
-	char	*pSpot	=strrchr(pSZ, cThing);
+	const char	*pSpot	=strrchr(pSZ, cThing);
 	if(pSpot == NULL)
 	{
 		return	-1;

@@ -86,7 +86,7 @@ static void	sSetupKeyBinds(Input *pInp);
 static void	sSetupRastVP(GraphicsDevice *pGD);
 
 //clay stuff
-static const Clay_RenderCommandArray sCreateLayout(TestStuff *pTS, const StuffKeeper *pSK);
+static const Clay_RenderCommandArray sCreateLayout(TestStuff *pTS, const StuffKeeper *pSK, float deltaTime);
 static void sHandleClayErrors(Clay_ErrorData errorData);
 
 //input event handlers
@@ -218,7 +218,7 @@ int main(void)
 
 		pTS->mScrollDelta.x	=pTS->mScrollDelta.y	=0.0f;
 	
-		Clay_RenderCommandArray renderCommands = sCreateLayout(pTS, pSK);
+		Clay_RenderCommandArray renderCommands = sCreateLayout(pTS, pSK, dt);
 	
 		UI_BeginDraw(pTS->mpUI);
 	
@@ -374,7 +374,7 @@ static void sOnHover(Clay_ElementId eID, Clay_PointerData pnt, void *userData)
 	{
 		printf("Click! %s\n", eID.stringId.chars);
 
-		if(userData == (intptr_t)NULL)
+		if(userData == NULL)
 		{
 			SoundEffect_Play(eID.stringId.chars, GLM_VEC3_ZERO);
 			return;
@@ -502,7 +502,7 @@ static void	sMakeColourTestBox(const TestStuff *pTS,
 //files in the game dir
 //time related stuff
 //some kind of fake rpg gump with random stats
-static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *pSK)
+static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *pSK, float deltaTime)
 {
 	Clay_BeginLayout();
 
@@ -669,7 +669,7 @@ static Clay_RenderCommandArray	sCreateLayout(TestStuff *pTS, const StuffKeeper *
 		}
 	}
 
-	return	Clay_EndLayout();
+	return	Clay_EndLayout(deltaTime);
 }
 
 static bool reinitializeClay = false;

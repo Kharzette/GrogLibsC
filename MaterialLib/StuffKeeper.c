@@ -10,7 +10,6 @@
 #include	"utstring.h"
 #include	"png.h"
 #include	"../UILib/GrogFont.h"
-#include	"Layouts.h"
 #include	"../UtilityLib/StringStuff.h"
 #include	"../UtilityLib/ListStuff.h"
 #include	"../UtilityLib/DictionaryStuff.h"
@@ -49,10 +48,6 @@ typedef struct	StuffKeeper_t
 	DictSZ	*mpBlends;			//ID3D11BlendState
 	DictSZ	*mpDSSs;			//ID3D11DepthStencilState
 	DictSZ	*mpSSs;				//ID3D11SamplerState
-
-	DictSZ	*mpLayouts;			//ID3D11InputLayout
-	DictSZ	*mpLayCounts;		//Num elements in layout
-	DictSZ	*mpElems;			//Layout elements in simple int arrays
 
 }	StuffKeeper;
 
@@ -242,51 +237,6 @@ DictSZ	*ReadEntryPoints(FILE *f)
 	utstring_free(pCurShader);
 
 	return	pRet;
-}
-
-
-static void ReadEntryLayouts(FILE *f, DictSZ **ppDict)
-{
-	char	szLine[256];	//line buffer
-
-	UT_string	*pShaderEntry, *pLayout, *pLTrimmed;
-	for(;;)
-	{
-		//TODO test super long line or otherwise malformed file
-		if(fgets(szLine, 256, f) == NULL)
-		{
-			break;
-		}
-
-		if(szLine[0] == '/' && szLine[1] == '/')
-		{
-			continue;	//comment
-		}
-
-		//find first tab
-		int	tabPos	=SZ_IndexOf(szLine, '\t');
-		if(tabPos == -1)
-		{
-			//weird?
-			continue;
-		}
-
-		pLayout			=SZ_SubStringStart(szLine, tabPos);
-		pShaderEntry	=SZ_SubStringStartEnd(szLine, 0, tabPos);
-		pLTrimmed		=SZ_TrimUT(pLayout);
-
-		//add data
-		DictSZ_Add(ppDict, pShaderEntry, pLTrimmed);
-
-		utstring_free(pShaderEntry);
-		utstring_free(pLayout);
-		utstring_free(pLTrimmed);
-
-		if(feof(f))
-		{
-			break;
-		}
-	}
 }
 
 
@@ -1341,16 +1291,6 @@ static void MakeCommonRenderStates(GraphicsDevice *pGD, StuffKeeper *pSK)
 }
 
 
-static void	CreateInputLayouts(GraphicsDevice *pGD, StuffKeeper *pSK)
-{
-	//make the layout elements for matching later
-	Layouts_MakeElems(&pSK->mpElems, &pSK->mpLayCounts);
-
-	//fill the layouts dictionary
-	Layouts_MakeLayouts(pGD, pSK->mpVSCode, &pSK->mpLayouts);
-}
-
-
 StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 {
 	FILE	*f	=fopen("CompiledShaders/VSEntryPoints.txt", "r");
@@ -1434,9 +1374,6 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	DictSZ_New(&pRet->mpBlends);
 	DictSZ_New(&pRet->mpDSSs);
 	DictSZ_New(&pRet->mpSSs);
-	DictSZ_New(&pRet->mpLayouts);
-	DictSZ_New(&pRet->mpElems);
-	DictSZ_New(&pRet->mpLayCounts);
 
 	LoadShaders(pRet, sm);
 	CreateShadersFromCode(pRet, pGD);
@@ -1444,7 +1381,6 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 	LoadFonts(pGD, pRet);
 	CreateSRVs(pGD, pRet);
 	MakeCommonRenderStates(pGD, pRet);
-	CreateInputLayouts(pGD, pRet);
 
 	int	numShaderData	=DictSZ_Count(pRet->mpVSCode);
 	numShaderData		+=DictSZ_Count(pRet->mpPSCode);
@@ -1461,13 +1397,6 @@ StuffKeeper	*StuffKeeper_Create(GraphicsDevice *pGD)
 		numShaderData, numTex, numVS, numPS, numCS, numFonts, numSRVs, numFontSRVs);
 
 	return	pRet;
-}
-
-static void	sReleaseInputLayoutCB(void *pValue)
-{
-	ID3D11InputLayout	*pLay	=(ID3D11InputLayout *)pValue;
-
-	pLay->lpVtbl->Release(pLay);
 }
 
 static void	sReleaseBlendStateCB(void *pValue)
@@ -1553,9 +1482,6 @@ void	StuffKeeper_Destroy(StuffKeeper **ppSK)
 	StuffKeeper	*pSK	=*ppSK;
 
 	//free stuff in reverse order
-	DictSZ_ClearNoFree(&pSK->mpLayCounts);
-	DictSZ_Clear(&pSK->mpElems);
-	DictSZ_ClearCB(&pSK->mpLayouts, sReleaseInputLayoutCB);
 	DictSZ_ClearCB(&pSK->mpBlends, sReleaseBlendStateCB);
 	DictSZ_ClearCB(&pSK->mpDSSs, sReleaseDepthStencilStateCB);
 	DictSZ_ClearCB(&pSK->mpSSs, sReleaseSamplerStateCB);
@@ -1619,11 +1545,6 @@ ID3D11PixelShader	*StuffKeeper_GetPixelShader(const StuffKeeper *pSK, const char
 ID3D11ComputeShader	*StuffKeeper_GetComputeShader(const StuffKeeper *pSK, const char *pName)
 {
 	return	DictSZ_GetValueccp(pSK->mpCShaders, pName);
-}
-
-ID3D11InputLayout	*StuffKeeper_GetInputLayout(const StuffKeeper *pSK, const char *pName)
-{
-	return	DictSZ_GetValueccp(pSK->mpLayouts, pName);
 }
 
 ID3D11ShaderResourceView	*StuffKeeper_GetSRV(const StuffKeeper *pSK, const char *pName)
@@ -1754,12 +1675,4 @@ void	TestSKStuff(void)
 	//delete stuff
 	DictSZ_ClearCB(&pVSEP, NukeSZListCB);
 	DictSZ_ClearCB(&pPSEP, NukeSZListCB);
-}
-
-
-const UT_string	*StuffKeeper_FindMatch(const StuffKeeper *pSK,
-	const int elems[], int elCounts)
-{
-	return	Layouts_FindMatch(pSK->mpLayCounts,
-		pSK->mpElems, elems, elCounts);
 }

@@ -12,6 +12,7 @@
 #include	"../UtilityLib/MiscStuff.h"
 #include	"../UtilityLib/StringStuff.h"
 #include	"../UtilityLib/FileStuff.h"
+#include	"../MeshLib/Helpers.h"
 
 
 //clay uses uint16 ids for fonts
@@ -30,21 +31,22 @@ typedef struct	UIFonts_t
 typedef struct	UIVert_t
 {
 	vec2		Position;
-	uint16_t	Color[4];		//float16 xyzw
-	uint16_t	TexCoord0[4];	//float16 xyzw
+	uint32_t	TexColor[4];	//interleaved color and texcoord
 }	UIVert;
 
 typedef struct	UIStuff_t
 {
 	//D3D Stuff
-	ID3D11Buffer				*mpVB;	//dynamic
-	ID3D11InputLayout			*mpLayout;
 	ID3D11VertexShader			*mpVS;
 	ID3D11PixelShader			*mpPS;
 	ID3D11DepthStencilState		*mpDSS;
 	ID3D11BlendState			*mpBS;
 	ID3D11SamplerState			*mpSS;
 	ID3D11ShaderResourceView	*mpSRV;	//for tex drawing
+
+	//structuredbuffer and srv
+	ID3D11Buffer				*mpSB;
+	ID3D11ShaderResourceView	*mpSBSRV;
 
 	//scissory stuff
 	ID3D11RasterizerState	*mpNormalRast, *mpScissorRast;
@@ -69,7 +71,6 @@ typedef struct	UIStuff_t
 }	UIStuff;
 
 //statics
-static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize);
 static void	sRender(UIStuff *pUI);
 static int	sAddTri(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C);
 static void	sMakeCornerArcPoints(const vec2 A, const vec2 B, const vec2 C,
@@ -96,7 +97,6 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
 	pRet->mpGD		=pGD;
 	pRet->mpSK		=pSK;
 
-	pRet->mpLayout	=StuffKeeper_GetInputLayout(pSK, "VPos2Col0Tex04");
 	pRet->mpVS		=StuffKeeper_GetVertexShader(pSK, "UIStuffVS");
 	pRet->mpPS		=StuffKeeper_GetPixelShader(pSK, "UIStuffPS");
 	pRet->mpDSS		=StuffKeeper_GetDepthStencilState(pSK, "DisableDepth");
@@ -104,7 +104,6 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
 	pRet->mpSS		=StuffKeeper_GetSamplerState(pSK, "LinearClamp");
 
 	//refs
-	pRet->mpLayout->lpVtbl->AddRef(pRet->mpLayout);
 	pRet->mpVS->lpVtbl->AddRef(pRet->mpVS);
 	pRet->mpPS->lpVtbl->AddRef(pRet->mpPS);
 	pRet->mpDSS->lpVtbl->AddRef(pRet->mpDSS);
@@ -134,10 +133,9 @@ UIStuff	*UI_Create(GraphicsDevice *pGD, StuffKeeper *pSK, int maxVerts)
 	//alloc buf
 	pRet->mpUIBuf	=malloc(sizeof(UIVert) * maxVerts);
 
-	//make vertex buffer
-	D3D11_BUFFER_DESC	bufDesc;
-	sMakeVBDesc(&bufDesc, sizeof(UIVert) * maxVerts);
-	pRet->mpVB	=GD_CreateBuffer(pGD, &bufDesc);
+	//make dynamic structured buffer
+	MakeStructuredBufferDynamic(pGD, sizeof(UIVert), maxVerts,
+		NULL, &pRet->mpSB, &pRet->mpSBSRV);
 
 	return	pRet;
 }
@@ -146,7 +144,8 @@ void	UI_Destroy(UIStuff **ppUI)
 {
 	UIStuff	*pUI	=*ppUI;
 
-	pUI->mpVB->lpVtbl->Release(pUI->mpVB);
+	pUI->mpSBSRV->lpVtbl->Release(pUI->mpSBSRV);
+	pUI->mpSB->lpVtbl->Release(pUI->mpSB);
 
 	free(pUI->mpUIBuf);
 
@@ -167,7 +166,6 @@ void	UI_Destroy(UIStuff **ppUI)
 	pUI->mpDSS->lpVtbl->Release(pUI->mpDSS);
 	pUI->mpPS->lpVtbl->Release(pUI->mpPS);
 	pUI->mpVS->lpVtbl->Release(pUI->mpVS);
-	pUI->mpLayout->lpVtbl->Release(pUI->mpLayout);
 
 	free(pUI);
 
@@ -193,11 +191,11 @@ void	UI_EndDraw(UIStuff *pUI)
 
 	memset(&msr, 0, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
-	GD_MapDiscard(pUI->mpGD, (ID3D11Resource *)pUI->mpVB, &msr);
+	GD_MapDiscard(pUI->mpGD, (ID3D11Resource *)pUI->mpSB, &msr);
 
 	memcpy(msr.pData, pUI->mpUIBuf, sizeof(UIVert) * pUI->mNumVerts);
 
-	GD_UnMap(pUI->mpGD, (ID3D11Resource *)pUI->mpVB);
+	GD_UnMap(pUI->mpGD, (ID3D11Resource *)pUI->mpSB);
 
 	sRender(pUI);
 }
@@ -385,8 +383,7 @@ void	UI_DrawRect(UIStuff *pUI, const UIRect r, const vec4 color)
 	{
 		int	idx	=(pUI->mNumVerts - 6) + i;
 
-		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
-		Misc_ConvertVec4ToF16(c, pUI->mpUIBuf[idx].Color);
+		Misc_InterleaveVec4ToF16(uv, c, pUI->mpUIBuf[idx].TexColor);
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
@@ -457,8 +454,7 @@ void	UI_DrawRectHollow(UIStuff *pUI, const UIRect r, int hullSize, const vec4 co
 	{
 		int	idx	=(pUI->mNumVerts - vCnt) + i;
 
-		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
-		Misc_ConvertVec4ToF16(col, pUI->mpUIBuf[idx].Color);
+		Misc_InterleaveVec4ToF16(uv, c, pUI->mpUIBuf[idx].TexColor);
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
@@ -547,8 +543,7 @@ void	UI_DrawRectRounded(UIStuff *pUI, const UIRect r, float roundNess,
 	{
 		int	idx	=(pUI->mNumVerts - vCnt) + i;
 
-		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
-		Misc_ConvertVec4ToF16(c, pUI->mpUIBuf[idx].Color);
+		Misc_InterleaveVec4ToF16(uv, c, pUI->mpUIBuf[idx].TexColor);
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
@@ -668,8 +663,7 @@ void	UI_DrawRRHollow(UIStuff *pUI, const UIRect r, float hullSize,
 	{
 		int	idx	=(pUI->mNumVerts - vCnt) + n;
 
-		Misc_ConvertVec4ToF16(uv, pUI->mpUIBuf[idx].TexCoord0);
-		Misc_ConvertVec4ToF16(col, pUI->mpUIBuf[idx].Color);
+		Misc_InterleaveVec4ToF16(uv, c, pUI->mpUIBuf[idx].TexColor);
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
@@ -697,16 +691,13 @@ static int	sAddTriUVC(UIStuff *pUI, const vec2 A, const vec2 B, const vec2 C,
 						const vec4 color)
 {
 	glm_vec2_copy(A, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	Misc_ConvertVec4ToF16(uvA, pUI->mpUIBuf[pUI->mNumVerts].TexCoord0);
-	Misc_ConvertVec4ToF16(color, pUI->mpUIBuf[pUI->mNumVerts].Color);
+	Misc_InterleaveVec4ToF16(uvA, color, pUI->mpUIBuf[pUI->mNumVerts].TexColor);
 	pUI->mNumVerts++;
 	glm_vec2_copy(B, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	Misc_ConvertVec4ToF16(uvB, pUI->mpUIBuf[pUI->mNumVerts].TexCoord0);
-	Misc_ConvertVec4ToF16(color, pUI->mpUIBuf[pUI->mNumVerts].Color);
+	Misc_InterleaveVec4ToF16(uvB, color, pUI->mpUIBuf[pUI->mNumVerts].TexColor);
 	pUI->mNumVerts++;
 	glm_vec2_copy(C, pUI->mpUIBuf[pUI->mNumVerts].Position);
-	Misc_ConvertVec4ToF16(uvC, pUI->mpUIBuf[pUI->mNumVerts].TexCoord0);
-	Misc_ConvertVec4ToF16(color, pUI->mpUIBuf[pUI->mNumVerts].Color);
+	Misc_InterleaveVec4ToF16(uvC, color, pUI->mpUIBuf[pUI->mNumVerts].TexColor);
 	pUI->mNumVerts++;
 
 	return	3;
@@ -836,12 +827,14 @@ static void	sRender(UIStuff *pUI)
 
 	GD_IASetPrimitiveTopology(pUI->mpGD, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	GD_IASetVertexBuffers(pUI->mpGD, pUI->mpVB, sizeof(UIVert), 0);
-	GD_IASetIndexBuffers(pUI->mpGD, NULL, DXGI_FORMAT_UNKNOWN, 0);
-	GD_IASetInputLayout(pUI->mpGD, pUI->mpLayout);
-
 	GD_VSSetShader(pUI->mpGD, pUI->mpVS);
 	GD_PSSetShader(pUI->mpGD, pUI->mpPS);
+
+	//not using an index buffer
+	GD_IASetIndexBuffers(pUI->mpGD, NULL, DXGI_FORMAT_UNKNOWN, 0);
+
+	//view for the structured buffer
+	GD_VSSetSRV(pUI->mpGD, pUI->mpSBSRV, 0);
 
 	//drawing text?
 	if(pUI->mpSRV == NULL)
@@ -859,18 +852,6 @@ static void	sRender(UIStuff *pUI)
 	GD_OMSetBlendState(pUI->mpGD, pUI->mpBS);
 
 	GD_Draw(pUI->mpGD, pUI->mNumVerts, 0);
-}
-
-static void	sMakeVBDesc(D3D11_BUFFER_DESC *pDesc, uint32_t byteSize)
-{
-	memset(pDesc, 0, sizeof(D3D11_BUFFER_DESC));
-
-	pDesc->BindFlags			=D3D11_BIND_VERTEX_BUFFER;
-	pDesc->ByteWidth			=byteSize;
-	pDesc->CPUAccessFlags		=DXGI_CPU_ACCESS_DYNAMIC;
-	pDesc->MiscFlags			=0;
-	pDesc->StructureByteStride	=0;
-	pDesc->Usage				=D3D11_USAGE_DYNAMIC;
 }
 
 static void sComputeAtoL(const UIRect r, float roundNess, vec2 A, vec2 B, vec2 C, vec2 D, vec2 E, vec2 F, vec2 G, vec2 H, vec2 I, vec2 J, vec2 K, vec2 L)

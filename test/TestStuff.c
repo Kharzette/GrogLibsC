@@ -113,7 +113,7 @@ static void	sGetSphereColour(const TestStuff *pTS, int spIdx, vec4 colour);
 static void	sSetDefaultCel(GraphicsDevice *pGD, CBKeeper *pCBK);
 
 //clay stuff
-static const Clay_RenderCommandArray sCreateLayout(const TestStuff *pTS, vec3 velocity);
+static const Clay_RenderCommandArray sCreateLayout(const TestStuff *pTS, vec3 velocity, float deltaTime);
 static void sHandleClayErrors(Clay_ErrorData errorData);
 
 //material setups
@@ -582,7 +582,7 @@ __attribute_maybe_unused__
 
 		pTS->mScrollDelta.x	=pTS->mScrollDelta.y	=0.0f;
 	
-		Clay_RenderCommandArray renderCommands = sCreateLayout(pTS, velocity);
+		Clay_RenderCommandArray renderCommands = sCreateLayout(pTS, velocity, dt);
 	
 		UI_BeginDraw(pTS->mpUI);
 	
@@ -1101,7 +1101,7 @@ static void sCheckLOS(const TestStuff *pTS)
 	}
 }
 
-static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, vec3 velocity)
+static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, vec3 velocity, float deltaTime)
 {
 	Clay_BeginLayout();
 
@@ -1129,7 +1129,7 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, vec3 velocity
 		sCheckLOS(pTS);
 	}
 
-	return	Clay_EndLayout();
+	return	Clay_EndLayout(deltaTime);
 }
 
 static bool reinitializeClay = false;

@@ -12,6 +12,8 @@ void	GFont_SetSRV(GrogFont *pFont, ID3D11ShaderResourceView *pSRV);
 
 int		GFont_GetCharacterWidth(const GrogFont *pFont, char c);
 int		GFont_GetCharacterHeight(const GrogFont *pFont);
+int		GFont_GetStartChar(const GrogFont *pFont);
+int		GFont_GetNumColumns(const GrogFont *pFont);
 void	GFont_GetUV(const GrogFont *pFont, char letter, int triIndex, vec2 uv);
 
 //Returns the longest line width in the string

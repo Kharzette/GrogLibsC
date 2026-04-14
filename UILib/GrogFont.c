@@ -16,6 +16,7 @@ typedef struct	GrogFont_t
 	ID3D11ShaderResourceView	*mpSRV;
 
 	uint8_t	*mpWidths;
+
 }	GrogFont;
 
 
@@ -96,6 +97,16 @@ int	GFont_GetCharacterWidth(const GrogFont *pFont, char c)
 int	GFont_GetCharacterHeight(const GrogFont *pFont)
 {
 	return	pFont->mCellHeight;
+}
+
+int	GFont_GetStartChar(const GrogFont *pFont)
+{
+	return	pFont->mStartChar;
+}
+
+int	GFont_GetNumColumns(const GrogFont *pFont)
+{
+	return	pFont->mWidth / pFont->mCellWidth;
 }
 
 void	GFont_GetUV(const GrogFont *pFont, char letter,

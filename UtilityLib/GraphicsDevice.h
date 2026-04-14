@@ -36,6 +36,7 @@ extern ID3D11Buffer	*GD_CreateBuffer(
 	GraphicsDevice			*pGD,
 	const D3D11_BUFFER_DESC	*pDesc);
 extern ID3D11Texture2D	*GD_CreateTexture(GraphicsDevice *pGD, const D3D11_TEXTURE2D_DESC *pDesc);
+extern ID3D11Texture1D	*GD_CreateTexture1D(GraphicsDevice *pGD, const D3D11_TEXTURE1D_DESC *pDesc);
 extern ID3D11RenderTargetView	*GD_CreateRenderTargetView(GraphicsDevice *pGD, ID3D11Resource *pRes, DXGI_FORMAT fmt);
 extern ID3D11DepthStencilView	*GD_CreateDepthStencilView(GraphicsDevice *pGD, ID3D11Resource *pRes, DXGI_FORMAT fmt);
 
@@ -122,3 +123,5 @@ extern void	GD_UpdateSubResource(GraphicsDevice *pGD,
 	ID3D11Resource *pDest, const void *pSrcData);
 extern void	GD_MapDiscard(GraphicsDevice *pGD, ID3D11Resource *pRS, D3D11_MAPPED_SUBRESOURCE *pMSR);
 extern void	GD_UnMap(GraphicsDevice *pGD, ID3D11Resource *pRS);
+extern bool	GD_WriteToDynResource(GraphicsDevice *pGD, ID3D11Resource *pDyn,
+									const void *pData, int sizeInBytes);

@@ -335,6 +335,18 @@ ID3D11Texture2D	*GD_CreateTexture(GraphicsDevice *pGD, const D3D11_TEXTURE2D_DES
 	return	pTex;
 }
 
+ID3D11Texture1D	*GD_CreateTexture1D(GraphicsDevice *pGD, const D3D11_TEXTURE1D_DESC *pDesc)
+{
+	ID3D11Texture1D	*pTex;
+	HRESULT	hres	=pGD->mpDevice1->lpVtbl->CreateTexture1D(pGD->mpDevice1, pDesc, NULL, &pTex);
+	if(hres != S_OK)
+	{
+		printf("Error creating 1d texture: %X\n", hres);
+		return	NULL;
+	}
+	return	pTex;
+}
+
 ID3D11Texture2D	*GD_MakeTexture(GraphicsDevice *pGD, uint8_t **pRows, int w, int h, int rowPitch)
 {
 	D3D11_TEXTURE2D_DESC	texDesc;
@@ -664,7 +676,27 @@ void	GD_UpdateSubResource(GraphicsDevice *pGD,
 {
 	pGD->mpContext1->lpVtbl->UpdateSubresource(pGD->mpContext1,
 		pDest, 0, NULL, pSrcData, 0, 0);
+}
 
+bool	GD_WriteToDynResource(GraphicsDevice *pGD, ID3D11Resource *pDyn,
+								const void *pData, int sizeInBytes)
+{
+	D3D11_MAPPED_SUBRESOURCE	sub;
+
+	HRESULT	hres	=pGD->mpContext1->lpVtbl->Map(pGD->mpContext1,
+		pDyn, 0, D3D11_MAP_WRITE_DISCARD, 0, &sub);
+	
+	if(hres != S_OK)
+	{
+		printf("Map resource failed: %X\n", hres);
+		return	false;
+	}
+
+	memcpy(sub.pData, pData, sizeInBytes);
+
+	pGD->mpContext1->lpVtbl->Unmap(pGD->mpContext1,	pDyn, 0);
+
+	return	true;
 }
 
 void GD_IASetPrimitiveTopology(GraphicsDevice *pGD, D3D11_PRIMITIVE_TOPOLOGY top)

@@ -454,7 +454,7 @@ void	UI_DrawRectHollow(UIStuff *pUI, const UIRect r, int hullSize, const vec4 co
 	{
 		int	idx	=(pUI->mNumVerts - vCnt) + i;
 
-		Misc_InterleaveVec4ToF16(uv, c, pUI->mpUIBuf[idx].TexColor);
+		Misc_InterleaveVec4ToF16(uv, col, pUI->mpUIBuf[idx].TexColor);
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);
@@ -663,7 +663,7 @@ void	UI_DrawRRHollow(UIStuff *pUI, const UIRect r, float hullSize,
 	{
 		int	idx	=(pUI->mNumVerts - vCnt) + n;
 
-		Misc_InterleaveVec4ToF16(uv, c, pUI->mpUIBuf[idx].TexColor);
+		Misc_InterleaveVec4ToF16(uv, col, pUI->mpUIBuf[idx].TexColor);
 	}
 
 	assert(pUI->mNumVerts < pUI->mMaxVerts);

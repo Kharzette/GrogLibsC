@@ -19,6 +19,7 @@ static void	sStandardLibJunk_Add(Nob_Cmd *pCmd);
 //--libs-all	build all libs
 //--test-all	build all tests
 //--test-ui		build ui test
+//--test-text	build text mode test
 //--test-stuff	build stuff test
 //--rebuild		rebuild even if not needed
 //blank			build everything
@@ -39,6 +40,7 @@ int	main(int argc, char **argv)
 	bool	bTestAll	=false;
 	bool	bTestStuff	=false;
 	bool	bTestUI		=false;
+	bool	bTestText	=false;
 	bool	bReBuild	=false;
 
 	if(argc > 1)
@@ -51,11 +53,15 @@ int	main(int argc, char **argv)
 			}
 			else if(strncmp("--test-all", argv[i], 10) == 0)
 			{
-				bTestStuff	=bTestUI	=true;
+				bTestStuff	=bTestUI	=bTestText	=true;
 			}
 			else if(strncmp("--test-ui", argv[i], 9) == 0)
 			{
 				bTestUI	=true;
+			}
+			else if(strncmp("--test-text", argv[i], 11) == 0)
+			{
+				bTestText	=true;
 			}
 			else if(strncmp("--test-stuff", argv[i], 12) == 0)
 			{
@@ -114,6 +120,14 @@ int	main(int argc, char **argv)
 	if(bTestAll || bTestUI)
 	{
 		if(!sBuildTestProgram("TestUI", bReBuild))
+		{
+			return	EXIT_FAILURE;
+		}
+	}
+
+	if(bTestAll || bTestText)
+	{
+		if(!sBuildTestProgram("TestTextMode", bReBuild))
 		{
 			return	EXIT_FAILURE;
 		}

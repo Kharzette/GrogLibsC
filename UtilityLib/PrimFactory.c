@@ -1197,18 +1197,9 @@ PrimObject	*PF_CreateSphere(vec3 center, float radius, bool bFlipped, GraphicsDe
 	//index other half, flip winding
 	for(int i=indCount;i < (indCount * 2);i+=3)
 	{
-		if(!bFlipped)
-		{
-			pInds[i]		=vertCount + pInds[i - indCount];
-			pInds[i + 1]	=vertCount + pInds[(i + 1) - indCount];
-			pInds[i + 2]	=vertCount + pInds[(i + 2) - indCount];
-		}
-		else
-		{
-			pInds[i]		=vertCount + pInds[i - indCount];
-			pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
-			pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
-		}
+		pInds[i]		=vertCount + pInds[i - indCount];
+		pInds[i + 1]	=vertCount + pInds[(i + 2) - indCount];
+		pInds[i + 2]	=vertCount + pInds[(i + 1) - indCount];
 	}
 
 	vertCount	*=2;

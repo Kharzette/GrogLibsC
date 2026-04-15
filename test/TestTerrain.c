@@ -374,6 +374,7 @@ __attribute_maybe_unused__
 			GD_IASetVertexBuffers(pTS->mpGD, pTS->mpSphere->mpVB, pTS->mpSphere->mVertSize, 0);
 			GD_IASetIndexBuffers(pTS->mpGD, pTS->mpSphere->mpIB, DXGI_FORMAT_R16_UINT, 0);
 			MAT_Apply(pSphereMat, pCBK, pTS->mpGD);
+			GD_VSSetSRV(pTS->mpGD, pTS->mpSphere->mpVBSRV, 0);
 			GD_DrawIndexed(pTS->mpGD, pTS->mpSphere->mIndexCount, 0, 0);
 		}
 
@@ -712,8 +713,8 @@ static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec4	col			={	1.0f, 1.0f, 1.0f, 1.0f	};
 
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
-	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetVShader(pRet, "StaticVS", pSK);
+	MAT_SetPShader(pRet, "TriPS", pSK);
 	MAT_SetSolidColour(pRet, col);
 	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 16.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
@@ -731,8 +732,8 @@ static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
 	vec4	ghosty		={	1.0f, 1.0f, 1.0f, 0.5f	};
 
 	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "WNormWPosVS", pSK);
-	MAT_SetPShader(pRet, "TriSolidSpecPS", pSK);
+	MAT_SetVShader(pRet, "StaticVS", pSK);
+	MAT_SetPShader(pRet, "TriPS", pSK);
 	MAT_SetSolidColour(pRet, ghosty);
 	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 6.0f);
 	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);

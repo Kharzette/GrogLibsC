@@ -68,8 +68,8 @@ void	Phys_GetBodyLayer(const PhysicsStuff *pPS, uint32_t bodyID, uint16_t *pLaye
 void	Phys_SetRestitution(PhysicsStuff *pPS, uint32_t bodyID, float resti);
 
 //queries
-bool	Phys_CastRayAtBodyBroad(const PhysicsStuff *pPS, vec3 org, uint32_t bodyID);
-bool	Phys_CastRayAtBodyNarrow(const PhysicsStuff *pPS, vec3 org, uint32_t bodyID);
+bool	Phys_CastRayAtBodyBroad(const PhysicsStuff *pPS, const vec3 org, uint32_t bodyID);
+bool	Phys_CastRayAtBodyNarrow(const PhysicsStuff *pPS, const vec3 org, uint32_t bodyID);
 
 #ifdef	__cplusplus
 }

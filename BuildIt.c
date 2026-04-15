@@ -16,13 +16,14 @@ static void	sStandardLibJunk_Add(Nob_Cmd *pCmd);
 
 
 //possible command line args:
-//--libs-all	build all libs
-//--test-all	build all tests
-//--test-ui		build ui test
-//--test-text	build text mode test
-//--test-stuff	build stuff test
-//--rebuild		rebuild even if not needed
-//blank			build everything
+//--libs-all		build all libs
+//--test-all		build all tests
+//--test-ui			build ui test
+//--test-text		build text mode test
+//--test-terrain	build terrain test
+//--test-stuff		build stuff test
+//--rebuild			rebuild even if not needed
+//blank				build everything
 int	main(int argc, char **argv)
 {
 	//rebuild this program if need be
@@ -36,12 +37,13 @@ int	main(int argc, char **argv)
 	}
 
 	//check command line args here?
-	bool	bLibsAll	=false;
-	bool	bTestAll	=false;
-	bool	bTestStuff	=false;
-	bool	bTestUI		=false;
-	bool	bTestText	=false;
-	bool	bReBuild	=false;
+	bool	bLibsAll		=false;
+	bool	bTestAll		=false;
+	bool	bTestStuff		=false;
+	bool	bTestTerrain	=false;
+	bool	bTestUI			=false;
+	bool	bTestText		=false;
+	bool	bReBuild		=false;
 
 	if(argc > 1)
 	{
@@ -66,6 +68,10 @@ int	main(int argc, char **argv)
 			else if(strncmp("--test-stuff", argv[i], 12) == 0)
 			{
 				bTestStuff	=true;
+			}
+			else if(strncmp("--test-terrain", argv[i], 14) == 0)
+			{
+				bTestTerrain	=true;
 			}
 			else if(strncmp("--rebuild", argv[i], 9) == 0)
 			{
@@ -136,6 +142,14 @@ int	main(int argc, char **argv)
 	if(bTestAll || bTestStuff)
 	{
 		if(!sBuildTestProgram("TestStuff", bReBuild))
+		{
+			return	EXIT_FAILURE;
+		}
+	}
+
+	if(bTestAll || bTestTerrain)
+	{
+		if(!sBuildTestProgram("TestTerrain", bReBuild))
 		{
 			return	EXIT_FAILURE;
 		}

@@ -835,7 +835,7 @@ void	Phys_SetRestitution(PhysicsStuff *pPS, uint32_t bodyID, float resti)
 }
 
 
-bool	Phys_CastRayAtBodyBroad(const PhysicsStuff *pPS, vec3 org, uint32_t bodyID)
+bool	Phys_CastRayAtBodyBroad(const PhysicsStuff *pPS, const vec3 org, uint32_t bodyID)
 {
 	const BroadPhaseQuery	&bpq	=pPS->mpPhys->GetBroadPhaseQuery();
 
@@ -878,7 +878,7 @@ bool	Phys_CastRayAtBodyBroad(const PhysicsStuff *pPS, vec3 org, uint32_t bodyID)
 	return	false;*/
 }
 
-bool	Phys_CastRayAtBodyNarrow(const PhysicsStuff *pPS, vec3 org, uint32_t bodyID)
+bool	Phys_CastRayAtBodyNarrow(const PhysicsStuff *pPS, const vec3 org, uint32_t bodyID)
 {
 	const NarrowPhaseQuery	&npq	=pPS->mpPhys->GetNarrowPhaseQuery();
 

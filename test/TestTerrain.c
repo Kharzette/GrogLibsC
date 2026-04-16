@@ -30,6 +30,24 @@
 #include	"PhysicsLib/PhysicsStuff.h"
 
 
+//macro for supplying fontid and size
+#define	FONTDEETS(ui, fid)	.fontId = fid, .fontSize = UI_GetFontSize(ui, fid)
+
+//colors generated from coolors.co or some other generator
+//this one is Pastel Dreamland Adventure
+Clay_Color	sPastel0	={	0xCD, 0xB4, 0xDB, 0x1F	};
+Clay_Color	sPastel1	={	0xFF, 0xC8, 0xDD, 0xFF	};
+Clay_Color	sPastel2	={	0xFF, 0xAF, 0xCC, 0xFF	};
+Clay_Color	sPastel3	={	0xBD, 0xE0, 0xFE, 0xFF	};
+Clay_Color	sPastel4	={	0xA2, 0xD2, 0xFF, 0xFF	};
+
+//Warm Autumn Glow
+Clay_Color	sWAG0	={	0x00, 0x30, 0x49, 0xFF	};
+Clay_Color	sWAG1	={	0xD6, 0x28, 0x28, 0xFF	};
+Clay_Color	sWAG2	={	0xF7, 0x7F, 0x00, 0xFF	};
+Clay_Color	sWAG3	={	0xFC, 0xBF, 0x49, 0xFF	};
+Clay_Color	sWAG4	={	0xEA, 0xE2, 0xB7, 0xFF	};
+
 #define	RESX				1280
 #define	RESY				720
 #define	ROT_RATE			10.0f
@@ -49,6 +67,9 @@
 #define	BOUNCINESS			(0.8f)
 #define	MAX_UI_VERTS		(8192)
 #define	RAMP_ANGLE			0.7f	//steepness can traverse on foot
+#define	FONT_SIZE_TINY		8
+#define	FONT_SIZE_MEDIUM	16
+#define	FONT_SIZE_BIG		40
 
 
 
@@ -56,6 +77,7 @@
 typedef struct	TestStuff_t
 {
 	GraphicsDevice	*mpGD;
+	StuffKeeper		*mpSK;
 	Terrain			*mpTer;
 	GameCamera		*mpCam;
 	PrimObject		*mpManyRays;
@@ -63,13 +85,16 @@ typedef struct	TestStuff_t
 	UIStuff			*mpUI;
 	PhysicsStuff	*mpPhys;
 
+	//materials
+	Material	*mpTerMat;
+
 	//toggles
 	bool	mbMouseLooking;
 	bool	mbLeftMouseDown;
 	bool	mbRunning;
 	bool	mbSprint;
 	
-	//clay pointer stuff
+	//clay mouse pointer stuff
 	Clay_Vector2	mScrollDelta;
 	Clay_Vector2	mMousePos;
 
@@ -85,6 +110,15 @@ typedef struct	TestStuff_t
 	vec3	mEyePos;
 	vec3	mPlayerPos;
 	float	mDeltaYaw, mDeltaPitch;
+
+	//font ids for various sizes
+	//these will vary as the game assets vary
+	uint16_t	mFontIDTiny;
+	uint16_t	mFontIDMedium;
+	uint16_t	mFontIDBig;
+
+	//selected texture
+	const char	*mpSelTexAtlas;
 
 }	TestStuff;
 
@@ -163,8 +197,8 @@ int main(void)
 
 	sSetupRastVP(pTS->mpGD);
 
-	StuffKeeper	*pSK	=StuffKeeper_Create(pTS->mpGD);
-	if(pSK == NULL)
+	pTS->mpSK	=StuffKeeper_Create(pTS->mpGD);
+	if(pTS->mpSK == NULL)
 	{
 		printf("Couldn't create StuffKeeper!\n");
 		GD_Destroy(&pTS->mpGD);
@@ -184,11 +218,11 @@ int main(void)
 	//test prims
 __attribute_maybe_unused__
 	PrimObject	*pSkyCube	=PF_CreateCube(10.0f, true, pTS->mpGD);
-	LightRay	*pLR		=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pSK);
-	AxisXYZ		*pAxis		=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pSK);
+	LightRay	*pLR		=CP_CreateLightRay(5.0f, 0.25f, pTS->mpGD, pTS->mpSK);
+	AxisXYZ		*pAxis		=CP_CreateAxis(5.0f, 0.1f, pTS->mpGD, pTS->mpSK);
 
 	CBKeeper	*pCBK	=CBK_Create(pTS->mpGD);
-	PostProcess	*pPP	=PP_Create(pTS->mpGD, pSK, pCBK);
+	PostProcess	*pPP	=PP_Create(pTS->mpGD, pTS->mpSK, pCBK);
 
 	//set sky gradient
 	{
@@ -230,9 +264,14 @@ __attribute_maybe_unused__
 	//set constant buffers to shaders, think I just have to do this once
 	CBK_SetCommonCBToShaders(pCBK, pTS->mpGD);
 
-	pTS->mpUI	=UI_Create(pTS->mpGD, pSK, MAX_UI_VERTS);
+	pTS->mpUI	=UI_Create(pTS->mpGD, pTS->mpSK, MAX_UI_VERTS);
 
 	UI_AddAllFonts(pTS->mpUI);
+
+	//pick out 3 useful ids
+	pTS->mFontIDTiny	=UI_GetNearestFontSize(pTS->mpUI, FONT_SIZE_TINY);
+	pTS->mFontIDMedium	=UI_GetNearestFontSize(pTS->mpUI, FONT_SIZE_MEDIUM);
+	pTS->mFontIDBig		=UI_GetNearestFontSize(pTS->mpUI, FONT_SIZE_BIG);
 
 	//clay init
     uint64_t totalMemorySize = Clay_MinMemorySize();
@@ -254,9 +293,9 @@ __attribute_maybe_unused__
 	UpdateTimer_SetFixedTimeStepMilliSeconds(pUT, 16.66666f);	//60hz
 
 	//materials
-	Material	*pTerMat	=sMakeTerrainMat(pTS, pSK);
-	Material	*pSphereMat	=sMakeSphereMat(pTS, pSK);
-	Material	*pSkyBoxMat	=sMakeSkyBoxMat(pTS, pSK);
+	pTS->mpTerMat			=sMakeTerrainMat(pTS, pTS->mpSK);
+	Material	*pSphereMat	=sMakeSphereMat(pTS, pTS->mpSK);
+	Material	*pSkyBoxMat	=sMakeSkyBoxMat(pTS, pTS->mpSK);
 
 	float	maxDT			=0.0f;
 
@@ -281,7 +320,7 @@ __attribute_maybe_unused__
 		}
 
 		//update materials incase light changed
-		MAT_SetLightDirection(pTerMat, pTS->mLightDir);
+		MAT_SetLightDirection(pTS->mpTerMat, pTS->mLightDir);
 		MAT_SetLightDirection(pSphereMat, pTS->mLightDir);
 
 		//render update
@@ -298,8 +337,8 @@ __attribute_maybe_unused__
 		}
 
 		//set no blend, I think post processing turns it on maybe
-		GD_OMSetBlendState(pTS->mpGD, StuffKeeper_GetBlendState(pSK, "NoBlending"));
-		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointWrap"), 0);
+		GD_OMSetBlendState(pTS->mpGD, StuffKeeper_GetBlendState(pTS->mpSK, "NoBlending"));
+		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pTS->mpSK, "PointWrap"), 0);
 
 		//camera update
 		GameCam_UpdateRotation(pTS->mpCam, pTS->mEyePos, pTS->mDeltaPitch,
@@ -324,7 +363,8 @@ __attribute_maybe_unused__
 		CBK_UpdateFrame(pCBK, pTS->mpGD);
 
 		//turn depth off for sky
-		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "DisableDepth"));
+		GD_OMSetDepthStencilState(pTS->mpGD,
+			StuffKeeper_GetDepthStencilState(pTS->mpSK, "DisableDepth"));
 
 		//draw sky first
 		GD_IASetVertexBuffers(pTS->mpGD, pSkyCube->mpVB, pSkyCube->mVertSize, 0);
@@ -335,7 +375,8 @@ __attribute_maybe_unused__
 		GD_DrawIndexed(pTS->mpGD, pSkyCube->mIndexCount, 0, 0);
 
 		//turn depth back on
-		GD_OMSetDepthStencilState(pTS->mpGD, StuffKeeper_GetDepthStencilState(pSK, "EnableDepth"));
+		GD_OMSetDepthStencilState(pTS->mpGD,
+			StuffKeeper_GetDepthStencilState(pTS->mpSK, "EnableDepth"));
 
 		//draw light ray
 		{
@@ -347,9 +388,9 @@ __attribute_maybe_unused__
 		CP_DrawAxis(pAxis, pTS->mLightDir, XAxisCol, YAxisCol, ZAxisCol, pCBK, pTS->mpGD);
 
 		//terrain draw
-		Terrain_DrawMat(pTS->mpTer, pTS->mpGD, pCBK, pTerMat);
+		Terrain_DrawMat(pTS->mpTer, pTS->mpGD, pCBK, pTS->mpTerMat);
 
-		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pSK, "PointClamp"), 0);
+		GD_PSSetSampler(pTS->mpGD, StuffKeeper_GetSamplerState(pTS->mpSK, "PointClamp"), 0);
 
 		for(int i=0;i < pTS->mNumSpheres;i++)
 		{
@@ -878,6 +919,142 @@ static void sCheckLOS(const TestStuff *pTS)
 	}
 }
 
+static void sOnHover(Clay_ElementId eID, Clay_PointerData pnt, void *userData)
+{
+	//clicked?
+	if(pnt.state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME)
+	{
+		printf("Click! %s\n", eID.stringId.chars);
+
+		if(userData == NULL)
+		{
+			SoundEffect_Play(eID.stringId.chars, GLM_VEC3_ZERO);
+			return;
+		}
+
+		TestStuff	*pTS	=(TestStuff *)userData;
+		if(pTS == NULL)
+		{
+			printf("Goofy userdata in hover\n");
+			return;
+		}
+
+		//change?
+		if(pTS->mpSelTexAtlas == NULL ||
+			0 != strcmp(pTS->mpSelTexAtlas, eID.stringId.chars))
+		{
+			MAT_SetSRV0(pTS->mpTerMat, eID.stringId.chars, pTS->mpSK);
+
+			pTS->mpSelTexAtlas	=eID.stringId.chars;
+		}
+	}
+}
+
+static void sFillTexAtlasList(const TestStuff *pTS)
+{
+	StringList	*pSL	=StuffKeeper_GetTextureList(pTS->mpSK);
+	
+	const StringList	*pCur	=SZList_Iterate(pSL);
+
+	while(pCur != NULL)
+	{
+		const char	*pSZTexPath	=SZList_IteratorVal(pCur);
+
+		if(!SZ_StartsWith(pSZTexPath, "Terrain"))
+		{
+			pCur	=SZList_IteratorNext(pCur);
+			continue;
+		}
+		if(SZ_StartsWith(pSZTexPath, "Terrain/HeightMaps"))
+		{
+			pCur	=SZList_IteratorNext(pCur);
+			continue;
+		}
+
+		Clay_String	texStr;
+
+		texStr.chars					=SZList_IteratorVal(pCur);
+		texStr.isStaticallyAllocated	=false;
+		texStr.length					=strlen(texStr.chars);
+
+		CLAY(Clay__HashString(texStr, 0), { .layout	=
+			{
+				.layoutDirection = CLAY_LEFT_TO_RIGHT,
+				.sizing =
+				{
+					.width = CLAY_SIZING_FIT(0),
+					.height = CLAY_SIZING_FIT(0)
+				},
+				.padding = { 2, 2, 2, 2 },
+				.childGap = 8
+			},
+			.backgroundColor	=Clay_Hovered()?	sWAG1 : sWAG2,
+		})
+		{
+			Clay_OnHover(sOnHover, pTS);
+
+			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
+				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
+				.textColor = sWAG0}));
+
+			pCur	=SZList_IteratorNext(pCur);
+		}
+	}
+}
+
+static void sFillHeightMapList(const TestStuff *pTS)
+{
+	StringList	*pSL	=StuffKeeper_GetTextureList(pTS->mpSK);
+	
+	const StringList	*pCur	=SZList_Iterate(pSL);
+
+	while(pCur != NULL)
+	{
+		const char	*pSZTexPath	=SZList_IteratorVal(pCur);
+
+		if(!SZ_StartsWith(pSZTexPath, "Terrain/HeightMaps"))
+		{
+			pCur	=SZList_IteratorNext(pCur);
+			continue;
+		}
+		Clay_String	texStr;
+
+		texStr.chars					=SZList_IteratorVal(pCur);
+		texStr.isStaticallyAllocated	=false;
+		texStr.length					=strlen(texStr.chars);
+
+		CLAY(Clay__HashString(texStr, 0), { .layout	=
+			{
+				.layoutDirection = CLAY_LEFT_TO_RIGHT,
+				.sizing =
+				{
+					.width = CLAY_SIZING_FIT(0),
+					.height = CLAY_SIZING_FIT(0)
+				},
+				.padding = { 2, 2, 2, 2 },
+				.childGap = 8
+			},
+			.backgroundColor	=Clay_Hovered()?	sWAG1 : sWAG2,
+		})
+		{
+			Clay_OnHover(sOnHover, pTS);
+
+			CLAY_TEXT(texStr, CLAY_TEXT_CONFIG({
+				FONTDEETS(pTS->mpUI, pTS->mFontIDTiny),
+				.textColor = sWAG0}));
+
+			pCur	=SZList_IteratorNext(pCur);
+		}
+	}
+}
+
+//Stuff to display:
+//line of sight indicators to spheres
+//list of available heightmaps with selected loaded
+//smooth steps, height scalar with buttons to increase / decrease
+//list of available texture atlasesesees
+//generate a random one?
+
 static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, float deltaTime)
 {
 	Clay_BeginLayout();
@@ -895,8 +1072,91 @@ static Clay_RenderCommandArray	sCreateLayout(const TestStuff *pTS, float deltaTi
 			.childGap = 8
 		}})
 	{
-
-		sCheckLOS(pTS);
+		CLAY(CLAY_ID("LeftPane"), {	.layout	=
+			{
+				.layoutDirection = CLAY_TOP_TO_BOTTOM,
+				.sizing =
+				{
+					.width = CLAY_SIZING_PERCENT(0.3f),
+					.height = CLAY_SIZING_PERCENT(0.975f)
+				},
+				.padding = { 8, 8, 8, 8 },
+				.childGap = 8
+			},
+			.backgroundColor	=sPastel0,})
+		{
+			CLAY(CLAY_ID("TexList"), {
+				.layout	=
+				{
+					.layoutDirection = CLAY_TOP_TO_BOTTOM,
+					.sizing	=
+					{
+						.width	=CLAY_SIZING_FIT(0),
+						.height	=CLAY_SIZING_FIT(0)
+					},
+					.padding = { 8, 8, 8, 8 },
+					.childGap = 8
+				},
+				.clip	=
+				{
+					.vertical		=true,
+					.childOffset	=Clay_GetScrollOffset()
+				},
+				.backgroundColor	=sPastel1,
+			})
+			{
+				CLAY_TEXT(CLAY_STRING("Choose a texture atlas:"),
+					CLAY_TEXT_CONFIG({
+						FONTDEETS(pTS->mpUI, pTS->mFontIDMedium),
+						.textColor = sWAG0 }));
+				sFillTexAtlasList(pTS);
+			}
+			CLAY(CLAY_ID("HeightMaps"), {
+				.layout	=
+				{
+					.layoutDirection = CLAY_TOP_TO_BOTTOM,
+					.sizing	=
+					{
+						.width	=CLAY_SIZING_FIT(0),
+						.height	=CLAY_SIZING_FIT(0)
+					},
+					.padding = { 8, 8, 8, 8 },
+					.childGap = 8
+				},
+				.backgroundColor	=sPastel2,
+				.clip	=
+				{
+					.vertical		=true,
+					.childOffset	=Clay_GetScrollOffset()
+				}
+			})
+			{
+				CLAY_TEXT(CLAY_STRING("Choose a height map:"),
+					CLAY_TEXT_CONFIG({
+						FONTDEETS(pTS->mpUI, pTS->mFontIDMedium),
+						.textColor = sWAG0 }));
+				sFillHeightMapList(pTS);
+			}
+			CLAY(CLAY_ID("LOS"), {	.layout	=
+				{
+					.layoutDirection = CLAY_TOP_TO_BOTTOM,
+					.sizing =
+					{
+						.width = CLAY_SIZING_FIT(0),
+						.height = CLAY_SIZING_FIT(0)
+					},
+					.padding = { 2, 2, 2, 2 },
+					.childGap = 2
+				},
+				.backgroundColor	=sWAG3,})
+			{
+				CLAY_TEXT(CLAY_STRING("Press P to drop a sphere."),
+					CLAY_TEXT_CONFIG({
+						FONTDEETS(pTS->mpUI, pTS->mFontIDMedium),
+						.textColor = sWAG0 }));
+				sCheckLOS(pTS);
+			}
+		}
 	}
 
 	return	Clay_EndLayout(deltaTime);

@@ -64,7 +64,6 @@ typedef struct	TestStuff_t
 	PhysicsStuff	*mpPhys;
 
 	//toggles
-	bool	mbDrawTerNodes;
 	bool	mbMouseLooking;
 	bool	mbLeftMouseDown;
 	bool	mbRunning;
@@ -104,12 +103,10 @@ static void sHandleClayErrors(Clay_ErrorData errorData);
 //material setups
 static Material	*sMakeTerrainMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK);
-static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK);
 static Material	*sMakeSkyBoxMat(TestStuff *pTS, const StuffKeeper *pSK);
 
 //input event handlers
 static void	sRandLightEH(void *pContext, const SDL_Event *pEvt);
-static void	sToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt);
 static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseDownEH(void *pContext, const SDL_Event *pEvt);
 static void	sLeftMouseUpEH(void *pContext, const SDL_Event *pEvt);
@@ -259,7 +256,6 @@ __attribute_maybe_unused__
 	//materials
 	Material	*pTerMat	=sMakeTerrainMat(pTS, pSK);
 	Material	*pSphereMat	=sMakeSphereMat(pTS, pSK);
-	Material	*pBoxesMat	=sMakeNodeBoxesMat(pTS, pSK);
 	Material	*pSkyBoxMat	=sMakeSkyBoxMat(pTS, pSK);
 
 	float	maxDT			=0.0f;
@@ -287,7 +283,6 @@ __attribute_maybe_unused__
 		//update materials incase light changed
 		MAT_SetLightDirection(pTerMat, pTS->mLightDir);
 		MAT_SetLightDirection(pSphereMat, pTS->mLightDir);
-		MAT_SetLightDirection(pBoxesMat, pTS->mLightDir);
 
 		//render update
 		float	dt	=UpdateTimer_GetRenderUpdateDeltaSeconds(pUT);
@@ -336,6 +331,7 @@ __attribute_maybe_unused__
 		GD_IASetIndexBuffers(pTS->mpGD, pSkyCube->mpIB, DXGI_FORMAT_R16_UINT, 0);
 
 		MAT_Apply(pSkyBoxMat, pCBK, pTS->mpGD);
+		GD_VSSetSRV(pTS->mpGD, pSkyCube->mpVBSRV, 0);
 		GD_DrawIndexed(pTS->mpGD, pSkyCube->mIndexCount, 0, 0);
 
 		//turn depth back on
@@ -426,15 +422,6 @@ static void	sRandLightEH(void *pContext, const SDL_Event *pEvt)
 	assert(pTS);
 
 	Misc_RandomDirection(pTS->mLightDir);
-}
-
-static void	sToggleDrawTerNodesEH(void *pContext, const SDL_Event *pEvt)
-{
-	TestStuff	*pTS	=(TestStuff *)pContext;
-
-	assert(pTS);
-
-	pTS->mbDrawTerNodes	=!pTS->mbDrawTerNodes;
 }
 
 static void	sSpawnSphereEH(void *pContext, const SDL_Event *pEvt)
@@ -722,25 +709,6 @@ static Material	*sMakeSphereMat(TestStuff *pTS, const StuffKeeper *pSK)
 	return	pRet;
 }
 
-static Material	*sMakeNodeBoxesMat(TestStuff *pTS, const StuffKeeper *pSK)
-{
-	Material	*pRet	=MAT_Create(pTS->mpGD);
-
-	vec3	light0		={	1.0f, 1.0f, 1.0f		};
-	vec3	light1		={	0.5f, 0.5f, 0.5f		};
-	vec3	light2		={	0.2f, 0.2f, 0.2f		};
-	vec4	ghosty		={	1.0f, 1.0f, 1.0f, 0.5f	};
-
-	MAT_SetLights(pRet, light0, light1, light2, pTS->mLightDir);
-	MAT_SetVShader(pRet, "StaticVS", pSK);
-	MAT_SetPShader(pRet, "TriPS", pSK);
-	MAT_SetSolidColour(pRet, ghosty);
-	MAT_SetSpecular(pRet, GLM_VEC3_ONE, 6.0f);
-	MAT_SetWorld(pRet, GLM_MAT4_IDENTITY);
-
-	return	pRet;
-}
-
 static void	sSetDefaultCel(GraphicsDevice *pGD, CBKeeper *pCBK)
 {
 	float	mins[4]	={	0.0f, 0.3f, 0.6f, 1.0f	};
@@ -767,7 +735,6 @@ static void	sSetupKeyBinds(Input *pInp)
 {
 	//event style bindings
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_L, sRandLightEH);
-	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_N, sToggleDrawTerNodesEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_ESCAPE, sEscEH);
 	INP_MakeBinding(pInp, INP_BIND_TYPE_EVENT, SDLK_P, sSpawnSphereEH);
 

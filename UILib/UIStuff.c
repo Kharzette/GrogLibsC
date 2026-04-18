@@ -21,6 +21,8 @@ typedef struct	UIFonts_t
 {
 	int	id;
 
+	const char	*mpszName;
+
 	GrogFont	*mpFont;
 
 	UT_hash_handle	hh;
@@ -923,6 +925,12 @@ void	UI_AddFont(UIStuff *pUI, const char *szFontName, uint16_t id)
 		pF->id		=key;
 		pF->mpFont	=pFont;
 
+		//alloc space for name
+		pF->mpszName	=malloc(strlen(szFontName) + 1);
+
+		//hold a copy
+		strcpy(pF->mpszName, szFontName);
+
 		HASH_ADD_INT(pUI->mpFonts, id, pF);
 	}
 	else
@@ -1213,4 +1221,18 @@ uint16_t	UI_GetNearestFontSize(const UIStuff *pUI, int size)
 	}
 
 	return	bestID;
+}
+
+uint16_t	UI_GetFontIDByName(const UIStuff *pUI, const char *pSZName)
+{
+	UIFonts	*pF;
+
+	for(pF = pUI->mpFonts;pF != NULL;pF = pF->hh.next)
+	{
+		if(0 == strcmp(pSZName, pF->mpszName))
+		{
+			return	pF->id;
+		}
+	}
+	return	-1;
 }

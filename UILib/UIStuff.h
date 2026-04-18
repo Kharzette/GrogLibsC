@@ -38,6 +38,7 @@ void	UI_DrawRRHollow(UIStuff *pUI, const UIRect r, float hullSize,
 void		UI_AddAllFonts(UIStuff *pUI);
 uint16_t	UI_GetNearestFontSize(const UIStuff *pUI, int size);
 int			UI_GetFontSize(const UIStuff *pUI, uint16_t id);
+uint16_t	UI_GetFontIDByName(const UIStuff *pUI, const char *pSZName);
 
 //clay specific stuff
 void	UI_AddFont(UIStuff *pUI, const char *szFontName, uint16_t id);

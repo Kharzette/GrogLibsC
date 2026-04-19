@@ -84,7 +84,8 @@ void	MAT_Apply(const Material *pMat, CBKeeper *pCBK, GraphicsDevice *pGD)
 
 	CBK_SetSpecular(pCBK, pMat->mSpecular, pMat->mSpecPower);
 
-	CBK_SetDanglyForce(pCBK, pMat->mDanglyForce);
+	//TODO: Temp ludum hack
+	//CBK_SetDanglyForce(pCBK, pMat->mDanglyForce);
 
 	CBK_SetLocalScale(pCBK, pMat->mLocalScale);
 

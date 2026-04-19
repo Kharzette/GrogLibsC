@@ -245,6 +245,55 @@ void	GameCam_GetViewMatrixFly(const GameCamera *pCam, mat4 mat, vec3 eyePos)
 	glm_vec3_copy(pCam->mTrackingPosition, eyePos);
 }
 
+
+void	GameCam_UnProjectAngry(const GameCamera *pCam, const vec4 viewPort,
+								float minZ, float maxZ,
+								const vec2 screenPoint,
+								vec3 viewPointNear, vec3 viewPointFar)
+{
+	mat4	view, viewProj, vpi;
+
+	float	aspect	=viewPort[2] / viewPort[3];
+
+	//make view angle mat from view quat
+	glm_quat_mat4(pCam->mView, view);
+	glm_mat4_transpose(view);
+
+	glm_mul(pCam->mProjection, view, viewProj);
+
+	glm_mat4_inv_fast(viewProj, vpi);
+
+	//normalized screen coordinates
+	//directx math was a big help here
+	vec4	nscFar, nscNear	={	2.0f * (screenPoint[0] / viewPort[2]) - 1.0f,
+		1.0f - (2.0f * screenPoint[1] / viewPort[3]),
+		0.0f, 1.0f	};	//near clip plane
+
+	glm_vec4_copy(nscNear, nscFar);
+
+	nscFar[2]	=1.0f;	//far clip plane
+
+	glm_mat4_mulv(vpi, nscNear, nscNear);
+	glm_mat4_mulv(vpi, nscFar, nscFar);
+
+	//perspective divide
+	float	nearOOW	=1.0f / nscNear[3];
+	float	farOOW	=1.0f / nscFar[3];
+
+	viewPointNear[0]	=nscNear[0] * nearOOW;
+	viewPointNear[1]	=nscNear[1] * nearOOW;
+	viewPointNear[2]	=nscNear[2] * nearOOW;
+
+	viewPointFar[0]		=nscFar[0] * farOOW;
+	viewPointFar[1]		=nscFar[1] * farOOW;
+	viewPointFar[2]		=nscFar[2] * farOOW;
+
+	//move into the camera's space
+	glm_vec3_add(viewPointNear, pCam->mTrackingPosition, viewPointNear);
+	glm_vec3_add(viewPointFar, pCam->mTrackingPosition, viewPointFar);
+}
+
+
 //returns an object matrix
 void	GameCam_GetLookMatrix(const GameCamera *pCam, mat4 mat)
 {

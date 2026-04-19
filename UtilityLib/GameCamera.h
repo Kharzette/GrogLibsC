@@ -26,3 +26,7 @@ void	GameCam_GetProjection(const GameCamera *pCam, mat4 outProjection);
 void	GameCam_GetForwardVec(const GameCamera *pCam, vec3 outForward);
 void	GameCam_GetRightVec(const GameCamera *pCam, vec3 outRight);
 void	GameCam_GetUpVec(const GameCamera *pCam, vec3 outUp);
+void	GameCam_UnProjectAngry(const GameCamera *pCam, const vec4 viewPort,
+								float minZ, float maxZ,
+								const vec2 screenPoint,
+								vec3 viewPointNear, vec3 viewPointFar);

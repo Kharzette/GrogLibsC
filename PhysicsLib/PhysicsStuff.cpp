@@ -909,3 +909,39 @@ bool	Phys_CastRayAtBodyNarrow(const PhysicsStuff *pPS, const vec3 org, uint32_t 
 
 	return	(hit.mBodyID == bid);
 }
+
+bool	Phys_CastRayAtStaticNarrow(const PhysicsStuff *pPS,
+			const vec3 start, const vec3 end, vec3 result)
+{
+	const NarrowPhaseQuery	&npq	=pPS->mpPhys->GetNarrowPhaseQuery();
+
+	const BodyInterface	&body_interface	=pPS->mpPhys->GetBodyInterface();
+
+//	RVec3	rpos	=body_interface.GetPosition(bid);
+	Vec3	rayStart, rayEnd;
+
+	sCopyvec(start, &rayStart);
+	sCopyvec(end, &rayEnd);
+
+	//make direction vector
+	Vec3	rayDir	=rayEnd - rayStart;
+
+	RRayCast	rc	={	rayStart, rayDir	};
+
+	RayCastResult	hit;
+
+	bool	bHit	=npq.CastRay(rc, hit);
+//		pPS->mpPhys->GetDefaultBroadPhaseLayerFilter(Layers::NON_MOVING),
+//		pPS->mpPhys->GetDefaultLayerFilter(Layers::NON_MOVING));
+
+	if(!bHit)
+	{
+		return	false;
+	}
+
+	Vec3	hitPoint	=rayStart + hit.mFraction * (rayEnd - rayStart);
+
+	sCopyVec(&hitPoint, result);
+
+	return	true;
+}

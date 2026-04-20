@@ -36,6 +36,10 @@ typedef struct GameCamera_t
 	//the third person camera is tracking
 	vec3	mTrackingPosition;
 
+	//this is the location of the first person camera, or the camera
+	//position if in third person mode
+	vec3	mEyePos;
+
 	//distance from the attached object if any (for 3rd person)
 	float	mMinDist, mMaxDist;
 	float	mCurDistance;
@@ -66,6 +70,7 @@ GameCamera	*GameCam_Create(bool bSpaceMode, float near, float far,
 
 	assert(minDist > 0.0f && minDist < maxDist);
 
+	//for third person camera
 	pRet->mCurDistance	=(minDist + maxDist) * 0.5f;
 	pRet->mMinDist		=minDist;
 	pRet->mMaxDist		=maxDist;
@@ -86,7 +91,7 @@ void	GameCam_Destroy(GameCamera **ppCam)
 
 
 //standard fps update
-void	GameCam_UpdateRotation(GameCamera *pCam, vec3 objectPos, float deltaPitch, float deltaYaw, float deltaRoll)
+void	GameCam_UpdateRotationFPS(GameCamera *pCam, vec3 objectPos, float deltaPitch, float deltaYaw, float deltaRoll)
 {
 	vec4	accum, rotX, rotY;
 	vec3	up		={	0.0f, 1.0f, 0.0f	};
@@ -108,7 +113,9 @@ void	GameCam_UpdateRotation(GameCamera *pCam, vec3 objectPos, float deltaPitch, 
 
 	glm_quat_normalize_to(accum, pCam->mView);
 
+	//these are the same in first person
 	glm_vec3_copy(objectPos, pCam->mTrackingPosition);
+	glm_vec3_copy(objectPos, pCam->mEyePos);
 }
 
 void	GameCam_UpdateRotationSecondary(GameCamera *pCam, vec3 objectPos, float deltaSeconds,
@@ -117,6 +124,7 @@ void	GameCam_UpdateRotationSecondary(GameCamera *pCam, vec3 objectPos, float del
 	vec4	accum, rotX, rotY;
 	vec3	up		={	0.0f, 1.0f, 0.0f	};
 	vec3	side	={	1.0f, 0.0f, 0.0f	};
+	vec3	forward	={	0.0f, 0.0f, 1.0f	};
 
 	//space has no consistent up
 	if(pCam->mbSpaceMode)
@@ -136,6 +144,16 @@ void	GameCam_UpdateRotationSecondary(GameCamera *pCam, vec3 objectPos, float del
 
 	glm_vec3_copy(objectPos, pCam->mTrackingPosition);
 
+	//get forward vector
+	glm_quat_rotatev(pCam->mCamQuat, forward, forward);
+
+	//translate along the back vector to cam distance
+	vec3	translation;
+	glm_vec3_scale(forward, -pCam->mCurDistance, translation);
+
+	//add tracked object position to update eyePos
+	glm_vec3_add(translation, pCam->mTrackingPosition, pCam->mEyePos);
+
 	//slerp to object quat?
 	if(bMoving)
 	{
@@ -143,7 +161,8 @@ void	GameCam_UpdateRotationSecondary(GameCamera *pCam, vec3 objectPos, float del
 
 		if(pCam->mSlerpTime < 0.1f)
 		{
-			glm_quat_slerp(pCam->mViewSlerp, pCam->mCamQuat, pCam->mSlerpTime * 10.0f, pCam->mView);
+			glm_quat_slerp(pCam->mViewSlerp, pCam->mCamQuat,
+				pCam->mSlerpTime * 10.0f, pCam->mView);
 		}
 		else
 		{
@@ -158,31 +177,77 @@ void	GameCam_UpdateRotationSecondary(GameCamera *pCam, vec3 objectPos, float del
 	}
 }
 
+//for overhead cameras
+void	GameCam_UpdateTopDown(GameCamera *pCam, vec3 objectPos, float deltaYaw)
+{
+	GameCam_UpdateRotationSecondary(pCam, objectPos, 0.0f, 0.0f, deltaYaw, 0.0f, false);
+/*
+	vec4	accum, rotX, rotY;
+	vec3	up		={	0.0f, 1.0f, 0.0f	};
+	vec3	side	={	1.0f, 0.0f, 0.0f	};
+
+	glm_quat_rotatev(pCam->mView, up, up);
+	glm_quat_rotatev(pCam->mView, side, side);
+
+	glm_quat(rotX, 0.0f, side[0], side[1], side[2]);
+	glm_quat(rotY, deltaYaw, up[0], up[1], up[2]);
+
+	glm_quat_mul(rotY, rotX, accum);
+	glm_quat_mul(accum, pCam->mView, accum);
+
+	glm_quat_normalize_to(accum, pCam->mView);
+
+	glm_vec3_copy(objectPos, pCam->mTrackingPosition);
+	*/
+}
+
+
 //annoying array goblinry
 void	GameCam_GetProjection(const GameCamera *pCam, mat4 outProjection)
 {
 	memcpy(outProjection, pCam->mProjection, sizeof(mat4));
 }
 
-void	GameCam_GetForwardVec(const GameCamera *pCam, vec3 outForward)
+void	GameCam_GetForwardVec(const GameCamera *pCam, bool bThird, vec3 outForward)
 {
 	vec3	forward	={	0.0f, 0.0f, 1.0f	};
 
-	glm_quat_rotatev(pCam->mView, forward, outForward);
+	if(bThird)
+	{
+		glm_quat_rotatev(pCam->mCamQuat, forward, outForward);
+	}
+	else
+	{
+		glm_quat_rotatev(pCam->mView, forward, outForward);
+	}
 }
 
-void	GameCam_GetRightVec(const GameCamera *pCam, vec3 outRight)
+void	GameCam_GetRightVec(const GameCamera *pCam, bool bThird, vec3 outRight)
 {
 	vec3	right	={	1.0f, 0.0f, 0.0f	};
 
-	glm_quat_rotatev(pCam->mView, right, outRight);
+	if(bThird)
+	{
+		glm_quat_rotatev(pCam->mCamQuat, right, outRight);
+	}
+	else
+	{		
+		glm_quat_rotatev(pCam->mView, right, outRight);
+	}
 }
 
-void	GameCam_GetUpVec(const GameCamera *pCam, vec3 outUp)
+void	GameCam_GetUpVec(const GameCamera *pCam, bool bThird, vec3 outUp)
 {
 	vec3	up	={	0.0f, 1.0f, 0.0f	};
 
-	glm_quat_rotatev(pCam->mView, up, outUp);
+	if(bThird)
+	{
+		glm_quat_rotatev(pCam->mCamQuat, up, outUp);
+	}
+	else
+	{		
+		glm_quat_rotatev(pCam->mView, up, outUp);
+	}
 }
 
 //third person cam, rotate with tracked object
@@ -223,7 +288,7 @@ void	GameCam_GetViewMatrixFly(const GameCamera *pCam, mat4 mat, vec3 eyePos)
 	mat4	temp;
 
 	//translate
-	glm_translate_make(temp, pCam->mTrackingPosition);
+	glm_translate_make(temp, pCam->mEyePos);
 
 	//make cam matrix
 	glm_quat_mat4(pCam->mView, mat);
@@ -242,21 +307,27 @@ void	GameCam_GetViewMatrixFly(const GameCamera *pCam, mat4 mat, vec3 eyePos)
 	glm_mat4_inv_fast_sse2(mat, mat);
 #endif
 
-	glm_vec3_copy(pCam->mTrackingPosition, eyePos);
+	glm_vec3_copy(pCam->mEyePos, eyePos);
 }
 
-
-void	GameCam_UnProjectAngry(const GameCamera *pCam, const vec4 viewPort,
-								float minZ, float maxZ,
+//given 2D screen coordinates, return worldspace
+//positions on the near and far clip planes
+void	GameCam_UnProjectAngry(const GameCamera *pCam, bool bThird,
+								const vec4 viewPort, float minZ, float maxZ,
 								const vec2 screenPoint,
 								vec3 viewPointNear, vec3 viewPointFar)
 {
 	mat4	view, viewProj, vpi;
 
-	float	aspect	=viewPort[2] / viewPort[3];
-
 	//make view angle mat from view quat
-	glm_quat_mat4(pCam->mView, view);
+	if(bThird)
+	{
+		glm_quat_mat4(pCam->mCamQuat, view);
+	}
+	else
+	{
+		glm_quat_mat4(pCam->mView, view);
+	}
 	glm_mat4_transpose(view);
 
 	glm_mul(pCam->mProjection, view, viewProj);
@@ -289,8 +360,8 @@ void	GameCam_UnProjectAngry(const GameCamera *pCam, const vec4 viewPort,
 	viewPointFar[2]		=nscFar[2] * farOOW;
 
 	//move into the camera's space
-	glm_vec3_add(viewPointNear, pCam->mTrackingPosition, viewPointNear);
-	glm_vec3_add(viewPointFar, pCam->mTrackingPosition, viewPointFar);
+	glm_vec3_add(viewPointNear, pCam->mEyePos, viewPointNear);
+	glm_vec3_add(viewPointFar, pCam->mEyePos, viewPointFar);
 }
 
 
@@ -316,4 +387,25 @@ void	GameCam_GetFlatLookMatrix(const GameCamera *pCam, mat4 mat)
 
 	//rotate
 	glm_quat_rotate(mat, flatQuat, mat);
+}
+
+
+void	GameCam_SetTopDown(GameCamera *pCam, const vec3 eyePos,
+	float yawDegrees, float pitchDegrees, float rollDegrees)
+{
+	vec3	forward	={	0.0f, 0.0f, 1.0f	};
+	vec3	up		={	0.0f, 1.0f, 0.0f	};
+	vec3	side	={	1.0f, 0.0f, 0.0f	};
+
+	vec4	accum, rotX, rotY, rotZ;
+	glm_quat(rotX, glm_rad(pitchDegrees), side[0], side[1], side[2]);
+	glm_quat(rotY, glm_rad(yawDegrees), up[0], up[1], up[2]);
+	glm_quat(rotZ, glm_rad(rollDegrees), forward[0], forward[1], forward[2]);
+
+	glm_quat_mul(rotY, rotX, accum);
+	glm_quat_mul(rotZ, accum, accum);
+
+	glm_quat_normalize_to(accum, pCam->mCamQuat);
+
+	glm_vec3_copy(eyePos, pCam->mTrackingPosition);
 }

@@ -156,9 +156,9 @@ static void	GroundMove(BipedMover *pBPM, const vec3 forward,
 static void	UpdateSwimming(BipedMover *pBPM, float secDelta, vec3 move)
 {
 	vec3	forward, right, up, moveVec;
-	GameCam_GetForwardVec(pBPM->mpGCam, forward);
-	GameCam_GetRightVec(pBPM->mpGCam, right);
-	GameCam_GetUpVec(pBPM->mpGCam, up);
+	GameCam_GetForwardVec(pBPM->mpGCam, false, forward);
+	GameCam_GetRightVec(pBPM->mpGCam, false, right);
+	GameCam_GetUpVec(pBPM->mpGCam, false, up);
 
 	FlyMove(pBPM, forward, right, up, moveVec);
 
@@ -200,9 +200,9 @@ static void	UpdateSwimming(BipedMover *pBPM, float secDelta, vec3 move)
 static void	UpdateFlying(BipedMover *pBPM, float secDelta, vec3 move)
 {
 	vec3	forward, right, up, moveVec;
-	GameCam_GetForwardVec(pBPM->mpGCam, forward);
-	GameCam_GetRightVec(pBPM->mpGCam, right);
-	GameCam_GetUpVec(pBPM->mpGCam, up);
+	GameCam_GetForwardVec(pBPM->mpGCam, false, forward);
+	GameCam_GetRightVec(pBPM->mpGCam, false, right);
+	GameCam_GetUpVec(pBPM->mpGCam, false, up);
 
 	FlyMove(pBPM, forward, right, up, moveVec);
 
@@ -262,9 +262,9 @@ static bool	UpdateWalking1(BipedMover *pBPM, bool bOnGround, bool bFooting, floa
 	}
 
 	vec3	forward, right, up, moveVec;
-	GameCam_GetForwardVec(pBPM->mpGCam, forward);
-	GameCam_GetRightVec(pBPM->mpGCam, right);
-	GameCam_GetUpVec(pBPM->mpGCam, up);
+	GameCam_GetForwardVec(pBPM->mpGCam, false, forward);
+	GameCam_GetRightVec(pBPM->mpGCam, false, right);
+	GameCam_GetUpVec(pBPM->mpGCam, false, up);
 
 	GroundMove(pBPM, forward, right, up, moveVec);
 
